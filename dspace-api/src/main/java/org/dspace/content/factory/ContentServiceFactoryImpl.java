@@ -11,6 +11,7 @@ import java.util.List;
 
 import org.dspace.content.DSpaceObject;
 import org.dspace.content.RelationshipMetadataService;
+import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.service.BitstreamFormatService;
 import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.BundleService;
@@ -84,6 +85,8 @@ public class ContentServiceFactoryImpl extends ContentServiceFactory {
     private EntityService entityService;
     @Autowired(required = true)
     private DuplicateDetectionService duplicateDetectionService;
+    @Autowired(required = true)
+    private DatashareDatasetService datashareDatasetService;
 
     @Override
     public List<DSpaceObjectService<? extends DSpaceObject>> getDSpaceObjectServices() {
@@ -188,5 +191,11 @@ public class ContentServiceFactoryImpl extends ContentServiceFactory {
     @Override
     public DuplicateDetectionService getDuplicateDetectionService() {
         return duplicateDetectionService;
+    }
+
+    // Datashare services
+    @Override
+    public DatashareDatasetService getDatashareDatasetService() {
+        return datashareDatasetService;
     }
 }

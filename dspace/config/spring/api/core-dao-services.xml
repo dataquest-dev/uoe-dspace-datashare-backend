@@ -74,5 +74,7 @@
     <bean class="org.dspace.app.ldn.dao.impl.LDNMessageDaoImpl"/>
     <bean class="org.dspace.app.ldn.dao.impl.NotifyPatternToTriggerDaoImpl"/>
 
+    <!-- Datashare DAOs -->
+    <bean class="org.dspace.content.datashare.dao.impl.DatashareDatasetDAOImpl"/>
 
 </beans>

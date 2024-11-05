@@ -166,5 +166,8 @@
 
     <bean class="org.dspace.correctiontype.service.impl.CorrectionTypeServiceImpl"/>
 
+    <!-- Datashare Services -->
+    <bean class="org.dspace.content.datashare.DatashareDatasetServiceImpl"/>
+
 </beans>
 

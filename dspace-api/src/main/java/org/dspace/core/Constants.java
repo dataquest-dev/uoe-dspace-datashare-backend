@@ -10,6 +10,7 @@ package org.dspace.core;
 /**
  * Class with constants and matching strings, for DSpace types. These numbers
  * must never be changed!!
+ * Extended for Datashare specific types: "DATASHARE_DATASET", "BATCH_IMPORT" and "UUN_2_EMAIL".
  *
  * @author David Stuve
  * @version $Revision$
@@ -60,11 +61,22 @@ public class Constants {
      */
     public static final int LDN_MESSAGE = 8;
 
+    // Datashare - start
+    /** Type of dataset objects */
+    public static final int DATASHARE_DATASET = 9;
+    
+    /** Type of batch import objects */
+    public static final int BATCH_IMPORT = 10;
+    
+    /** Type of uun2email objects */
+    public static final int UUN_2_EMAIL = 11;
+
     /**
      * lets you look up type names from the type IDs
      */
     public static final String[] typeText = { "BITSTREAM", "BUNDLE", "ITEM", "COLLECTION", "COMMUNITY", "SITE", "GROUP",
-        "EPERSON", "LDN_MESSAGE"};
+        "EPERSON", "LDN_MESSAGE", "DATASHARE_DATASET", "BATCH_IMPORT", "UUN_2_EMAIL"};
+    // Datashare - end
 
     /**
      * Special Bundle and Bitstream Names:

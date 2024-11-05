@@ -13,6 +13,7 @@ import org.dspace.content.DSpaceObject;
 import org.dspace.content.InProgressSubmission;
 import org.dspace.content.RelationshipMetadataService;
 import org.dspace.content.WorkspaceItem;
+import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.service.BitstreamFormatService;
 import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.BundleService;
@@ -75,6 +76,9 @@ public abstract class ContentServiceFactory {
     public abstract SiteService getSiteService();
 
     public abstract SubscribeService getSubscribeService();
+
+    // Datashare services
+    public abstract DatashareDatasetService getDatashareDatasetService();
 
     /**
      * Return the implementation of the RelationshipTypeService interface

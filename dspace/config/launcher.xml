@@ -178,8 +178,8 @@
         <description>Export usage statistics data from Solr for back-up purposes</description>
         <step passuserargs="true">
             <class>org.dspace.util.SolrImportExport</class>
-	    <argument>-a</argument>
-	    <argument>export</argument>
+            <argument>-a</argument>
+            <argument>export</argument>
         </step>
     </command>
     <command>
@@ -187,8 +187,8 @@
         <description>Import usage statistics data (as previously exported using solr-export-statistics) into Solr</description>
         <step passuserargs="true">
             <class>org.dspace.util.SolrImportExport</class>
-	    <argument>-a</argument>
-	    <argument>import</argument>
+            <argument>-a</argument>
+            <argument>import</argument>
         </step>
     </command>
     <command>
@@ -196,8 +196,8 @@
         <description>Reindex the Solr-based usage statistics, for example after an upgrade that changes the schema</description>
         <step passuserargs="true">
             <class>org.dspace.util.SolrImportExport</class>
-	    <argument>-a</argument>
-	    <argument>reindex</argument>
+            <argument>-a</argument>
+            <argument>reindex</argument>
         </step>
     </command>
     <command>
@@ -345,4 +345,36 @@
             <class>org.dspace.iiif.canvasdimension.CanvasDimensionCLI</class>
         </step>
     </command>
+
+    <!-- DATASHARE - start -->
+    <command>
+        <name>ds-datasets</name>
+        <description>Generate item zip files</description>
+        <step>
+            <class>org.dspace.content.datashare.DatashareItemDataset</class>
+        </step>
+    </command>
+    <command>
+        <name>ds-doi</name>
+        <description>Update dois in DataShare</description>
+        <step>
+            <class>uk.ac.edina.datashare.doi.DoiUpdate</class>
+        </step>
+    </command>
+    <!-- Same as import - historically different-->
+    <command>
+        <name>ds-import</name>
+        <description>Import items into DataShare</description>
+        <step>
+            <class>org.dspace.app.itemimport.ItemImportCLITool</class>
+        </step>
+    </command>
+    <command>
+        <name>ds-solr</name>
+        <description>DataShare Solr maintenance</description>
+        <step>
+            <class>uk.ac.edina.datashare.utils.Solr</class>
+        </step>
+    </command>
+    <!-- DATASHARE - end -->
 </commands>

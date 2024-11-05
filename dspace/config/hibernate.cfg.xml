@@ -104,5 +104,8 @@
         <mapping class="org.dspace.app.ldn.LDNMessageEntity"/>
         <mapping class="org.dspace.app.ldn.NotifyPatternToTrigger"/>
 
+        <!-- Datashare specific mappings -->
+        <mapping class="org.dspace.content.datashare.DatashareDataset"/>
+
     </session-factory>
 </hibernate-configuration>
