@@ -1,0 +1,49 @@
+package org.dspace.app.rest;
+
+import java.util.UUID;
+
+import org.dspace.app.rest.utils.ContextUtil;
+import org.dspace.content.Item;
+import org.dspace.content.datashare.service.DatashareDatasetService;
+import org.dspace.content.service.ItemService;
+import org.dspace.core.Context;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@RestController
+@RequestMapping("/api/datashare")
+public class DatashareDatasetRestController {
+
+    @Autowired
+    private DatashareDatasetService datashareDatasetService;
+
+    @Autowired
+    private ItemService itemService;
+
+    @RequestMapping(value = "/items/{id}/zip-file-link", method = RequestMethod.GET)
+    public String fetchDatashareDatasetZipFileLink(@PathVariable(value = "id") String itemId,
+            HttpServletRequest request,
+            HttpServletResponse response) throws Exception {
+        Context context = ContextUtil.obtainContext(request);
+        Item item = itemService.find(context, UUID.fromString(itemId));
+
+        return datashareDatasetService.fetchDatashareDatasetZipFileLink(context, item);
+    }
+
+    @RequestMapping(value = "/items/{id}/zip-file-downloadable", method = RequestMethod.GET)
+    public Boolean isDatashareDatasetZipFileDownloadable(@PathVariable(value = "id") String itemId,
+            HttpServletRequest request,
+            HttpServletResponse response) throws Exception {
+        Context context = ContextUtil.obtainContext(request);
+        Item item = itemService.find(context, UUID.fromString(itemId));
+
+        return datashareDatasetService.isDatashareDatasetZipFileDownloadable(context, item);
+
+    }
+}

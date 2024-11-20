@@ -1,10 +1,13 @@
 package org.dspace.content.datashare;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
 
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.AuthorizeException;
@@ -46,7 +49,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Override
     public void deleteDatashareDataset(Context context, String filename) {
-       try {
+        try {
 
             context.turnOffAuthorisationSystem();
             datashareDatasetDAO.deleteByFileName(context, filename);
@@ -61,6 +64,38 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     public String fetchDatashareDatasetChecksum(Context context, Item item) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'fetchDatashareDatasetChecksum'");
+    }
+
+    @Override
+    public boolean isDatashareDatasetZipFileDownloadable(Context context, Item item) {
+        return findDatashareDatsetByItem(context, item) != null;
+    }
+
+    @Override
+    public String fetchDatashareDatasetZipFileLink(Context context, Item item) {
+        String downloadLink = "";
+        try {
+            if (isDatashareDatasetZipFileDownloadable(context, item)) {
+
+                DatashareDataset dataset = findDatashareDatsetByItem(context, item);
+
+                if (dataset != null) {
+                    String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
+                    log.info(filePath, filePath);
+                    if(filePath != null && !filePath.isEmpty()) {
+                    log.info("new File(filePath).exists(): "  + new File(filePath).exists());
+                    if (new File(filePath).exists()) {
+                        downloadLink = DatashareItemDataset.getURL(item) != null ? DatashareItemDataset.getURL(item).toString() : "";
+                    }
+                }
+                }
+
+            }
+        } catch (Exception e) {
+            log.error("Error fetching download link for item: " + item.getHandle(), e);
+        }
+        log.info("Download link: " + downloadLink);
+        return downloadLink;
     }
 
     // Private methods
@@ -85,6 +120,32 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
         return dataset;
 
+    }
+
+    // Only return DatashareDataset for item if it exists in the file system
+    private DatashareDataset findDatashareDatsetByItem(Context context, Item item) {
+        try {
+            boolean allItemBitstreamsAvailable = DatashareItemDataset.areAllItemBitstreamsAvailable(context, item);
+            // If all item bitstreams are not available then we don't want to return a
+            // dataset.
+            if (!allItemBitstreamsAvailable) {
+                log.info("find_Dataset: not_available, Item  = " + item);
+                return null;
+            }
+
+            DatashareDataset dataset = datashareDatasetDAO.findLatestDatashareDatasetByItem(context, item);
+            if (dataset == null) {
+                log.info("find_Dataset: not_found, Item uuid = " + null);
+                return null;
+            }
+            log.info("find_Dataset: Item uuid = " + item.getID());
+            log.info("find_Dataset: Dataset File = " + dataset.getFileName());
+
+            return dataset;
+        } catch (Exception e) {
+            log.error("find_Dataset: Item uuid = " + item.getID(), e);
+            return null;
+        }
     }
 
     @Override
@@ -271,13 +332,13 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     public void update(Context context, DatashareDataset dso) throws SQLException, AuthorizeException {
         datashareDatasetDAO.save(context, dso);
         log.info(LogHelper.getHeader(context, "update_datashare_dataset",
-                                      "fileName=" + dso.getFileName()));
+                "fileName=" + dso.getFileName()));
     }
 
     @Override
     public void delete(Context context, DatashareDataset dso) throws SQLException, AuthorizeException, IOException {
         log.info(LogHelper.getHeader(context, "delete_dso",
-                                      "fileName=" + dso.getFileName()));
+                "fileName=" + dso.getFileName()));
         datashareDatasetDAO.delete(context, dso);
     }
 
@@ -326,8 +387,5 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'findByLegacyId'");
     }
-
-
-    
 
 }

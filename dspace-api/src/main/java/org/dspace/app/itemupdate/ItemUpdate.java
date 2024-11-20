@@ -38,6 +38,10 @@ import org.dspace.eperson.service.EPersonService;
 import org.dspace.handle.factory.HandleServiceFactory;
 import org.dspace.handle.service.HandleService;
 
+//DATASHARE - start
+import org.dspace.content.datashare.DatashareItemDataset;
+//DATASHARE - end
+
 /**
  * Provides some batch editing capabilities for items in DSpace.
  * <ul>
@@ -421,6 +425,23 @@ public class ItemUpdate {
                 }
                 if (!isTest) {
                     Item item = itarch.getItem();
+
+                    // DATASHARE - start
+					for (UpdateAction action : actionMgr)
+					{
+						// action must either a DeleteBitstreamsAction
+						if(org.dspace.app.itemupdate.DeleteBitstreamsAction.class.isInstance(action) ||
+								org.dspace.app.itemupdate.AddBitstreamsAction.class.isInstance(action)) {
+							try {
+								// delete dataset this will be regenerated later
+								new DatashareItemDataset(context, item).delete();
+							} catch(Exception e) {
+								// Do nothing
+							}
+						}
+					}
+					// DATASHARE - end
+                    
                     itemService.update(context, item);  //need to update before commit
                     context.uncacheEntity(item);
                 }

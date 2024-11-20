@@ -15,4 +15,6 @@ public interface DatashareDatasetDAO extends DSpaceObjectLegacySupportDAO<Datash
    public List<DatashareDataset> findByItem(Context context, Item item) throws SQLException;
    public void deleteByFileName(Context context, String filename) throws SQLException;
    public void deleteByItem(Context context, Item item) throws SQLException;
+   public DatashareDataset findLatestDatashareDatasetByItem(Context context, Item item) throws SQLException;
+   
 }

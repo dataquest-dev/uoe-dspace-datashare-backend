@@ -212,7 +212,12 @@ public class DatashareItemDataset {
 		return "DS_" + aHandle[0] + "_" + aHandle[1] + ".zip";
 	}
 
-	private String getFullPath() {
+	public static String getFullFilePath(String handle) {
+		String dir = DSpaceServicesFactory.getInstance().getConfigurationService().getProperty(DIR_PROP);
+		return dir + File.separator + getFileName(handle);
+	}
+
+	public String getFullPath() {
 		return dir + File.separator + getFileName();
 	}
 
@@ -237,28 +242,27 @@ public class DatashareItemDataset {
 		return new File(getTmpFileName()).length();
 	}
 
-	public URL getURL() {
+	public static URL getURL(Item item) {
 		URL url;
 		try {
-			String bUrl[] = DSpaceServicesFactory.getInstance().getConfigurationService().getProperty("dspace.url")
-					.split("://");
+			String bUrl[] = DSpaceServicesFactory.getInstance().getConfigurationService().getProperty("dspace.server.url").split("://");
 			String protocol = bUrl[0];
 			String host = bUrl[1];
-			String fPath = "/download/" + getFileName();
-			log.debug("getURL(): 1 - host: " + host);
+			String fPath = "/download/" + getFileName(item.getHandle());
+			log.info("getURL(): 1 - host: " + host);
 			if (host.contains(":")) {
-				log.debug("getURL(): 2 - host: " + host);
+				log.info("getURL(): 2 - host: " + host);
 				String aHost[] = host.split(":");
 				host = aHost[0];
-				log.debug("getURL(): 3 - host: " + host);
-				log.debug("getURL(): 4 - aHost[1]: " + aHost[1]);
+				log.info("getURL(): 3 - host: " + host);
+				log.info("getURL(): 4 - aHost[1]: " + aHost[1]);
 				// DATASHARE - Fix for local docker
 				// where aHost[1] value like 8080/xmlui causes
 				// a NumberFormatException in Integer.parseInt(aHost[1]) below.
-				if (aHost[1].contains("/")) {
+				if(aHost[1].contains("/")) {
 					aHost[1] = aHost[1].split("/")[0];
 				}
-				log.debug("getURL(): 5 - aHost[1]: " + aHost[1]);
+				log.info("getURL(): 5 - aHost[1]: " + aHost[1]);
 				url = new URL(protocol, host, Integer.parseInt(aHost[1]), fPath);
 			} else {
 				url = new URL(protocol, host, fPath);
@@ -271,7 +275,7 @@ public class DatashareItemDataset {
 		return url;
 	}
 
-	private boolean itemIsAvailable(Context context, Item item) {
+	public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
 		log.info("hasEmbargo: " + DatashareUtils.hasEmbargo(context, item));
 		log.info("isWithdrawn: " + item.isWithdrawn());
 		return !DatashareUtils.hasEmbargo(context, item) && !item.isWithdrawn()
@@ -312,7 +316,7 @@ public class DatashareItemDataset {
 			try {
 				context = new Context();
 
-				if (itemIsAvailable(context, item)) {
+				if (areAllItemBitstreamsAvailable(context, item)) {
 					log.info("create zip for " + item.getHandle());
 					createZip(context);
 					String cksum = createChecksum(context);
@@ -471,7 +475,7 @@ public class DatashareItemDataset {
 				if (exists()) {
 					log.info("dataset exists");
 					cont = false;
-				} else if (!itemIsAvailable(context, item)) {
+				} else if (!areAllItemBitstreamsAvailable(context, item)) {
 					log.info("dataset creation not allowed");
 					cont = false;
 				} else {
@@ -541,7 +545,7 @@ public class DatashareItemDataset {
 							log.info("Dataset already exists " + item.getHandle());
 						}
 					} else {
-						if (ds.itemIsAvailable(context, item)) {
+						if (ds.areAllItemBitstreamsAvailable(context, item)) {
 							log.info("Create dataset for " + ds.getFullPath() + " for " + item.getHandle()
 									+ ", id: " + item.getID());
 							Thread th = ds.createDataset();
