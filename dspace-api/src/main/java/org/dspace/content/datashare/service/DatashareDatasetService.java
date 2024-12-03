@@ -1,7 +1,5 @@
 package org.dspace.content.datashare.service;
 
-import java.net.URL;
-
 import org.dspace.content.Item;
 import org.dspace.content.datashare.DatashareDataset;
 import org.dspace.content.service.DSpaceObjectLegacySupportService;

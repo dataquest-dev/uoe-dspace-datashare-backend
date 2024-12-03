@@ -1,13 +1,12 @@
-package org.dspace.content.datashare;
+package org.dspace.content.datashare.service.impl;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
 
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.AuthorizeException;
@@ -16,6 +15,8 @@ import org.dspace.content.Item;
 import org.dspace.content.MetadataField;
 import org.dspace.content.MetadataFieldName;
 import org.dspace.content.MetadataValue;
+import org.dspace.content.datashare.DatashareDataset;
+import org.dspace.content.datashare.DatashareItemDataset;
 import org.dspace.content.datashare.dao.DatashareDatasetDAO;
 import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.core.Constants;
@@ -148,6 +149,8 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         }
     }
 
+    // Unmplemented methods of the interfaces: 
+    // DSpaceObjectService<DatashareDataset> and DSpaceObjectLegacySupportService<DatashareDataset>
     @Override
     public DatashareDataset find(Context context, UUID uuid) throws SQLException {
         // TODO Auto-generated method stub

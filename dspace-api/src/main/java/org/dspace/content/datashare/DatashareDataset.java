@@ -40,7 +40,7 @@ public class DatashareDataset extends DSpaceObject implements DSpaceObjectLegacy
     @Transient
     private transient DatashareDatasetService datashareDatasetService;
 
-    protected DatashareDataset() {
+    public DatashareDataset() {
 
     }
 

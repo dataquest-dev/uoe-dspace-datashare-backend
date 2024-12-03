@@ -1,4 +1,4 @@
-package org.dspace.app.rest;
+package org.dspace.app.rest.datashare;
 
 import java.util.UUID;
 
