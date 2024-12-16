@@ -69,7 +69,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Override
     public boolean isDatashareDatasetZipFileDownloadable(Context context, Item item) {
-        return findDatashareDatsetByItem(context, item) != null;
+        return findDatashareDatasetByItem(context, item) != null;
     }
 
     @Override
@@ -78,7 +78,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         try {
             if (isDatashareDatasetZipFileDownloadable(context, item)) {
 
-                DatashareDataset dataset = findDatashareDatsetByItem(context, item);
+                DatashareDataset dataset = findDatashareDatasetByItem(context, item);
 
                 if (dataset != null) {
                     String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
@@ -124,7 +124,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     }
 
     // Only return DatashareDataset for item if it exists in the file system
-    private DatashareDataset findDatashareDatsetByItem(Context context, Item item) {
+    private DatashareDataset findDatashareDatasetByItem(Context context, Item item) {
         try {
             boolean allItemBitstreamsAvailable = DatashareItemDataset.areAllItemBitstreamsAvailable(context, item);
             // If all item bitstreams are not available then we don't want to return a

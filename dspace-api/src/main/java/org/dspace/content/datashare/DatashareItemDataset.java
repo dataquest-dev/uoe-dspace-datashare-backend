@@ -278,6 +278,7 @@ public class DatashareItemDataset {
 	public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
 		log.info("hasEmbargo: " + DatashareUtils.hasEmbargo(context, item));
 		log.info("isWithdrawn: " + item.isWithdrawn());
+		log.info("isTombstoned: " + isTombstoned(context, item));
 		return !DatashareUtils.hasEmbargo(context, item) && !item.isWithdrawn()
 				&& !isTombstoned(context, item);
 	}
