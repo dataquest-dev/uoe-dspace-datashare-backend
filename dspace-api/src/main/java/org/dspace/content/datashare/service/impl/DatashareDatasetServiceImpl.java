@@ -86,11 +86,10 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
                     if(filePath != null && !filePath.isEmpty()) {
                     log.info("new File(filePath).exists(): "  + new File(filePath).exists());
                     if (new File(filePath).exists()) {
-                        downloadLink = DatashareItemDataset.getURL(item) != null ? DatashareItemDataset.getURL(item).toString() : "";
+                        downloadLink = DatashareItemDataset.getURL(item) != null ? DatashareItemDataset.getURL(item) : "";
                     }
                 }
                 }
-
             }
         } catch (Exception e) {
             log.error("Error fetching download link for item: " + item.getHandle(), e);

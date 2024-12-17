@@ -242,34 +242,15 @@ public class DatashareItemDataset {
 		return new File(getTmpFileName()).length();
 	}
 
-	public static URL getURL(Item item) {
-		URL url;
+	public static String getURL(Item item) {
+		String url = null;
 		try {
-			String bUrl[] = DSpaceServicesFactory.getInstance().getConfigurationService().getProperty("dspace.server.url").split("://");
-			String protocol = bUrl[0];
-			String host = bUrl[1];
-			String fPath = "/download/" + getFileName(item.getHandle());
-			log.info("getURL(): 1 - host: " + host);
-			if (host.contains(":")) {
-				log.info("getURL(): 2 - host: " + host);
-				String aHost[] = host.split(":");
-				host = aHost[0];
-				log.info("getURL(): 3 - host: " + host);
-				log.info("getURL(): 4 - aHost[1]: " + aHost[1]);
-				// DATASHARE - Fix for local docker
-				// where aHost[1] value like 8080/xmlui causes
-				// a NumberFormatException in Integer.parseInt(aHost[1]) below.
-				if(aHost[1].contains("/")) {
-					aHost[1] = aHost[1].split("/")[0];
-				}
-				log.info("getURL(): 5 - aHost[1]: " + aHost[1]);
-				url = new URL(protocol, host, Integer.parseInt(aHost[1]), fPath);
-			} else {
-				url = new URL(protocol, host, fPath);
-			}
+			String baseDownloadUrl = DSpaceServicesFactory.getInstance().getConfigurationService().getProperty("datashare.download.zip.url");
+			String filePath = "/" + getFileName(item.getHandle());
+			url = baseDownloadUrl + filePath;
 
-		} catch (MalformedURLException ex) {
-			throw new RuntimeException(ex);
+		} catch (Exception ex) {
+			log.error(ex.getMessage());
 		}
 
 		return url;
