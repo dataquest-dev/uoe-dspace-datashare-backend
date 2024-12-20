@@ -19,13 +19,17 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.dspace.app.rest.utils.ContextUtil;
+import org.dspace.authenticate.factory.AuthenticateServiceFactory;
+import org.dspace.authenticate.service.AuthenticationService;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.authorize.factory.AuthorizeServiceFactory;
 import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.core.Context;
 import org.dspace.eperson.EPerson;
+import org.dspace.eperson.Group;
 import org.dspace.eperson.factory.EPersonServiceFactory;
 import org.dspace.eperson.service.EPersonService;
+import org.dspace.eperson.service.GroupService;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.RequestService;
 import org.dspace.services.factory.DSpaceServicesFactory;
@@ -56,6 +60,7 @@ public class StatelessAuthenticationFilter extends BasicAuthenticationFilter {
     private final EPersonRestAuthenticationProvider authenticationProvider;
 
     private final RequestService requestService;
+
 
     private final AuthorizeService authorizeService
             = AuthorizeServiceFactory.getInstance().getAuthorizeService();
@@ -130,6 +135,21 @@ public class StatelessAuthenticationFilter extends BasicAuthenticationFilter {
                 log.debug("Found authentication data in request for EPerson {}", eperson::getEmail);
                 //Pass the eperson ID to the request service
                 requestService.setCurrentUserId(eperson.getID());
+
+                // Datashare - start
+                // Adding special group DATASHARE_USERS to the context
+                log.info("No special groups found");
+                // If no special groups are found, we need to add the default group to the
+                // context
+                GroupService groupService = EPersonServiceFactory.getInstance().getGroupService();
+                Group datashareUsersGroup = groupService.findByName(context, "DATASHARE_USERS");
+                if (datashareUsersGroup != null) {
+                    context.setSpecialGroup(datashareUsersGroup.getID());
+                    log.info("Adding special group DATASHARE_USERS to the context");
+                } else {
+                    log.info("DATASHARE_USERS group not found");
+                }
+                // Datashare - end
 
                 //Get the Spring authorities for this eperson
                 List<GrantedAuthority> authorities = authenticationProvider.getGrantedAuthorities(context);
