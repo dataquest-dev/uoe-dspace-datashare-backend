@@ -90,7 +90,20 @@
                     <required></required>
                 </field>
             </row>
+            <row>
+                <field>
+                    <dc-schema>dc</dc-schema>
+                    <dc-element>description</dc-element>
+                    <dc-qualifier>abstract</dc-qualifier>
+                    <repeatable>false</repeatable>
+                    <label>Dataset Description</label>
+                    <input-type>textarea</input-type>
+                    <hint> Please provide a summary description of the dataset or an abstract of the study in
+            which the data was generated. </hint>
+                    <required></required>
+                </field>
 
+            </row>
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -145,22 +158,6 @@
                     <input-type value-pairs-name="funding_bodies">dropdown</input-type>
                     <hint> Select each agency that funded the creation of the dataset. </hint>
                     <required>A Funder is mandatory.</required>
-                </field>
-            </row>
-
-            <row>
-                <field>
-                    <dc-schema>dc</dc-schema>
-                    <dc-element>date</dc-element>
-                    <dc-qualifier>issued</dc-qualifier>
-                    <repeatable>false</repeatable>
-                    <label>Date of Issue</label>
-                    <style>col-sm-4</style>
-                    <input-type>date</input-type>
-                    <hint>Please give the date of previous publication or public distribution.
-                        You can leave out the day and/or month if they aren't applicable.
-                    </hint>
-                    <required></required>
                 </field>
             </row>
 
