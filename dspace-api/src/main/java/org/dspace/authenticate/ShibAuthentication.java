@@ -443,7 +443,10 @@ public class ShibAuthentication implements AuthenticationMethod {
         // Shibboleth will auto create accounts if configured to do so, but that is not
         // the same as self register. Self register means that the user can sign up for
         // an account from the web. This is not supported with shibboleth.
-        return false;
+        // DATASHARE - start
+        // return false;
+        return true;
+        // DATASHARE - end
     }
 
     /**
