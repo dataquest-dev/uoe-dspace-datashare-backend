@@ -261,6 +261,13 @@
 	        <type>submission-form</type>
         </step-definition>
 
+         <!-- Add Datashare Time Period step -->
+        <step-definition id="datashareTimePeriodForm">
+             <heading>submit.progressbar.datashare.timeperiod</heading>
+            <processing-class>org.dspace.app.rest.submit.step.DatashareTimePeriodStep</processing-class>
+            <type>submission-form</type>
+        </step-definition>
+
     </step-definitions>
 
     <!-- The submission-definitions map lays out the detailed definition of -->
@@ -306,6 +313,8 @@
             <!--Step will be COAR Notify services to the item -->
             <!-- <step id="coarnotify"/> -->
 
+            <!-- Datashare Time Period-->
+            <step id="datashareTimePeriodForm"/>
             <!--Step will be to Upload the item -->
             <step id="upload"/>
 

@@ -448,7 +448,7 @@
                     <repeatable>false</repeatable>
                     <label>Licence:</label>
                     <input-type value-pairs-name="datashare_license_types">dropdown</input-type>
-                    <hint>Select a license.</hint>
+                    <hint>Select a licence.</hint>
                     <required>You must choose at least one option.</required>
                 </field>
             </row>
@@ -460,6 +460,33 @@
                     <label>Rights:</label>
                     <input-type>textarea</input-type>
                     <hint>If you have chose Other, then fill in Rights text.</hint>
+                    <required></required>
+                </field>
+            </row>
+        </form>
+
+        <!-- Datashare Time Period form-->
+        <form name="datashareTimePeriodForm">
+            <row>
+                <field>
+                    <dc-schema>ds</dc-schema>
+                    <dc-element>timeperiod</dc-element>
+                    <dc-qualifier>start-date</dc-qualifier>
+                    <repeatable>false</repeatable>
+                    <label>From: </label>
+                     <input-type>date</input-type>
+                    <required></required>
+                </field>
+            </row>
+            <row>
+                <field>
+                    <dc-schema>ds</dc-schema>
+                    <dc-element>timeperiod</dc-element>
+                    <dc-qualifier>end-date</dc-qualifier>
+                    <repeatable>false</repeatable>
+                    <label>To: </label>
+                     <input-type>date</input-type>
+                     <hint>Enter the time period to which the data relate, if relevant.</hint>
                     <required></required>
                 </field>
             </row>
