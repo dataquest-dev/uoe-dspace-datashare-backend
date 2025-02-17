@@ -1,0 +1,26 @@
+Subject: Request copy of document
+
+Dear  ${params[7]},
+
+A user of  ${params[9]}, named  ${params[0]} and using the email  ${params[1]}, requested a copy of the file(s) associated with the document: " ${params[4]}" ( ${params[3]}) submitted by you.
+
+This request came along with the following message:
+
+" ${params[5]}"
+
+HOWEVER, THESE FILES ARE TOO LARGE FOR THE SYSTEM TO SEND ON YOUR BEHALF. Please find an alternative route to send the file. 
+For example, the University''s DataSync system (http://www.ed.ac.uk/information-services/computing/desktop-personal/datasync) makes it easy for you to share files with people outside of the university. If you would like assistance with this please email the Research Data Service on data-support@ed.ac.uk. 
+Another possible solution would be to lift the embargo on the deposit entirely; 
+if you''d like to make the data public in that way, please email the Research Data Service on data-support@ed.ac.uk or call us on ext 515277.
+
+IF YOU ARE NOT THE DATA CREATOR, and only submitted the data on the creator''s behalf, PLEASE REDIRECT THIS MESSAGE TO THE DATA CREATOR. Only the data creator(s) should answer the request to send a copy.
+
+IF YOU ARE THE DATA CREATOR FOR THE REQUESTED DATA, thank you for your cooperation!
+
+If you have any questions concerning this request, please contact data-support@ed.ac.uk.
+
+Research Data Support team
+Library and University Collections
+University of Edinburgh
+
+data-support@ed.ac.uk
