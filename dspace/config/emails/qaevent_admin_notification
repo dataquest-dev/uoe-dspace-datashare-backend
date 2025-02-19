@@ -4,10 +4,10 @@
 ##             {1} resource id
 ##             {2} reason
 ##
-#set($subject = "Notification about ${params[0]} Request")
+#set($subject = "Datashare: Notification about ${params[0]} Request")
 
 Item Details:
 
 Type of request: ${params[0]}
-Relatem to item: ${params[1]}
+Related to item: ${params[1]}
 Reason: ${params[2]}

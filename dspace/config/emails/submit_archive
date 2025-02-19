@@ -4,18 +4,30 @@
 ## {1}  Name of collection
 ## {2}  handle
 ##
-#set($subject = "${config.get('dspace.name')}: Submission Approved and Archived")
+#set($subject = "Datashare: Submission Approved and Archived")
 
 You submitted: ${params[0]}
 
 To collection: ${params[1]}
 
-Your submission has been accepted and archived in ${config.get('dspace.name')},
+Your submission has been accepted and archived in Datashare,
 and it has been assigned the following identifier:
 ${params[2]}
 
+Within the next hour approximately, a DOI (digital object identifier) persistent ID will be assigned to your item, that should be used in all citations of your data item. The DOI will appear at the end of the "Citation" field on the landing page of your item.
+
 Please use this identifier when citing your submission.
+
+You can find a copy of the Depositor Agreement at: https://www.ed.ac.uk/information-services/research-support/research-data-service/after/data-repository/depositor-agreement
 
 Many thanks!
 
-The ${config.get('dspace.name')} Team
+If you would like to have these data peer reviewed and have not yet identified a means of doing so, take a look at our list of Data Journals: https://www.wiki.ed.ac.uk/display/datashare/Sources+of+dataset+peer+review .
+
+If you have any questions concerning this request, please contact data-support@ed.ac.uk.
+
+Research Data Support team
+Library and University Collections
+University of Edinburgh
+
+data-support@ed.ac.uk

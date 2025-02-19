@@ -6,11 +6,15 @@
 ##
 ## See org.dspace.core.Email for information on the format of this file.
 ##
-#set($subject = 'DSpace - Batch import successfully completed')
+#set($subject = 'Datashare - Batch import successfully completed')
 The batch item import you initiated from the DSpace UI has completed successfully.
 
 You may find the mapfile for the import in the following path: ${params[0]}
 
 
-The DSpace Team
+Research Data Support team
+Library and University Collections
+University of Edinburgh
+
+data-support@ed.ac.uk
 

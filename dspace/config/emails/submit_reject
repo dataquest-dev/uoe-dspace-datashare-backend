@@ -6,7 +6,7 @@
 ## {3}  Reason for the rejection
 ## {4}  Link to 'My DSpace' page
 ##
-#set($subject = "${config.get('dspace.name')}: Submission Rejected")
+#set($subject = "Datashare: Submission Rejected")
 
 You submitted: ${params[0]}
 
@@ -17,6 +17,11 @@ with the following explanation:
 
 ${params[3]}
 
-Your submission has not been deleted. You can access it from your "My${config.get('dspace.shortname')}" page: ${params[4]}
+Your submission has not been deleted. You can access it from your "MyDatashare" page: ${params[4]}
 
-The ${config.get('dspace.name')} Team
+Research Data Support team
+Library and University Collections
+University of Edinburgh
+
+data-support@ed.ac.uk
+

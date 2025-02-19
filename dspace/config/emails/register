@@ -4,9 +4,9 @@
 ##
 ## See org.dspace.core.Email for information on the format of this file.
 ##
-#set($subject = "${config.get('dspace.name')} Account Registration")
+#set($subject = "Datashare Account Registration")
 #set($phone = ${config.get('mail.message.helpdesk.telephone')})
-To complete registration for a ${config.get('dspace.name')} account, please click the link below:
+To complete registration for a Datashare account, please click the link below:
 
   ${params[0]}
 
@@ -15,4 +15,9 @@ If you need assistance with your account, please email ${config.get("mail.helpde
 or call us at ${phone}.
 #end
 
-The ${config.get('dspace.name')} Team
+Research Data Support team
+Library and University Collections
+University of Edinburgh
+
+data-support@ed.ac.uk
+
