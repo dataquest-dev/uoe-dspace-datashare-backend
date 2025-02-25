@@ -23,7 +23,9 @@ import org.dspace.authorize.AuthorizeException;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.Item;
+import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.BitstreamService;
+import org.dspace.content.service.ItemService;
 import org.dspace.core.Context;
 import org.dspace.core.Email;
 import org.dspace.core.I18nUtil;
@@ -60,6 +62,13 @@ public class RequestItemEmailNotifier {
 
     protected final RequestItemAuthorExtractor requestItemAuthorExtractor;
 
+    // DATASHARE - start
+    private static final String ITEM_NOT_EMAILABLE_METADATA_TAG = "ds.not-emailable.item";
+    private static final String BITSTREAM_NOT_EMAILABLE_METADATA_TAG = "ds.not-emailable.bitstream";
+    
+    protected ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+    // DATASHARE - end
+
     @Inject
     public RequestItemEmailNotifier(RequestItemAuthorExtractor requestItemAuthorExtractor) {
         this.requestItemAuthorExtractor = requestItemAuthorExtractor;
@@ -80,9 +89,19 @@ public class RequestItemEmailNotifier {
         List<RequestItemAuthor> authors = requestItemAuthorExtractor
                 .getRequestItemAuthor(context, ri.getItem());
 
+        // DATASHARE - start
         // Build an email to the approver.
-        Email email = Email.getEmail(I18nUtil.getEmailFilename(context.getCurrentLocale(),
+        Email email;
+        if (isRequestItemEmailable(context, ri)) {
+        email = Email.getEmail(I18nUtil.getEmailFilename(context.getCurrentLocale(),
                 "request_item.author"));
+        } else {
+            email = Email.getEmail(I18nUtil.getEmailFilename(context.getCurrentLocale(),
+                "request_item.not_emailable.author"));
+
+        }
+        // DATASHARE - end
+
         for (RequestItemAuthor author : authors) {
             email.addRecipient(author.getEmail());
         }
@@ -297,4 +316,34 @@ public class RequestItemEmailNotifier {
             throw new IOException("Open Access request not sent:  " + ex.getMessage());
         }
     }
+
+     // DATASHARE - start
+    /**
+     * Checks if requested item is emailable.
+     * 
+     */
+    private boolean isRequestItemEmailable(Context context, RequestItem ri) {
+    	// Check if requested item is an Item or Bitstream and if it has the metadata tag:
+    	// ds.not-emailable.item for Item or
+    	// ds.not-emailable.bitstream for bitstream.
+    	try {
+    		if (ri.isAllfiles() && itemService.getMetadata(ri.getItem(), ITEM_NOT_EMAILABLE_METADATA_TAG) != null){
+    			LOG.info(ITEM_NOT_EMAILABLE_METADATA_TAG + ": " + itemService.getMetadata(ri.getItem(), ITEM_NOT_EMAILABLE_METADATA_TAG));
+    			return false;
+    		} else {
+    			Bitstream bit = ri.getBitstream();
+    			if (bit != null && bitstreamService.getMetadata(bit, BITSTREAM_NOT_EMAILABLE_METADATA_TAG) != null) {
+    				LOG.info(BITSTREAM_NOT_EMAILABLE_METADATA_TAG + ": " + itemService.getMetadata(ri.getItem(), BITSTREAM_NOT_EMAILABLE_METADATA_TAG));
+    			 return false;
+    			}
+    		}
+    	 } catch (IllegalArgumentException iae) {
+    		// Do nothing as it means that the requested item does not have
+    		// either of the not emailable metadata tags:
+    		// ds.not-emailable.item or ds.not-emailable.bitstream
+    	}
+    	
+    	return true;
+    }
+    // DATASHARE - end
 }

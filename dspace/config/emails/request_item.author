@@ -15,7 +15,7 @@
 
 Dear ${params[7]},
 
-A user of ${params[9]}, named ${params[0]} and using the email ${params[1]}, requested a copy of the file(s) associated with the document: "${params[4]}" (${params[3]}) submitted by you.
+A user of Datashare, named ${params[0]} and using the email ${params[1]}, requested a copy of the file(s) associated with the document: "${params[4]}" (${params[3]}) submitted by you.
 
 This request came along with the following message:
 
