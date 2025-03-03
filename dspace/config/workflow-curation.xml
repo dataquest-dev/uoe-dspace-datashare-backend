@@ -9,7 +9,7 @@
  <!-- taskset name 'none' indicates that there is no taskset to perform.     -->
 
  <taskset-map>
-   <mapping collection-handle="default" taskset="check-for-emailable" />
+   <mapping collection-handle="default" taskset="none" />
  </taskset-map>
 
  <!-- Tasksets specify curation tasks to be automatically performed at       -->
@@ -74,17 +74,8 @@
      </flowstep>
    </taskset>
 
-   <!-- Run curation task emailablebitstreams, but don't reject if task fails.
-       So 'none' is used in <workflow> tag. -->
-   <taskset name="check-for-emailable">
-     <flowstep name="archive">
-       <task name="emailablebitstreams">
-         <workflow>none</workflow>
-         <notify on="fail">$flowgroup</notify>
-         <notify on="error">$siteadmin</notify>
-       </task>
-     </flowstep>
-   </taskset>
+    <!-- We require an empty taskset to match "none" mappings.  DO NOT REMOVE! -->
+    <taskset name='none'/>
    
  </tasksets>
  

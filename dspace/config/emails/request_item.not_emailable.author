@@ -1,21 +1,8 @@
-## Parameters: 0 requester's name
-##             1 requester's address
-##             2 name of a single bitstream, or "all"
-##             3 item Handle
-##             4 item title
-##             5 message from requester
-##             6 link back to DSpace for action (not used in this case.)
-##             7 corresponding author name
-##             8 corresponding author email
-##             9 configuration property "dspace.name"
-##             10 configuration property "mail.helpdesk"
-
-
 Subject: Request copy of document
 
 Dear  ${params[7]},
 
-A user of Datashare, named  ${params[0]} and using the email  ${params[1]}, requested a copy of the file(s) associated with the document: " ${params[4]}" ( ${params[3]}) submitted by you.
+A user of  ${params[9]}, named  ${params[0]} and using the email  ${params[1]}, requested a copy of the file(s) associated with the document: " ${params[4]}" ( ${params[3]}) submitted by you.
 
 This request came along with the following message:
 
