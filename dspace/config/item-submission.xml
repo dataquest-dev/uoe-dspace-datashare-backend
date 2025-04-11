@@ -268,6 +268,13 @@
             <type>submission-form</type>
         </step-definition>
 
+         <!-- Add Datashare Funder step -->
+        <step-definition id="datashareFunderForm">
+             <heading>submit.progressbar.datashare.funder</heading>
+            <processing-class>org.dspace.app.rest.submit.step.DatashareFunderStep</processing-class>
+            <type>submission-form</type>
+        </step-definition>
+
     </step-definitions>
 
     <!-- The submission-definitions map lays out the detailed definition of -->
@@ -297,6 +304,11 @@
             <!--<step id="identifiers"/>-->
             <!--Step will be to Describe the item. -->
             <step id="traditionalpageone"/>
+
+            <!-- Datashare Funder-->
+            <step id="datashareFunderForm"/>
+
+
             <step id="traditionalpagetwo"/>
 
             <!-- Uncomment this step to allow the user to embargo or access restrict the entire item -->

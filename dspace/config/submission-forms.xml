@@ -157,7 +157,7 @@
             </row>
 
             <!--***** Funder *****-->
-            <row>
+            <!-- <row>
                 <field>
                     <dc-schema>dc</dc-schema>
                     <dc-element>contributor</dc-element>
@@ -168,8 +168,8 @@
                     <hint> Select each agency that funded the creation of the dataset. </hint>
                     <required>A Funder is mandatory.</required>
                 </field>
-            </row>
-
+            </row> -->
+       
             <!--***** Date Available *****-->
             <row>
                 <field>
@@ -459,7 +459,7 @@
                     <dc-qualifier>rights-text</dc-qualifier>
                     <label>Rights:</label>
                     <input-type>textarea</input-type>
-                    <hint>If you have chose Other, then fill in Rights text.</hint>
+                    <hint>If you have chosen Other, then fill in Rights text.</hint>
                     <required></required>
                 </field>
             </row>
@@ -474,7 +474,7 @@
                     <dc-qualifier>start-date</dc-qualifier>
                     <repeatable>false</repeatable>
                     <label>From: </label>
-                     <input-type>date</input-type>
+                    <input-type>date</input-type>
                     <required></required>
                 </field>
             </row>
@@ -485,8 +485,36 @@
                     <dc-qualifier>end-date</dc-qualifier>
                     <repeatable>false</repeatable>
                     <label>To: </label>
-                     <input-type>date</input-type>
-                     <hint>Enter the time period to which the data relate, if relevant.</hint>
+                    <input-type>date</input-type>
+                    <hint>Enter the time period to which the data relate, if relevant.</hint>
+                    <required></required>
+                </field>
+            </row>
+        </form>
+
+        <!-- Datashare Funder form-->
+        <form name="datashareFunderForm">
+            <row>
+                <field>
+                    <dc-schema>ds</dc-schema>
+                    <dc-element>funder</dc-element>
+                    <dc-qualifier>dropdown-value</dc-qualifier>
+                    <repeatable>true</repeatable>
+                    <label>Funder</label>
+                    <input-type value-pairs-name="funding_bodies">dropdown</input-type>
+                    <hint> Select each agency that funded the creation of the dataset. Choose 'Other' if you can't find funders in list and add your funders below.</hint>
+                    <required>A Funder is mandatory.</required>
+                </field>
+            </row>
+            <row>
+                <field>
+                    <dc-schema>ds</dc-schema>
+                    <dc-element>funder</dc-element>
+                    <dc-qualifier>text-value</dc-qualifier>
+                    <repeatable>true</repeatable>
+                    <label>Funder</label>
+                    <input-type>onebox</input-type>
+                    <hint> Enter a funder here if you have chosen 'Other' above or have additional funders not in dropdown. </hint>
                     <required></required>
                 </field>
             </row>
