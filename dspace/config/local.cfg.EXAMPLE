@@ -236,3 +236,65 @@ db.password = dspace
 #  LDN INBOX SETTINGS  #
 ########################
 ldn.enabled = true
+
+# LOCAL specific to Datashare
+
+# Mailcatcher https://hub.docker.com/r/hausgold/mailcatcher
+# SMTP mail server (allows DSpace to send email notifications)
+mail.server = mailcatcher
+
+# SMTP mail server authentication username and password (if required)
+#mail.server.username =
+#mail.server.password =
+
+# SMTP mail server alternate port (defaults to 25)
+mail.server.port = 1025
+
+# --- SAME AS IN local.cfg FOR PUPPET
+# Spring MVC file upload settings
+# Maximum size of a single uploaded file (default = 1MB)
+# spring.servlet.multipart.max-file-size = 512MB
+spring.servlet.multipart.max-file-size = 20GB
+
+# Maximum size of a multipart request (i.e. max total size of all files in one request) (default = 10MB)
+# spring.servlet.multipart.max-request-size = 512MB
+spring.servlet.multipart.max-request-size = 20GB
+
+# datashare event listener
+event.consumer.datashare.class = org.datashare.event.DatashareConsumer
+event.consumer.datashare.filters = Collection|Item+Add|Remove
+
+# the location of dataset zip file
+datasets.path = /tmp
+
+### Embargo Settings ####
+# DC metadata field to hold the user-supplied embargo terms
+embargo.field.terms = dc.date.embargo
+
+# DC metadata field to hold computed "lift date" of embargo
+embargo.field.lift = dc.date.embargo
+
+# Download base URL
+datashare.download.zip.url = http://localhost:8080/download
+
+# Max bitstreams size (in MB) emailable
+emailable.bitstreams.max.size = 50
+
+# Browse index for webui
+webui.browse.index.1 = title:item:title
+webui.browse.index.2 = dateaccessioned:item:dateaccessioned
+webui.browse.index.3 = author:metadata:dc.contributor.*\,dc.creator:text
+webui.browse.index.4 = subject:metadata:dc.subject.*:text
+
+# Vocabulary to exclude
+webui.browse.vocabularies.disabled = srsc
+
+# Sort options for webui
+webui.itemlist.sort-option.1 = title:dc.title:title
+webui.itemlist.sort-option.2 = dateaccessioned:dc.date.accessioned:date
+webui.itemlist.sort-option.3 = dateavailable:dc.date.available:date
+webui.itemlist.sort-option.4 = dateembargo:dc.date.embargo:date
+
+# Feed display fields
+webui.feed.item.title = dc.title
+webui.feed.item.date = dc.date.accessioned
