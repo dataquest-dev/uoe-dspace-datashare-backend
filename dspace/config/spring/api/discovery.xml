@@ -11,18 +11,17 @@
 -->
 
 <beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xmlns:context="http://www.springframework.org/schema/context"
-       xmlns:util="http://www.springframework.org/schema/util"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:util="http://www.springframework.org/schema/util" xsi:schemaLocation="http://www.springframework.org/schema/beans
            http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
            http://www.springframework.org/schema/context
            http://www.springframework.org/schema/context/spring-context-3.0.xsd
            http://www.springframework.org/schema/util
-           http://www.springframework.org/schema/util/spring-util-3.0.xsd"
-    default-autowire-candidates="*Service,*DAO,javax.sql.DataSource,*Plugin" default-lazy-init="true">
+           http://www.springframework.org/schema/util/spring-util-3.0.xsd" default-autowire-candidates="*Service,*DAO,javax.sql.DataSource,*Plugin" default-lazy-init="true">
 
-    <context:annotation-config /> <!-- allows us to use spring annotations in beans -->
+    <context:annotation-config />
+    <!-- allows us to use spring annotations in beans -->
 
     <bean id="solrServiceResourceIndexPlugin" class="org.dspace.discovery.SolrServiceResourceRestrictionPlugin" scope="prototype"/>
     <bean id="solrServiceWorkspaceWorkflowPlugin" class="org.dspace.discovery.SolrServiceWorkspaceWorkflowRestrictionPlugin" scope="prototype"/>
@@ -141,7 +140,9 @@
         <property name="toIgnoreMetadataFields">
             <map>
                 <entry>
-                    <key><util:constant static-field="org.dspace.core.Constants.COMMUNITY"/></key>
+                    <key>
+                        <util:constant static-field="org.dspace.core.Constants.COMMUNITY"/>
+                    </key>
                     <list>
                         <!--Introduction text-->
                         <!--<value>dc.description</value>-->
@@ -156,7 +157,9 @@
                     </list>
                 </entry>
                 <entry>
-                    <key><util:constant static-field="org.dspace.core.Constants.COLLECTION"/></key>
+                    <key>
+                        <util:constant static-field="org.dspace.core.Constants.COLLECTION"/>
+                    </key>
                     <list>
                         <!--Introduction text-->
                         <!--<value>dc.description</value>-->
@@ -171,7 +174,9 @@
                     </list>
                 </entry>
                 <entry>
-                    <key><util:constant static-field="org.dspace.core.Constants.ITEM"/></key>
+                    <key>
+                        <util:constant static-field="org.dspace.core.Constants.ITEM"/>
+                    </key>
                     <list>
                         <value>dc.description.provenance</value>
                     </list>
@@ -187,7 +192,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                <!-- DATASHARE: Start-->
+                <ref bean="searchFilterAccessioned" />
+                <ref bean="searchFilterAvailable" />
+                <ref bean="searchFilterEmbargo" />
+                <!-- <ref bean="searchFilterIssued" /> -->
+                <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -200,7 +210,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                <!-- DATASHARE: Start-->
+                <ref bean="searchFilterAccessioned" />
+                <ref bean="searchFilterAvailable" />
+                <ref bean="searchFilterEmbargo" />
+                <!-- <ref bean="searchFilterIssued" /> -->
+                <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -219,8 +234,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
-                        <ref bean="sortDateAccessioned"/>
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- <ref bean="sortDateAccessioned"/>-->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -329,34 +349,42 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="communityConfiguration" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype" parent="defaultConfiguration">
+    <bean id="communityConfiguration" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="defaultConfiguration">
         <!--The sort filters for the discovery search-->
         <property name="searchSortConfiguration">
             <bean class="org.dspace.discovery.configuration.DiscoverySortConfiguration">
                 <property name="sortFields">
                     <list>
-                        <ref bean="sortDateAccessioned"/>
+                        <!-- <ref bean="sortDateAccessioned"/> -->
                         <ref bean="sortScore"/>
                         <ref bean="sortTitle"/>
-                        <ref bean="sortDateIssued"/>
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
         </property>
     </bean>
 
-    <bean id="collectionConfiguration" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype" parent="defaultConfiguration">
+    <bean id="collectionConfiguration" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="defaultConfiguration">
         <!--The sort filters for the discovery search-->
         <property name="searchSortConfiguration">
             <bean class="org.dspace.discovery.configuration.DiscoverySortConfiguration">
                 <property name="sortFields">
                     <list>
-                        <ref bean="sortDateAccessioned"/>
+                        <!-- <ref bean="sortDateAccessioned"/> -->
                         <ref bean="sortScore"/>
                         <ref bean="sortTitle"/>
-                        <ref bean="sortDateIssued"/>
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -369,7 +397,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -382,7 +415,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                <!-- DATASHARE: Start-->
+                <ref bean="searchFilterAccessioned" />
+                <ref bean="searchFilterAvailable" />
+                <ref bean="searchFilterEmbargo" />
+                <!-- <ref bean="searchFilterIssued" /> -->
+                <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -401,8 +439,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
-                        <ref bean="sortDateAccessioned"/>
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- <ref bean="sortDateAccessioned" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -508,7 +551,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -521,7 +569,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                <!-- DATASHARE: Start-->
+                <ref bean="searchFilterAccessioned" />
+                <ref bean="searchFilterAvailable" />
+                <ref bean="searchFilterEmbargo" />
+                <!-- <ref bean="searchFilterIssued" /> -->
+                <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -540,8 +593,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
-                        <ref bean="sortDateAccessioned"/>
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- <ref bean="sortDateAccessioned" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -648,8 +706,12 @@
                 <ref bean="searchFilterDiscoverable" />
                 <ref bean="searchFilterWithdrawn" />
                 <ref bean="searchFilterAuthor" />
-                <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                <ref bean="searchFilterSubject" />  <!-- DATASHARE: Start-->
+                <ref bean="searchFilterAccessioned" />
+                <ref bean="searchFilterAvailable" />
+                <ref bean="searchFilterEmbargo" />
+                <!-- <ref bean="searchFilterIssued" /> -->
+                <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
                 <ref bean="searchFilterNotifyRelation" />
@@ -667,7 +729,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                <!-- DATASHARE: Start-->
+                <ref bean="searchFilterAccessioned" />
+                <ref bean="searchFilterAvailable" />
+                <ref bean="searchFilterEmbargo" />
+                <!-- <ref bean="searchFilterIssued" /> -->
+                <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -689,8 +756,12 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
-                        <ref bean="sortDateAccessioned"/>
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -788,16 +859,19 @@
 
 
     <!--The workspace configuration settings for discovery -->
-    <bean id="workspaceConfiguration"
-        class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-        scope="prototype">
+    <bean id="workspaceConfiguration" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="workspace" />
         <!--Which sidebar facets are to be displayed -->
         <property name="sidebarFacets">
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
             </list>
         </property>
         <!--The search filters which can be used on the discovery search page -->
@@ -805,7 +879,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                 <!-- DATASHARE: Start-->
+                 <ref bean="searchFilterAccessioned" />
+                 <ref bean="searchFilterAvailable" />
+                 <ref bean="searchFilterEmbargo" />
+                 <!-- <ref bean="searchFilterIssued" /> -->
+                 <!-- DATASHARE: End-->
             </list>
         </property>
         <!--The sort filters for the discovery search-->
@@ -818,7 +897,12 @@
                         <ref bean="sortLastModified" />
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -864,16 +948,19 @@
     </bean>
 
     <!--The supervised workspace configuration settings for discovery -->
-    <bean id="supervisedWorkspaceConfiguration"
-          class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="supervisedWorkspaceConfiguration" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="supervisedWorkspace" />
         <!--Which sidebar facets are to be displayed -->
         <property name="sidebarFacets">
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
             </list>
         </property>
         <!--The search filters which can be used on the discovery search page -->
@@ -881,7 +968,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
             </list>
         </property>
         <!--The sort filters for the discovery search-->
@@ -893,7 +985,12 @@
                     <list>
                         <ref bean="sortLastModified" />
                         <ref bean="sortTitleAsc" />
-                        <ref bean="sortDateIssuedDesc" />
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!-- <ref bean="sortDateIssuedDesc" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -939,16 +1036,19 @@
     </bean>
 
     <!--The workflow configuration settings for discovery -->
-    <bean id="workflowConfiguration"
-        class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-        scope="prototype">
+    <bean id="workflowConfiguration" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="workflow" />
         <!--Which sidebar facets are to be displayed -->
         <property name="sidebarFacets">
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
                 <ref bean="searchFilterSubmitter" />
             </list>
         </property>
@@ -957,7 +1057,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
                 <ref bean="searchFilterSubmitter" />
             </list>
         </property>
@@ -969,7 +1074,13 @@
                         <ref bean="sortLastModified" />
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- <ref bean="sortDateAccessioned" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -1015,16 +1126,19 @@
     </bean>
 
     <!--The workflowAdmin configuration settings for discovery -->
-    <bean id="workflowAdminConfiguration"
-        class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-        scope="prototype">
+    <bean id="workflowAdminConfiguration" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="workflowAdmin" />
         <!--Which sidebar facets are to be displayed -->
         <property name="sidebarFacets">
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
                 <ref bean="searchFilterSubmitter" />
             </list>
         </property>
@@ -1033,7 +1147,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
                 <ref bean="searchFilterSubmitter" />
             </list>
         </property>
@@ -1044,7 +1163,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- <ref bean="sortDateAccessioned" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -1088,16 +1213,19 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="supervisionConfiguration"
-          class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="supervisionConfiguration" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="supervision" />
         <!--Which sidebar facets are to be displayed -->
         <property name="sidebarFacets">
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
                 <ref bean="searchFilterSubmitter" />
                 <ref bean="searchFilterSupervision" />
             </list>
@@ -1107,7 +1235,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                <ref bean="searchFilterIssued" />
+                 <!-- DATASHARE: Start-->
+                 <ref bean="searchFilterAccessioned" />
+                 <ref bean="searchFilterAvailable" />
+                 <ref bean="searchFilterEmbargo" />
+                 <!-- <ref bean="searchFilterIssued" /> -->
+                 <!-- DATASHARE: End-->
                 <ref bean="searchFilterSubmitter" />
                 <ref bean="searchFilterSupervision" />
             </list>
@@ -1119,7 +1252,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- <ref bean="sortDateAccessioned" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -1171,7 +1310,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -1184,7 +1328,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                <!-- DATASHARE: Start-->
+                <ref bean="searchFilterAccessioned" />
+                <ref bean="searchFilterAvailable" />
+                <ref bean="searchFilterEmbargo" />
+                <!-- <ref bean="searchFilterIssued" /> -->
+                <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -1203,8 +1352,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
-                        <ref bean="sortDateAccessioned"/>
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- <ref bean="sortDateAccessioned" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -1241,7 +1395,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                  <!-- DATASHARE: Start-->
+                  <ref bean="searchFilterAccessioned" />
+                  <ref bean="searchFilterAvailable" />
+                  <ref bean="searchFilterEmbargo" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
+                  <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -1254,7 +1413,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <ref bean="searchFilterIssued" />
+                <!-- DATASHARE: Start-->
+                <ref bean="searchFilterAccessioned" />
+                <ref bean="searchFilterAvailable" />
+                <ref bean="searchFilterEmbargo" />
+                <!-- <ref bean="searchFilterIssued" /> -->
+                <!-- DATASHARE: End-->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -1273,8 +1437,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <ref bean="sortDateIssued" />
-                        <ref bean="sortDateAccessioned"/>
+                        <!-- DATASHARE: Start-->
+                        <ref bean="sortDateAccessioned" />
+                        <ref bean="sortDateAvailable" />
+                        <ref bean="sortDateEmbargo" />
+                        <!--  <ref bean="sortDateIssued" /> -->
+                        <!-- <ref bean="sortDateAccessioned" /> -->
+                        <!-- DATASHARE: End-->
                     </list>
                 </property>
             </bean>
@@ -1538,8 +1707,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="orgUnit" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="orgUnit" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="orgUnit"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -1602,8 +1770,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="orgUnitRelationships" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="orgUnitRelationships" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="orgUnitRelationships"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -1667,8 +1834,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="journalIssue" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="journalIssue" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="journalIssue"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -1727,8 +1893,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="journalIssueRelationships" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="journalIssueRelationships" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="journalIssueRelationships"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -1788,8 +1953,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="journalVolume" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="journalVolume" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="journalVolume"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -1847,8 +2011,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="journalVolumeRelationships" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="journalVolumeRelationships" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="journalVolumeRelationships"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -1907,8 +2070,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="journal" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="journal" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="journal"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -1966,8 +2128,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="journalRelationships" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="journalRelationships" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="journalRelationships"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -1992,6 +2153,7 @@
             <bean class="org.dspace.discovery.configuration.DiscoverySortConfiguration">
                 <property name="sortFields">
                     <list>
+                        <ref bean="sortLastModified"/>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle"/>
                         <ref bean="sortCreativeWorkDatePublished"/>
@@ -2026,8 +2188,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="personOrOrgunit" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="personOrOrgunit" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="personOrOrgunit"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -2091,8 +2252,7 @@
         <property name="spellCheckEnabled" value="true"/>
     </bean>
 
-    <bean id="openaireFundingAgency" class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-          scope="prototype">
+    <bean id="openaireFundingAgency" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="fundingAgency"/>
         <property name="indexAlways" value="true"/>
         <!--Which sidebar facets are to be displayed-->
@@ -2184,32 +2344,30 @@
     </bean>
 
 
-    <bean id="ldnMessageEntityBaseConfig"
-        class="org.dspace.discovery.configuration.DiscoveryConfiguration"
-        scope="prototype">
+    <bean id="ldnMessageEntityBaseConfig" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype">
         <property name="id" value="ldnMessages" />
         <!--Which sidebar facets are to be displayed -->
         <property name="sidebarFacets">
             <list>
-            	<ref bean="searchFilterNotifyRelatedItem" />
-            	<ref bean="searchFilterNotifyLdnService" />
-            	<ref bean="searchFilterNotifyQueueStatus" />
-            	<ref bean="searchFilterNotifyActivityStreamType" />
-            	<ref bean="searchFilterNotifyCoarNotifyType" />
-            	<ref bean="searchFilterNotifyLastStartTime" />
+                <ref bean="searchFilterNotifyRelatedItem" />
+                <ref bean="searchFilterNotifyLdnService" />
+                <ref bean="searchFilterNotifyQueueStatus" />
+                <ref bean="searchFilterNotifyActivityStreamType" />
+                <ref bean="searchFilterNotifyCoarNotifyType" />
+                <ref bean="searchFilterNotifyLastStartTime" />
             </list>
         </property>
         <!--The search filters which can be used on the discovery search page -->
         <property name="searchFilters">
             <list>
-            	<ref bean="searchFilterNotifyRelatedItem" />
-            	<ref bean="searchFilterNotifyOrigin" />
-            	<ref bean="searchFilterNotifyTarget" />
-            	<ref bean="searchFilterNotifyLdnService" />
-            	<ref bean="searchFilterNotifyQueueStatus" />
-            	<ref bean="searchFilterNotifyActivityStreamType" />
-            	<ref bean="searchFilterNotifyCoarNotifyType" />
-            	<ref bean="searchFilterNotifyLastStartTime" />
+                <ref bean="searchFilterNotifyRelatedItem" />
+                <ref bean="searchFilterNotifyOrigin" />
+                <ref bean="searchFilterNotifyTarget" />
+                <ref bean="searchFilterNotifyLdnService" />
+                <ref bean="searchFilterNotifyQueueStatus" />
+                <ref bean="searchFilterNotifyActivityStreamType" />
+                <ref bean="searchFilterNotifyCoarNotifyType" />
+                <ref bean="searchFilterNotifyLastStartTime" />
             </list>
         </property>
         <!--The sort filters for the discovery search-->
@@ -2217,12 +2375,12 @@
             <bean class="org.dspace.discovery.configuration.DiscoverySortConfiguration">
                 <property name="sortFields">
                     <list>
-                    	<ref bean="sortLastModified"/>
-                    	<ref bean="sortLastModifiedAsc"/>
-                    	<ref bean="sortQueueLastStartTimeDesc"/>
-                    	<ref bean="sortQueueLastStartTimeAsc"/>
-                    	<ref bean="sortQueueAttemptsDesc"/>
-                    	<ref bean="sortQueueAttemptsAsc"/>
+                        <ref bean="sortLastModified"/>
+                        <ref bean="sortLastModifiedAsc"/>
+                        <ref bean="sortQueueLastStartTimeDesc"/>
+                        <ref bean="sortQueueLastStartTimeAsc"/>
+                        <ref bean="sortQueueAttemptsDesc"/>
+                        <ref bean="sortQueueAttemptsAsc"/>
                     </list>
                 </property>
             </bean>
@@ -2239,7 +2397,7 @@
         <property name="defaultRpp" value="10" />
     </bean>
 
-     <!--TagCloud configuration bean for default discovery configuration-->
+    <!--TagCloud configuration bean for default discovery configuration-->
     <bean id="defaultTagCloudFacetConfiguration" class="org.dspace.discovery.configuration.TagCloudFacetConfiguration">
         <!-- Actual configuration of the tagcloud (colors, sorting, etc.) -->
         <property name="tagCloudConfiguration" ref="tagCloudConfiguration"/>
@@ -2250,7 +2408,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.incoming" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="ldnMessageEntityBaseConfig">
         <property name="id" value="NOTIFY.incoming"/>
         <property name="defaultFilterQueries">
@@ -2261,7 +2419,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.incoming.accepted" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="NOTIFY.incoming">
         <property name="id" value="NOTIFY.incoming.accepted"/>
         <property name="defaultFilterQueries">
@@ -2275,7 +2433,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.incoming.processed" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="NOTIFY.incoming">
         <property name="id" value="NOTIFY.incoming.processed"/>
         <property name="defaultFilterQueries">
@@ -2287,7 +2445,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.incoming.failure" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="NOTIFY.incoming">
         <property name="id" value="NOTIFY.incoming.failure"/>
         <property name="defaultFilterQueries">
@@ -2299,7 +2457,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.incoming.untrusted" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="NOTIFY.incoming">
         <property name="id" value="NOTIFY.incoming.untrusted"/>
         <property name="defaultFilterQueries">
@@ -2311,7 +2469,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.incoming.involvedItems" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="administrativeView">
         <property name="id" value="NOTIFY.incoming.involvedItems"/>
         <property name="defaultFilterQueries">
@@ -2323,7 +2481,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.outgoing" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="ldnMessageEntityBaseConfig">
         <property name="id" value="NOTIFY.outgoing"/>
         <property name="defaultFilterQueries">
@@ -2334,7 +2492,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.outgoing.delivered" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="NOTIFY.outgoing">
         <property name="id" value="NOTIFY.outgoing.delivered"/>
         <property name="defaultFilterQueries">
@@ -2346,7 +2504,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.outgoing.queued" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="NOTIFY.outgoing">
         <property name="id" value="NOTIFY.outgoing.queued"/>
         <property name="defaultFilterQueries">
@@ -2358,7 +2516,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.outgoing.queued_for_retry" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="NOTIFY.outgoing">
         <property name="id" value="NOTIFY.outgoing.queued_for_retry"/>
         <property name="defaultFilterQueries">
@@ -2370,7 +2528,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.outgoing.failure" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="NOTIFY.outgoing">
         <property name="id" value="NOTIFY.outgoing.failure"/>
         <property name="defaultFilterQueries">
@@ -2382,7 +2540,7 @@
             </list>
         </property>
     </bean>
-    
+
     <bean id="NOTIFY.outgoing.involvedItems" class="org.dspace.discovery.configuration.DiscoveryConfiguration" scope="prototype" parent="administrativeView">
         <property name="id" value="NOTIFY.outgoing.involvedItems"/>
         <property name="defaultFilterQueries">
@@ -2660,8 +2818,7 @@
         </property>
     </bean>
 
-    <bean id="searchFilterObjectType"
-        class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+    <bean id="searchFilterObjectType" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="resourcetype" />
         <property name="metadataFields">
             <list>
@@ -2670,8 +2827,7 @@
         </property>
     </bean>
 
-    <bean id="searchFilterObjectNamedType"
-        class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+    <bean id="searchFilterObjectNamedType" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="namedresourcetype" />
         <property name="type" value="authority" />
         <property name="metadataFields">
@@ -2770,8 +2926,7 @@
         <property name="pageSize" value="10"/>
     </bean>
 
-    <bean id="searchFilterIsPublicationOfAuthorRelation"
-          class="org.dspace.discovery.configuration.DiscoverySearchFilter">
+    <bean id="searchFilterIsPublicationOfAuthorRelation" class="org.dspace.discovery.configuration.DiscoverySearchFilter">
         <property name="indexFieldName" value="isPublicationOfAuthor"/>
         <property name="metadataFields">
             <list>
@@ -2783,8 +2938,7 @@
     </bean>
 
 
-    <bean id="searchFilterOrganizationAddressCountry"
-          class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+    <bean id="searchFilterOrganizationAddressCountry" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="organizationAddressCountry"/>
         <property name="metadataFields">
             <list>
@@ -2799,8 +2953,7 @@
         <property name="exposeMinAndMaxValue" value="true"/>
     </bean>
 
-    <bean id="searchFilterOrganizationAddressLocality"
-          class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+    <bean id="searchFilterOrganizationAddressLocality" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="organizationAddressLocality"/>
         <property name="metadataFields">
             <list>
@@ -2815,8 +2968,7 @@
         <property name="exposeMinAndMaxValue" value="true"/>
     </bean>
 
-    <bean id="searchFilterOrganizationFoundingDate"
-          class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+    <bean id="searchFilterOrganizationFoundingDate" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="organizationFoundingDate"/>
         <property name="metadataFields">
             <list>
@@ -2865,8 +3017,7 @@
         <property name="pageSize" value="10"/>
     </bean>
 
-    <bean id="searchFilterIsPublicationOfOrgUnitRelation"
-          class="org.dspace.discovery.configuration.DiscoverySearchFilter">
+    <bean id="searchFilterIsPublicationOfOrgUnitRelation" class="org.dspace.discovery.configuration.DiscoverySearchFilter">
         <property name="indexFieldName" value="isPublicationOfOrgUnit"/>
         <property name="metadataFields">
             <list>
@@ -2892,8 +3043,7 @@
         <property name="exposeMinAndMaxValue" value="true"/>
     </bean>
 
-    <bean id="searchFilterCreativeWorkDatePublished"
-          class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+    <bean id="searchFilterCreativeWorkDatePublished" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="creativeDatePublished"/>
         <property name="metadataFields">
             <list>
@@ -2942,8 +3092,7 @@
         <property name="pageSize" value="10"/>
     </bean>
 
-    <bean id="searchFilterIsIssueOfJournalVolumeRelation"
-          class="org.dspace.discovery.configuration.DiscoverySearchFilter">
+    <bean id="searchFilterIsIssueOfJournalVolumeRelation" class="org.dspace.discovery.configuration.DiscoverySearchFilter">
         <property name="indexFieldName" value="isIssueOfJournalVolumeRelation"/>
         <property name="metadataFields">
             <list>
@@ -3008,8 +3157,7 @@
 
 
     <!-- Used only to READ "submitter" facets (managed programmatically at SolrServiceImpl) -->
-    <bean id="searchFilterSubmitter"
-        class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+    <bean id="searchFilterSubmitter" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="submitter" />
         <property name="type" value="authority" />
         <property name="metadataFields">
@@ -3100,8 +3248,7 @@
     </bean>
 
     <!-- Used only to READ "supervisedBy" facets -->
-    <bean id="searchFilterSupervision"
-          class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+    <bean id="searchFilterSupervision" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="supervisedBy" />
         <property name="type" value="authority" />
         <property name="metadataFields">
@@ -3265,7 +3412,7 @@
         <property name="isOpenByDefault" value="true"/>
         <property name="pageSize" value="10"/>
     </bean>
-    
+
     <bean id="searchFilterNotifyLastStartTime" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="queue_last_start_time"/>
         <property name="metadataFields">
@@ -3281,6 +3428,59 @@
         <property name="pageSize" value="10"/>
         <property name="exposeMinAndMaxValue" value="true"/>
     </bean>
+
+    <!-- DATASHARE: Start-->
+    <!-- Datashare specific Search filters for: dc.date.accessioned,dc.date.available,dc.date.embargo -->
+    <bean id="searchFilterAccessioned" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+        <property name="indexFieldName" value="dateAccessioned"/>
+        <property name="metadataFields">
+            <list>
+                <value>dc.date.accessioned</value>
+            </list>
+        </property>
+        <property name="type" value="date"/>
+        <property name="facetLimit" value="5"/>
+        <property name="sortOrderSidebar" value="COUNT"/>
+        <property name="sortOrderFilterPage" value="COUNT"/>
+        <property name="isOpenByDefault" value="false"/>
+        <property name="pageSize" value="10"/>
+        <property name="exposeMinAndMaxValue" value="true"/>
+    </bean>
+
+    <bean id="searchFilterAvailable" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+        <property name="indexFieldName" value="dateAvailable"/>
+        <property name="metadataFields">
+            <list>
+                <value>dc.date.available</value>
+            </list>
+        </property>
+        <property name="type" value="date"/>
+        <property name="facetLimit" value="5"/>
+        <property name="sortOrderSidebar" value="COUNT"/>
+        <property name="sortOrderFilterPage" value="COUNT"/>
+        <property name="isOpenByDefault" value="false"/>
+        <property name="pageSize" value="10"/>
+        <property name="exposeMinAndMaxValue" value="true"/>
+    </bean>
+
+    <bean id="searchFilterEmbargo" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
+        <property name="indexFieldName" value="dateEmbargo"/>
+        <property name="metadataFields">
+            <list>
+                <value>dc.date.embargo</value>
+            </list>
+        </property>
+        <property name="type" value="date"/>
+        <property name="facetLimit" value="5"/>
+        <property name="sortOrderSidebar" value="COUNT"/>
+        <property name="sortOrderFilterPage" value="COUNT"/>
+        <property name="isOpenByDefault" value="false"/>
+        <property name="pageSize" value="10"/>
+        <property name="exposeMinAndMaxValue" value="true"/>
+
+    </bean>
+
+    <!-- DATASHARE: End-->
 
     <!--Sort properties-->
     <bean id="sortScore" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
@@ -3321,13 +3521,11 @@
         <property name="metadataField" value="organization.legalName"/>
         <property name="defaultSortOrder" value="asc"/>
     </bean>
-    <bean id="sortOrganizationAddressCountry"
-          class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
+    <bean id="sortOrganizationAddressCountry" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
         <property name="metadataField" value="organization.address.addressCountry"/>
         <property name="defaultSortOrder" value="asc"/>
     </bean>
-    <bean id="sortOrganizationAddressLocality"
-          class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
+    <bean id="sortOrganizationAddressLocality" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
         <property name="metadataField" value="organization.address.addressLocality"/>
         <property name="defaultSortOrder" value="asc"/>
     </bean>
@@ -3401,4 +3599,33 @@
         <property name="defaultSortOrder" value="desc"/>
     </bean>
 
+    <!-- DATASHARE: Start-->
+    <!-- Datashare specific sort fields: dc.date.accessioned,dc.date.available,dc.date.embargo -->
+    <!-- Bean with sortDateAccessioned is defined above. -->
+    <bean id="sortDateAccessionedAsc" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
+        <property name="metadataField" value="dc.date.accessioned"/>
+        <property name="type" value="date"/>
+        <property name="defaultSortOrder" value="asc"/>
+    </bean>
+    <bean id="sortDateAvailable" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
+        <property name="metadataField" value="dc.date.available"/>
+        <property name="type" value="date"/>
+        <property name="defaultSortOrder" value="desc"/>
+    </bean>
+    <bean id="sortDateAvailableAsc" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
+        <property name="metadataField" value="dc.date.available"/>
+        <property name="type" value="date"/>
+        <property name="defaultSortOrder" value="asc"/>
+    </bean>
+    <bean id="sortDateEmbargo" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
+        <property name="metadataField" value="dc.date.embargo"/>
+        <property name="type" value="date"/>
+        <property name="defaultSortOrder" value="desc"/>
+    </bean>
+    <bean id="sortDateEmbargoAsc" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
+        <property name="metadataField" value="dc.date.embargo"/>
+        <property name="type" value="date"/>
+        <property name="defaultSortOrder" value="asc"/>
+    </bean>
+    <!-- DATASHARE: End-->
 </beans>
