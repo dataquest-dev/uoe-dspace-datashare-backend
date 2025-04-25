@@ -101,4 +101,12 @@ public interface EmbargoService {
     public List<MetadataValue> getLiftMetadata(Context context, Item item);
 
     public Iterator<Item> findItemsByLiftMetadata(Context context) throws SQLException, IOException, AuthorizeException;
+
+    // DATASHARE - start
+	/**
+	 * Check for any items whose embargo is about to expire.
+	 * @param context
+	 */
+	public void checkForExpiry(Context context);
+	// DATASHARE - end
 }
