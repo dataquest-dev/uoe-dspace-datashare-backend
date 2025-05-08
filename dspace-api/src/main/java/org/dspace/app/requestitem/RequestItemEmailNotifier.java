@@ -23,7 +23,9 @@ import org.dspace.authorize.AuthorizeException;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.Item;
+import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.BitstreamService;
+import org.dspace.content.service.ItemService;
 import org.dspace.core.Context;
 import org.dspace.core.Email;
 import org.dspace.core.I18nUtil;
@@ -35,9 +37,10 @@ import org.dspace.services.ConfigurationService;
 /**
  * Send item requests and responses by email.
  *
- * <p>The "strategy" by which approvers are chosen is in an implementation of
+ * <p>
+ * The "strategy" by which approvers are chosen is in an implementation of
  * {@link RequestItemAuthorExtractor} which is injected by the name
- * {@code requestItemAuthorExtractor}.  See the DI configuration documents.
+ * {@code requestItemAuthorExtractor}. See the DI configuration documents.
  *
  * @author Mark H. Wood <mwood@iupui.edu>
  */
@@ -60,6 +63,13 @@ public class RequestItemEmailNotifier {
 
     protected final RequestItemAuthorExtractor requestItemAuthorExtractor;
 
+    // DATASHARE - start
+    private static final String ITEM_NOT_EMAILABLE_METADATA_TAG = "ds.not-emailable.item";
+    private static final String BITSTREAM_NOT_EMAILABLE_METADATA_TAG = "ds.not-emailable.bitstream";
+
+    protected ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+    // DATASHARE - end
+
     @Inject
     public RequestItemEmailNotifier(RequestItemAuthorExtractor requestItemAuthorExtractor) {
         this.requestItemAuthorExtractor = requestItemAuthorExtractor;
@@ -68,10 +78,10 @@ public class RequestItemEmailNotifier {
     /**
      * Send the request to the approver(s).
      *
-     * @param context current DSpace session.
-     * @param ri the request.
+     * @param context      current DSpace session.
+     * @param ri           the request.
      * @param responseLink link back to DSpace to send the response.
-     * @throws IOException passed through.
+     * @throws IOException  passed through.
      * @throws SQLException if the message was not sent.
      */
     public void sendRequest(Context context, RequestItem ri, String responseLink)
@@ -80,9 +90,19 @@ public class RequestItemEmailNotifier {
         List<RequestItemAuthor> authors = requestItemAuthorExtractor
                 .getRequestItemAuthor(context, ri.getItem());
 
+        // DATASHARE - start
         // Build an email to the approver.
-        Email email = Email.getEmail(I18nUtil.getEmailFilename(context.getCurrentLocale(),
-                "request_item.author"));
+        Email email;
+        if (isRequestItemEmailable(context, ri)) {
+            email = Email.getEmail(I18nUtil.getEmailFilename(context.getCurrentLocale(),
+                    "request_item.author"));
+        } else {
+            email = Email.getEmail(I18nUtil.getEmailFilename(context.getCurrentLocale(),
+                    "request_item.not_emailable.author"));
+
+        }
+        // DATASHARE - end
+
         for (RequestItemAuthor author : authors) {
             email.addRecipient(author.getEmail());
         }
@@ -93,7 +113,8 @@ public class RequestItemEmailNotifier {
         email.addArgument(ri.getReqEmail()); // {1} Requester's address
 
         email.addArgument(ri.isAllfiles() // {2} All bitstreams or just one?
-            ? I18nUtil.getMessage("itemRequest.all") : ri.getBitstream().getName());
+                ? I18nUtil.getMessage("itemRequest.all")
+                : ri.getBitstream().getName());
 
         email.addArgument(handleService.getCanonicalForm(ri.getItem().getHandle())); // {3}
 
@@ -146,7 +167,7 @@ public class RequestItemEmailNotifier {
      * if approved.
      *
      * @param context current DSpace session.
-     * @param ri the request.
+     * @param ri      the request.
      * @param subject email subject header value.
      * @param message email body (may be empty).
      * @throws IOException if sending failed.
@@ -180,9 +201,9 @@ public class RequestItemEmailNotifier {
         email.addArgument(ri.getReqName()); // {0} requestor's name
         email.addArgument(handleService.getCanonicalForm(ri.getItem().getHandle())); // {1} URL of the requested Item
         email.addArgument(ri.getItem().getName()); // {2} title of the requested Item
-        email.addArgument(grantorName);     // {3} name of the grantor
-        email.addArgument(grantorAddress);  // {4} email of the grantor
-        email.addArgument(message); //         {5} grantor's optional message
+        email.addArgument(grantorName); // {3} name of the grantor
+        email.addArgument(grantorAddress); // {4} email of the grantor
+        email.addArgument(message); // {5} grantor's optional message
         email.setSubject(subject);
         email.addRecipient(ri.getReqEmail());
         // Attach bitstreams.
@@ -196,7 +217,7 @@ public class RequestItemEmailNotifier {
                         for (Bitstream bitstream : bitstreams) {
                             if (!bitstream.getFormat(context).isInternal() &&
                                     requestItemService.isRestricted(context,
-                                    bitstream)) {
+                                            bitstream)) {
                                 // #8636 Anyone receiving the email can respond to the
                                 // request without authenticating into DSpace
                                 context.turnOffAuthorisationSystem();
@@ -210,7 +231,8 @@ public class RequestItemEmailNotifier {
                     }
                 } else {
                     Bitstream bitstream = ri.getBitstream();
-                    // #8636 Anyone receiving the email can respond to the request without authenticating into DSpace
+                    // #8636 Anyone receiving the email can respond to the request without
+                    // authenticating into DSpace
                     context.turnOffAuthorisationSystem();
                     email.addAttachment(bitstreamService.retrieve(context, bitstream),
                             bitstream.getName(),
@@ -220,7 +242,7 @@ public class RequestItemEmailNotifier {
                 email.send();
             } else {
                 boolean sendRejectEmail = configurationService
-                    .getBooleanProperty("request.item.reject.email", true);
+                        .getBooleanProperty("request.item.reject.email", true);
                 // Not all sites want the "refusal" to be sent back to the requester via
                 // email. However, by default, the rejection email is sent back.
                 if (sendRejectEmail) {
@@ -241,9 +263,9 @@ public class RequestItemEmailNotifier {
      * requested object.
      *
      * @param context current DSpace session
-     * @param ri the item request that the approver is handling
+     * @param ri      the item request that the approver is handling
      * @throws IOException if the message body cannot be loaded or the message
-     *          cannot be sent.
+     *                     cannot be sent.
      */
     public void requestOpenAccess(Context context, RequestItem ri)
             throws IOException {
@@ -264,14 +286,14 @@ public class RequestItemEmailNotifier {
 
         // Fill the message's placeholders.
         EPerson approver = context.getCurrentUser();
-        message.addArgument(bitstreamName);          // {0} bitstream name or "all"
-        message.addArgument(item.getHandle());       // {1} Item handle
-        message.addArgument(ri.getToken());          // {2} Request token
+        message.addArgument(bitstreamName); // {0} bitstream name or "all"
+        message.addArgument(item.getHandle()); // {1} Item handle
+        message.addArgument(ri.getToken()); // {2} Request token
         if (approver != null) {
             message.addArgument(approver.getFullName()); // {3} Approver's name
-            message.addArgument(approver.getEmail());    // {4} Approver's address
+            message.addArgument(approver.getEmail()); // {4} Approver's address
         } else {
-            message.addArgument("anonymous approver");                           // [3] Approver's name
+            message.addArgument("anonymous approver"); // [3] Approver's name
             message.addArgument(configurationService.getProperty("mail.admin")); // [4] Approver's address
         }
 
@@ -297,4 +319,63 @@ public class RequestItemEmailNotifier {
             throw new IOException("Open Access request not sent:  " + ex.getMessage());
         }
     }
+
+    // DATASHARE - start
+    /**
+     * Checks if requested item is emailable based on size constraints.
+     * Items/bitstreams larger than the configured maximum size emailable.bitstreams.max.size MB 
+     * will not be emailed.
+     * 
+     * @param context DSpace context
+     * @param ri      The request item
+     * @return true if the item can be emailed, false otherwise
+     */
+    private boolean isRequestItemEmailable(Context context, RequestItem ri) {
+        // Get maximum emailable size from configuration (default 50MB)
+        long maxEmailableSizeInBytes = configurationService.getLongProperty(
+                "emailable.bitstreams.max.size", 50) * 1048576; // Convert MB to bytes
+
+        try {
+            if (ri.isAllfiles()) {
+                // Check total size of all bitstreams in ORIGINAL bundle
+                List<Bundle> bundles = ri.getItem().getBundles("ORIGINAL");
+                long totalSizeInBytes = 0;
+
+                for (Bundle bundle : bundles) {
+                    for (Bitstream bitstream : bundle.getBitstreams()) {
+                        totalSizeInBytes += bitstream.getSizeBytes();
+
+                        // If we exceed the size limit at any point, return false
+                        if (totalSizeInBytes > maxEmailableSizeInBytes) {
+                            LOG.info("Request item not emailable - all files exceed size limit of {} bytes",
+                                    maxEmailableSizeInBytes);
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            } else {
+                // Check size of single requested bitstream
+                Bitstream bitstream = ri.getBitstream();
+                if (bitstream != null) {
+                    long bitstreamSize = bitstream.getSizeBytes();
+                    if (bitstreamSize > maxEmailableSizeInBytes) {
+                        LOG.info("Request item not emailable - bitstream {} exceeds size limit of {} bytes",
+                                bitstream.getName(), maxEmailableSizeInBytes);
+                        return false;
+                    }
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            // Log the actual exception for debugging purposes
+            LOG.warn("Error checking if request item is emailable", e);
+        }
+
+        // Default to true if we couldn't determine the size or no bitstreams found
+        return true;
+    }
+
+    // DATASHARE - end
 }
