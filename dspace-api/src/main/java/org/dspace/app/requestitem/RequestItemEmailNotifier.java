@@ -333,7 +333,7 @@ public class RequestItemEmailNotifier {
     private boolean isRequestItemEmailable(Context context, RequestItem ri) {
         // Get maximum emailable size from configuration (default 50MB)
         long maxEmailableSizeInBytes = configurationService.getLongProperty(
-                "emailable.bitstreams.max.size", 50) * 1048576; // Convert MB to bytes
+                "emailable.bitstreams.max.size", 32) * 1048576; // Convert MB to bytes
 
         try {
             if (ri.isAllfiles()) {
