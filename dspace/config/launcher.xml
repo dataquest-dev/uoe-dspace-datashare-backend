@@ -358,22 +358,7 @@
         <name>ds-doi</name>
         <description>Update dois in DataShare</description>
         <step>
-            <class>uk.ac.edina.datashare.doi.DoiUpdate</class>
-        </step>
-    </command>
-    <!-- Same as import - historically different-->
-    <command>
-        <name>ds-import</name>
-        <description>Import items into DataShare</description>
-        <step>
-            <class>org.dspace.app.itemimport.ItemImportCLITool</class>
-        </step>
-    </command>
-    <command>
-        <name>ds-solr</name>
-        <description>DataShare Solr maintenance</description>
-        <step>
-            <class>uk.ac.edina.datashare.utils.Solr</class>
+            <class>org.datashare.identifier.doi.DatashareCliDoiUpdater</class>
         </step>
     </command>
     <!-- DATASHARE - end -->

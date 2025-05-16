@@ -20,6 +20,8 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.Logger;
+import org.datashare.util.DatashareMetadataUtils;
+import org.datashare.util.DatashareDspaceUtils;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
@@ -32,8 +34,6 @@ import org.dspace.core.Context;
 import org.dspace.services.factory.DSpaceServicesFactory;
 import org.dspace.storage.bitstore.factory.StorageServiceFactory;
 import org.dspace.storage.bitstore.service.BitstreamStorageService;
-import org.dspace.util.datashare.DatashareMetaDataUtils;
-import org.dspace.util.datashare.DatashareUtils;
 
 /**
  * DataShare item dataset. That is a zip file that contains all item bitstreams.
@@ -137,7 +137,7 @@ public class DatashareItemDataset {
 	 */
 	public void checkDataset() {
 		if (this.exists()) {
-			if (DatashareUtils.hasEmbargo(this.context, this.item) || isTombstoned(this.context, item)) {
+			if (DatashareDspaceUtils.hasEmbargo(this.context, this.item) || isTombstoned(this.context, item)) {
 				log.info("Delete dataset for " + item.getHandle());
 				this.delete();
 			}
@@ -257,10 +257,10 @@ public class DatashareItemDataset {
 	}
 
 	public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
-		log.info("hasEmbargo: " + DatashareUtils.hasEmbargo(context, item));
+		log.info("hasEmbargo: " + DatashareDspaceUtils.hasEmbargo(context, item));
 		log.info("isWithdrawn: " + item.isWithdrawn());
 		log.info("isTombstoned: " + isTombstoned(context, item));
-		return !DatashareUtils.hasEmbargo(context, item) && !item.isWithdrawn()
+		return !DatashareDspaceUtils.hasEmbargo(context, item) && !item.isWithdrawn()
 				&& !isTombstoned(context, item);
 	}
 
@@ -476,7 +476,7 @@ public class DatashareItemDataset {
 	private static boolean isTombstoned(Context context, Item item) {
 		boolean show = false;
 		try {
-			String tomb = DatashareMetaDataUtils.getShowTombstone(item);
+			String tomb = DatashareMetadataUtils.getShowTombstone(item);
 			if (tomb != null) {
 				show = Boolean.parseBoolean(tomb);
 			}

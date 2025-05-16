@@ -17,6 +17,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
+import org.datashare.util.DatashareMetadataUtils;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.content.DCDate;
 import org.dspace.content.Item;
@@ -29,7 +30,6 @@ import org.dspace.core.I18nUtil;
 import org.dspace.core.service.PluginService;
 import org.dspace.embargo.service.EmbargoService;
 import org.dspace.services.ConfigurationService;
-import org.dspace.util.datashare.DatashareMetaDataUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import jakarta.mail.MessagingException;
@@ -275,7 +275,7 @@ public class EmbargoServiceImpl implements EmbargoService {
 					DCDate liftDCDate = getEmbargoTermsAsDate(context, item);
 
 					System.out.println("-----------------------------------------------");
-					System.out.println("Title: " + DatashareMetaDataUtils.getTitle(item));
+					System.out.println("Title: " + DatashareMetadataUtils.getTitle(item));
 					System.out.println("Handle: " + configurationService.getProperty("handle.canonical.prefix") + item.getHandle());
 					System.out.println("liftDCDate: " + liftDCDate.displayDate(false, true, context.getCurrentLocale()));
 					System.out.println("liftDCDate.getYear(): " + liftDCDate.getYear());
@@ -324,7 +324,7 @@ public class EmbargoServiceImpl implements EmbargoService {
 		if(!configurationService.getBooleanProperty("mail.server.disabled")){
 			Email mail = Email.getEmail(
 					I18nUtil.getEmailFilename(context.getCurrentLocale(), "embargo_expire"));
-			mail.addArgument(DatashareMetaDataUtils.getTitle(item));
+			mail.addArgument(DatashareMetadataUtils.getTitle(item));
 			mail.addArgument(configurationService.getProperty("handle.canonical.prefix") + item.getHandle());
 			mail.addArgument(liftDCDate.displayDate(false, true, context.getCurrentLocale()));
 
