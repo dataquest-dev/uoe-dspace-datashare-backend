@@ -17,7 +17,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
-import org.datashare.util.DatashareMetadataUtils;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.content.DCDate;
 import org.dspace.content.Item;
@@ -93,7 +92,7 @@ public class EmbargoServiceImpl implements EmbargoService {
 
     @Override
     public void setEmbargo(Context context, Item item)
-        throws SQLException, AuthorizeException {
+            throws SQLException, AuthorizeException {
         // if lift is null, we might be restoring an item from an AIP
         DCDate myLift = getEmbargoTermsAsDate(context, item);
         if (myLift == null) {
@@ -118,9 +117,9 @@ public class EmbargoServiceImpl implements EmbargoService {
 
     @Override
     public DCDate getEmbargoTermsAsDate(Context context, Item item)
-        throws SQLException, AuthorizeException {
+            throws SQLException, AuthorizeException {
         List<MetadataValue> terms = itemService.getMetadata(item, terms_schema, terms_element,
-                                                            terms_qualifier, Item.ANY);
+                terms_qualifier, Item.ANY);
 
         DCDate result = null;
 
@@ -130,7 +129,7 @@ public class EmbargoServiceImpl implements EmbargoService {
         }
 
         result = setter.parseTerms(context, item,
-                                   terms.size() > 0 ? terms.get(0).getValue() : null);
+                terms.size() > 0 ? terms.get(0).getValue() : null);
 
         if (result == null) {
             return null;
@@ -140,21 +139,21 @@ public class EmbargoServiceImpl implements EmbargoService {
         Date liftDate = result.toDate();
         if (liftDate == null) {
             throw new IllegalArgumentException(
-                "Embargo lift date is uninterpretable:  "
-                    + result.toString());
+                    "Embargo lift date is uninterpretable:  "
+                            + result.toString());
         }
 
         /*
-         * NOTE: We do not check here for past dates as it can result in errors during AIP restoration.
+         * NOTE: We do not check here for past dates as it can result in errors during
+         * AIP restoration.
          * Therefore, UIs should perform any such date validation on input. See DS-3348
          */
         return result;
     }
 
-
     @Override
     public void liftEmbargo(Context context, Item item)
-        throws SQLException, AuthorizeException, IOException {
+            throws SQLException, AuthorizeException, IOException {
         // Since 3.0 the lift process for all embargoes is performed through the dates
         // on the authorization process (see DS-2588)
         // lifter.liftEmbargo(context, item);
@@ -163,12 +162,11 @@ public class EmbargoServiceImpl implements EmbargoService {
         // set the dc.date.available value to right now
         itemService.clearMetadata(context, item, MetadataSchemaEnum.DC.getName(), "date", "available", Item.ANY);
         itemService.addMetadata(context, item, MetadataSchemaEnum.DC.getName(), "date", "available", null,
-                                DCDate.getCurrent().toString());
+                DCDate.getCurrent().toString());
 
         log.info("Lifting embargo on Item " + item.getHandle());
         itemService.update(context, item);
     }
-
 
     /**
      * Initialize the bean (after dependency injection has already taken place).
@@ -184,8 +182,9 @@ public class EmbargoServiceImpl implements EmbargoService {
             String lift = configurationService.getProperty("embargo.field.lift");
             if (terms == null || lift == null) {
                 throw new IllegalStateException(
-                    "Missing one or more of the required DSpace configuration properties for EmbargoManager, check " +
-                        "your configuration file.");
+                        "Missing one or more of the required DSpace configuration properties for EmbargoManager, check "
+                                +
+                                "your configuration file.");
             }
             terms_schema = getSchemaOf(terms);
             terms_element = getElementOf(terms);
@@ -211,13 +210,15 @@ public class EmbargoServiceImpl implements EmbargoService {
         return sa[0];
     }
 
-    // return the element part of "schema.element.qualifier" metadata field spec, if any
+    // return the element part of "schema.element.qualifier" metadata field spec, if
+    // any
     protected String getElementOf(String field) {
         String sa[] = field.split("\\.", 3);
         return sa.length > 1 ? sa[1] : null;
     }
 
-    // return the qualifier part of "schema.element.qualifier" metadata field spec, if any
+    // return the qualifier part of "schema.element.qualifier" metadata field spec,
+    // if any
     protected String getQualifierOf(String field) {
         String sa[] = field.split("\\.", 3);
         return sa.length > 2 ? sa[2] : null;
@@ -250,104 +251,130 @@ public class EmbargoServiceImpl implements EmbargoService {
 
     @Override
     public Iterator<Item> findItemsByLiftMetadata(Context context)
-        throws SQLException, IOException, AuthorizeException {
+            throws SQLException, IOException, AuthorizeException {
         return itemService.findByMetadataField(context, lift_schema, lift_element, lift_qualifier, Item.ANY);
     }
 
     // DATASHARE - start
-	/**
-	 * Check for any items whose embargo is about to expire.
-	 * @param context
-	 */
-	public void checkForExpiry(Context context){
-		try{ 
-			// Using LocalDate (introduced in Java 8, 
-			// represents a local date without timezone and time of that day)
-			LocalDate now = LocalDate.now();
-			DayOfWeek dayNow = now.getDayOfWeek();
+    /**
+     * Check for any items whose embargo is about to expire.
+     * 
+     * @param context
+     */
+    public void checkForExpiry(Context context) {
+        try {
+            // Using LocalDate (introduced in Java 8,
+            // represents a local date without timezone and time of that day)
+            LocalDate now = LocalDate.now();
+            DayOfWeek dayNow = now.getDayOfWeek();
 
-			// Ignore today if is Saturday && Sunday
-			if(dayNow != DayOfWeek.SATURDAY && dayNow != DayOfWeek.SUNDAY) {
-				Iterator<Item> ii = findItemsByLiftMetadata(context);
+            // Ignore today if is Saturday && Sunday
+            if (dayNow != DayOfWeek.SATURDAY && dayNow != DayOfWeek.SUNDAY) {
+                Iterator<Item> ii = findItemsByLiftMetadata(context);
 
-				while (ii.hasNext()){
-					Item item = ii.next();
-					DCDate liftDCDate = getEmbargoTermsAsDate(context, item);
+                while (ii.hasNext()) {
+                    Item item = ii.next();
+                    DCDate liftDCDate = getEmbargoTermsAsDate(context, item);
 
-					System.out.println("-----------------------------------------------");
-					System.out.println("Title: " + DatashareMetadataUtils.getTitle(item));
-					System.out.println("Handle: " + configurationService.getProperty("handle.canonical.prefix") + item.getHandle());
-					System.out.println("liftDCDate: " + liftDCDate.displayDate(false, true, context.getCurrentLocale()));
-					System.out.println("liftDCDate.getYear(): " + liftDCDate.getYear());
-					System.out.println("liftDCDate.getMonth(): " + liftDCDate.getMonth());
-					System.out.println("liftDCDate.getDay(): " + liftDCDate.getDay());
+                    log.info("-----------------------------------------------");
+                    log.info("Title: " + getItemTitle(item));
+                    log.info("Handle: " + configurationService.getProperty("handle.canonical.prefix")
+                            + item.getHandle());
+                    System.out
+                            .println("liftDCDate: " + liftDCDate.displayDate(false, true, context.getCurrentLocale()));
+                    log.info("liftDCDate.getYear(): " + liftDCDate.getYear());
+                    log.info("liftDCDate.getMonth(): " + liftDCDate.getMonth());
+                    log.info("liftDCDate.getDay(): " + liftDCDate.getDay());
 
-					// Ensure all Year, Month and Day set.
-					if (liftDCDate != null && liftDCDate.getYear() > 0 && liftDCDate.getMonth() > 0 && liftDCDate.getDay() > 0) {
-						LocalDate embargoDate = LocalDate.of(liftDCDate.getYear(), liftDCDate.getMonth(), liftDCDate.getDay());
+                    // Ensure all Year, Month and Day set.
+                    if (liftDCDate != null && liftDCDate.getYear() > 0 && liftDCDate.getMonth() > 0
+                            && liftDCDate.getDay() > 0) {
+                        LocalDate embargoDate = LocalDate.of(liftDCDate.getYear(), liftDCDate.getMonth(),
+                                liftDCDate.getDay());
 
-						System.out.println("embargoDate.isAfter(now): " + embargoDate.isAfter(now));
+                        log.info("embargoDate.isAfter(now): " + embargoDate.isAfter(now));
 
-						// We want embargoDate in future (to now) and then send email
-						if(embargoDate.isAfter(now)) {
-							long diffInDays = ChronoUnit.DAYS.between(now, embargoDate);
+                        // We want embargoDate in future (to now) and then send email
+                        if (embargoDate.isAfter(now)) {
+                            long diffInDays = ChronoUnit.DAYS.between(now, embargoDate);
 
-							System.out.println("diffInDays: " + diffInDays);
+                            log.info("diffInDays: " + diffInDays);
 
-							// Send Embargo Expiry Email if:
-							// it is 7 days from now, or,
-							// it is Friday and 8 or 9 days from now.
-							if(diffInDays == 7){
-								extracted(context, item, liftDCDate);
-							} else if (dayNow == DayOfWeek.FRIDAY && 
-									(diffInDays == 8 || diffInDays == 9)) {
-								extracted(context, item, liftDCDate);
-							}
-						} 
-					}
-				}
-			}
+                            // Send Embargo Expiry Email if:
+                            // it is 7 days from now, or,
+                            // it is Friday and 8 or 9 days from now.
+                            if (diffInDays == 7) {
+                                extracted(context, item, liftDCDate);
+                            } else if (dayNow == DayOfWeek.FRIDAY &&
+                                    (diffInDays == 8 || diffInDays == 9)) {
+                                extracted(context, item, liftDCDate);
+                            }
+                        }
+                    }
+                }
+            }
 
-		} catch(AuthorizeException ex){throw new RuntimeException(ex);}
-		catch(SQLException ex){throw new RuntimeException(ex);}
-		catch(IOException ex){throw new RuntimeException(ex);}
+        } catch (AuthorizeException ex) {
+            throw new RuntimeException(ex);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
 
-	}
+    }
 
-	private void extracted(Context context, Item item, DCDate liftDCDate) throws IOException {
-		System.out.println("Sending Embargo Expiry Email");
-		String submitter = item.getSubmitter().getEmail();
-		System.out.println("To: " + submitter );
+    private void extracted(Context context, Item item, DCDate liftDCDate) throws IOException {
+        log.info("Sending Embargo Expiry Email");
+        String submitter = item.getSubmitter().getEmail();
+        log.info("To: " + submitter);
 
-		String admin = configurationService.getProperty("mail.admin");
+        String admin = configurationService.getProperty("mail.admin");
 
-		if(!configurationService.getBooleanProperty("mail.server.disabled")){
-			Email mail = Email.getEmail(
-					I18nUtil.getEmailFilename(context.getCurrentLocale(), "embargo_expire"));
-			mail.addArgument(DatashareMetadataUtils.getTitle(item));
-			mail.addArgument(configurationService.getProperty("handle.canonical.prefix") + item.getHandle());
-			mail.addArgument(liftDCDate.displayDate(false, true, context.getCurrentLocale()));
+        if (!configurationService.getBooleanProperty("mail.server.disabled")) {
+            Email mail = Email.getEmail(
+                    I18nUtil.getEmailFilename(context.getCurrentLocale(), "embargo_expire"));
+            mail.addArgument(getItemTitle(item));
+            mail.addArgument(configurationService.getProperty("handle.canonical.prefix") + item.getHandle());
+            mail.addArgument(liftDCDate.displayDate(false, true, context.getCurrentLocale()));
 
-			mail.addRecipient(submitter);
+            mail.addRecipient(submitter);
 
-			if(!submitter.equals(admin)){
-				mail.addRecipient(admin);
-			}
+            if (!submitter.equals(admin)) {
+                mail.addRecipient(admin);
+            }
 
-			try{
-				log.info("Sending email for embargo expiry message. Sent to " +
-						submitter + ", " + admin + " for " + item.getHandle());
-				mail.send();
-			}
-			catch(MessagingException ex){
-				log.error("Problem sending embargo expiry message: " + ex);
-			}
-		}
-		else{
-			log.info("Mail sending is disabled. Embargo expiry message would have been sent to " +
-					submitter + ", " + admin + " for " + item.getHandle());
-		}
-	}    
-	// DATASHARE - end
+            try {
+                log.info("Sending email for embargo expiry message. Sent to " +
+                        submitter + ", " + admin + " for " + item.getHandle());
+                mail.send();
+            } catch (MessagingException ex) {
+                log.error("Problem sending embargo expiry message: " + ex);
+            }
+        } else {
+            log.info("Mail sending is disabled. Embargo expiry message would have been sent to " +
+                    submitter + ", " + admin + " for " + item.getHandle());
+        }
+    }
+
+    /**
+     * Get the title of an item using DSpace core APIs
+     * 
+     * @param item The DSpace item
+     * @return The item title, or empty string if no title found
+     */
+    private String getItemTitle(Item item) {
+        try {
+            List<MetadataValue> titles = itemService.getMetadata(item, "dc", "title", Item.ANY, Item.ANY, false);
+            if (!titles.isEmpty()) {
+                return titles.get(0).getValue();
+            }
+        } catch (Exception e) {
+            log.warn("Error retrieving title for item {}: {}", item.getID(), e.getMessage());
+        }
+        return "";
+    }
+
+    // DATASHARE - end
 
 }

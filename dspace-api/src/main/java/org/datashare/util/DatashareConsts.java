@@ -2,7 +2,7 @@ package org.datashare.util;
 
 import java.io.File;
 
-import org.dspace.content.MetadataSchema;
+
 import org.dspace.services.factory.DSpaceServicesFactory;
 
 /**
@@ -21,23 +21,25 @@ public interface DatashareConsts {
 	/** The datashare login URL */
 	public static final String LOGIN_PAGE = "ease-login";
 
+	public static final String SUBJECT_DDC_ELEMENT = "subject";
+	public static final String SUBJECT_DDC_QUALIFIER = "ddc";
 
 	// ************ spatial coverage ******************* //
 
 	/** The hijacked DC element for spatial coverage */
-	public static final String SPATIAL_HIJACKED_ELEMENT = DatashareMetadataUtils.SUBJECT_DDC_ELEMENT;
+	public static final String SPATIAL_HIJACKED_ELEMENT = SUBJECT_DDC_ELEMENT;
 
 	/** The hijacked DC identifier for spatial coverage */
-	public static final String SPATIAL_HIJACKED_IDENTIFIER = DatashareMetadataUtils.SUBJECT_DDC_QUALIFIER;
+	public static final String SPATIAL_HIJACKED_IDENTIFIER = SUBJECT_DDC_QUALIFIER;
 
 
 	/** The full hijacked DC name for spatial coverage */
 	public static final String SPATIAL_HIJACKED_NAME = DC_SCHEMA + "_" + SPATIAL_HIJACKED_ELEMENT + "_"
 			+ SPATIAL_HIJACKED_IDENTIFIER;
 
-	// ************ EMARGO Stuff **********************//
+	// ************ EMBARGO Stuff **********************//
 
-	/** Should enbargo functionality be enabled string */
+	/** Should embargo functionality be enabled string */
 	public static final String ENABLE_EMBARGO = "enable_embargo";
 
 	/** Embargo composite control field name */
@@ -80,7 +82,7 @@ public interface DatashareConsts {
 	public static final String LICENSE_ACCEPT = "yes";
 
 	/** Manditory field error */
-	public static final int MANDITORY_FIELD = 1;
+	public static final int MANDATORY_FIELD = 1;
 	/** No license error */
 	public static final int NO_LICENSE = 2;
 
@@ -130,4 +132,5 @@ public interface DatashareConsts {
 	// misc
 	public static final String PUBLISHER_FIELD_NAME = "dc_publisher";
 	public static final String ALTERNATIVE_TITLE_FIELD_NAME = "dc_title_alternative";
+
 }

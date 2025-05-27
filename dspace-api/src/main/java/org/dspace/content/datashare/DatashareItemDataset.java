@@ -6,8 +6,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -20,17 +18,17 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.Logger;
-import org.datashare.util.DatashareMetadataUtils;
-import org.datashare.util.DatashareDspaceUtils;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
 import org.dspace.content.Item;
+import org.dspace.content.MetadataValue;
 import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.ItemService;
 import org.dspace.core.Context;
+import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
 import org.dspace.storage.bitstore.factory.StorageServiceFactory;
 import org.dspace.storage.bitstore.service.BitstreamStorageService;
@@ -42,16 +40,27 @@ public class DatashareItemDataset {
 
 	private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(DatashareItemDataset.class);
 
+	// Bundle name constants
 	private static final String ORIGINAL_BUNDLE = "ORIGINAL";
 	private static final String CC_LICENSE_BUNDLE = "CC-LICENSE";
 	private static final String LICENSE_BUNDLE = "LICENSE";
 
+	// File and directory constants
+	private static final String TMP_FILE_NAME_EXT = ".tmp";
+	private static final String DIR_PROP = "datasets.path";
+
+	// Metadata constants
+	private static final String DATASHARE_SCHEMA = "ds";
+	private static final String TOMBSTONE_ELEMENT = "withdrawn";
+	private static final String TOMBSTONE_SHOW_QUALIFIER = "showtombstone";
+
+	// Static variables
+	private static String dir = null;
+
+	// Instance variables
 	private Context context = null;
 	private Item item = null;
 	private String handle = null;
-	private static final String TMP_FILE_NAME_EXT = ".tmp";
-	private static final String DIR_PROP = "datasets.path";
-	private static String dir = null;
 
 	/**
 	 * Initialise dataset with DSpace context and item.
@@ -115,6 +124,8 @@ public class DatashareItemDataset {
 		}
 	}
 
+	// 2. INITIALIZATION METHODS
+
 	/**
 	 * Initialise dataset.
 	 */
@@ -131,13 +142,15 @@ public class DatashareItemDataset {
 
 	}
 
+	// 3. PUBLIC INSTANCE METHODS (alphabetically)
+
 	/**
 	 * Check if item has been put under embargo or tombstoned. If so, delete
 	 * dataset.
 	 */
 	public void checkDataset() {
 		if (this.exists()) {
-			if (DatashareDspaceUtils.hasEmbargo(this.context, this.item) || isTombstoned(this.context, item)) {
+			if (hasEmbargo(this.context, this.item) || isTombstoned(this.context, item)) {
 				log.info("Delete dataset for " + item.getHandle());
 				this.delete();
 			}
@@ -189,10 +202,6 @@ public class DatashareItemDataset {
 		return new File(getFullPath()).exists();
 	}
 
-	public static boolean exists(String handle) {
-		return new File(dir + getFileName(handle)).exists();
-	}
-
 	public String getChecksum() throws SQLException {
 		DatashareDatasetService datashareDatasetService = ContentServiceFactory.getInstance()
 				.getDatashareDatasetService();
@@ -201,20 +210,6 @@ public class DatashareItemDataset {
 
 	private String getFileName() {
 		return DatashareItemDataset.getFileName(this.item.getHandle());
-	}
-
-	private String getHandle() {
-		return this.handle;
-	}
-
-	public static String getFileName(String handle) {
-		String aHandle[] = handle.split("/");
-		return "DS_" + aHandle[0] + "_" + aHandle[1] + ".zip";
-	}
-
-	public static String getFullFilePath(String handle) {
-		String dir = DSpaceServicesFactory.getInstance().getConfigurationService().getProperty(DIR_PROP);
-		return dir + File.separator + getFileName(handle);
 	}
 
 	public String getFullPath() {
@@ -242,26 +237,10 @@ public class DatashareItemDataset {
 		return new File(getTmpFileName()).length();
 	}
 
-	public static String getURL(Item item) {
-		String url = null;
-		try {
-			String baseDownloadUrl = DSpaceServicesFactory.getInstance().getConfigurationService().getProperty("datashare.download.zip.url");
-			String filePath = "/" + getFileName(item.getHandle());
-			url = baseDownloadUrl + filePath;
+	// 4. PRIVATE INSTANCE METHODS (alphabetically)
 
-		} catch (Exception ex) {
-			log.error(ex.getMessage());
-		}
-
-		return url;
-	}
-
-	public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
-		log.info("hasEmbargo: " + DatashareDspaceUtils.hasEmbargo(context, item));
-		log.info("isWithdrawn: " + item.isWithdrawn());
-		log.info("isTombstoned: " + isTombstoned(context, item));
-		return !DatashareDspaceUtils.hasEmbargo(context, item) && !item.isWithdrawn()
-				&& !isTombstoned(context, item);
+	private String getHandle() {
+		return this.handle;
 	}
 
 	/**
@@ -279,11 +258,131 @@ public class DatashareItemDataset {
 	 * Given a dataset file object, set handle.
 	 */
 	private void setHandle(File ds) {
-		Pattern p = Pattern.compile(".+DS_(\\d+)_(\\d+).zip");
+		Pattern p = Pattern.compile(".*DS_(\\d+)_(\\d+)\\.zip");
 		Matcher matcher = p.matcher(ds.getAbsolutePath());
 		while (matcher.find()) {
 			this.handle = matcher.group(1) + "/" + matcher.group(2);
 		}
+	}
+
+	// 5. STATIC METHODS
+	public static boolean exists(String handle) {
+		return new File(dir + getFileName(handle)).exists();
+	}
+
+	public static String getFileName(String handle) {
+		String aHandle[] = handle.split("/");
+		return "DS_" + aHandle[0] + "_" + aHandle[1] + ".zip";
+	}
+
+	public static String getFullFilePath(String handle) {
+		String dir = DSpaceServicesFactory.getInstance().getConfigurationService().getProperty(DIR_PROP);
+		return dir + File.separator + getFileName(handle);
+	}
+
+	/**
+	 * Get unique metadata value from DSpace item.
+	 * 
+	 * @param item      DSpace item.
+	 * @param element   Metadata element.
+	 * @param qualifier Metadata qualifier.
+	 * @param lang      Metadata language.
+	 * @param schema    Metadata schema.
+	 * @return Metadata value.
+	 */
+	public static String getUnique(Item item, String element, String qualifier, String lang, String schema) {
+		log.info("getUnique() for item: {} with schema: {}, element: {}, qualifier: {}, lang: {}",
+				item.getID(), schema, element, qualifier, lang);
+		String value = null;
+		ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+
+		log.info("itemService: {}", itemService);
+		log.info("item: {}", item);
+
+		List<MetadataValue> values = itemService.getMetadata(item, schema, element, qualifier, lang, false);
+
+		log.info("getUnique() found {} values for item: {}", values.size(), item.getID());
+
+		if (values != null && values.size() > 0) {
+			value = values.get(0).getValue();
+			log.info("getUnique() returning value: {}", value);
+		} else {
+			log.info("getUnique() no values found, returning null");
+		}
+
+		return value;
+	}
+
+	/**
+	 * @param item DSpace item.
+	 * @return Get show tombsomstone metadata value.
+	 */
+
+	public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
+		log.info("hasEmbargo: " + hasEmbargo(context, item));
+		log.info("isWithdrawn: " + item.isWithdrawn());
+		log.info("isTombstoned: " + isTombstoned(context, item));
+		return !hasEmbargo(context, item) && !item.isWithdrawn()
+				&& !isTombstoned(context, item);
+	}
+
+	public static String getShowTombstone(Item item) {
+		log.info("getShowTombstone() for item: " + item.getID());
+		return getUnique(item, TOMBSTONE_ELEMENT, TOMBSTONE_SHOW_QUALIFIER, Item.ANY, DATASHARE_SCHEMA);
+	}
+
+	/**
+	 * Does the item have an embargo?
+	 * 
+	 * @param context DSpace context.
+	 * @param item    DSpace item.
+	 * @return True if the dspace item is embargoed.
+	 */
+	public static boolean hasEmbargo(Context context, Item item) {
+		boolean hasEmbargo = true;
+		ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+		ConfigurationService configurationService = DSpaceServicesFactory.getInstance().getConfigurationService();
+
+		List<MetadataValue> embargoList = itemService.getMetadataByMetadataString(item,
+				configurationService.getProperty("embargo.field.lift"));
+		if (embargoList == null || embargoList.size() == 0) {
+			hasEmbargo = false;
+		}
+
+		log.info(item.getID() + " hasEmbargo: " + hasEmbargo);
+
+		return hasEmbargo;
+	}
+
+	public static String getURL(Item item) {
+		String url = null;
+		try {
+			String baseDownloadUrl = DSpaceServicesFactory.getInstance().getConfigurationService()
+					.getProperty("datashare.download.zip.url");
+			String filePath = "/" + getFileName(item.getHandle());
+			url = baseDownloadUrl + filePath;
+
+		} catch (Exception ex) {
+			log.error(ex.getMessage());
+		}
+
+		return url;
+	}
+
+	private static boolean isTombstoned(Context context, Item item) {
+		boolean show = false;
+		try {
+			String tomb = getShowTombstone(item);
+			if (tomb != null) {
+				show = Boolean.parseBoolean(tomb);
+			}
+
+		} catch (Exception ex) {
+			throw new RuntimeException("Problem determining access right", ex);
+		}
+
+		log.info("isTombstoned(): " + show);
+		return show;
 	}
 
 	/**
@@ -472,23 +571,6 @@ public class DatashareItemDataset {
 		}
 	}
 
-	// Adaptation of method in DSpaceUtil (which was not working) in this class
-	private static boolean isTombstoned(Context context, Item item) {
-		boolean show = false;
-		try {
-			String tomb = DatashareMetadataUtils.getShowTombstone(item);
-			if (tomb != null) {
-				show = Boolean.parseBoolean(tomb);
-			}
-
-		} catch (Exception ex) {
-			throw new RuntimeException("Problem determining access right", ex);
-		}
-
-		log.info("isTombstoned(): " + show);
-		return show;
-	}
-
 	/**
 	 * Process all datasets in the system.
 	 */
@@ -527,7 +609,7 @@ public class DatashareItemDataset {
 							log.info("Dataset already exists " + item.getHandle());
 						}
 					} else {
-						if (ds.areAllItemBitstreamsAvailable(context, item)) {
+						if (areAllItemBitstreamsAvailable(context, item)) {
 							log.info("Create dataset for " + ds.getFullPath() + " for " + item.getHandle()
 									+ ", id: " + item.getID());
 							Thread th = ds.createDataset();
@@ -572,12 +654,13 @@ public class DatashareItemDataset {
 
 		} finally {
 			try {
-				context.complete();
+				if (context != null) {
+					context.complete();
+				}
 			} catch (SQLException ex) {
 			} catch (Exception e) {
 				log.info(e);
 				throw e;
-
 			}
 		}
 
