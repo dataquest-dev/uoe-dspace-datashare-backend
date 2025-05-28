@@ -1,4 +1,4 @@
-package org.datashare.identifier.doi;
+package uk.ac.ed.datashare.identifier.doi;
 
 import java.sql.SQLException;
 import java.util.Calendar;

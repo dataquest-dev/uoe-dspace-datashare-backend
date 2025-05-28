@@ -1,4 +1,4 @@
-package org.datashare.event;
+package uk.ac.ed.datashare.event;
 
 
 

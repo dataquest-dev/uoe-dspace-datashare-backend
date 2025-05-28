@@ -1,4 +1,4 @@
-package org.datashare.util;
+package uk.ac.ed.datashare.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
