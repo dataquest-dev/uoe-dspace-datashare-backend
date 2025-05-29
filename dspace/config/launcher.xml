@@ -356,9 +356,9 @@
     </command>
     <command>
         <name>ds-doi</name>
-        <description>Update dois in DataShare</description>
+        <description>Update citations with dois in DataShare</description>
         <step>
-            <class>uk.ac.ed.datashare.identifier.doi.DatashareCliDoiUpdater</class>
+            <class>uk.ac.ed.datashare.commands.DatashareDoiUpdaterCLI</class>
         </step>
     </command>
     <!-- DATASHARE - end -->

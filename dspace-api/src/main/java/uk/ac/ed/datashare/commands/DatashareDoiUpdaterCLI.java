@@ -1,4 +1,4 @@
-package uk.ac.ed.datashare.identifier.doi;
+package uk.ac.ed.datashare.commands;
 
 import java.sql.SQLException;
 import java.util.Calendar;
@@ -41,13 +41,13 @@ import org.dspace.utils.DSpace;
  * 
  * 
  */
-public class DatashareCliDoiUpdater {
+public class DatashareDoiUpdaterCLI {
 
-	private static final Logger log = LogManager.getLogger(DatashareCliDoiUpdater.class);
+	private static final Logger log = LogManager.getLogger(DatashareDoiUpdaterCLI.class);
 
 	private Context context;
 
-	public DatashareCliDoiUpdater(Context context) {
+	public DatashareDoiUpdaterCLI(Context context) {
 		this.context = context;
 	}
 
@@ -60,7 +60,7 @@ public class DatashareCliDoiUpdater {
 		options.addOption("d", "register-dois", false, "Register dois for items that have no doi");
 		options.addOption("c", "create citations", false, "Create citation for items that have a newly created doi");
 
-		DatashareCliDoiUpdater du = new DatashareCliDoiUpdater(new Context());
+		DatashareDoiUpdaterCLI du = new DatashareDoiUpdaterCLI(new Context());
 		HelpFormatter helpformater = new HelpFormatter();
 		try {
 			CommandLine line = parser.parse(options, argv);
