@@ -358,7 +358,7 @@
         <name>ds-doi</name>
         <description>Update dois in DataShare</description>
         <step>
-            <class>org.datashare.identifier.doi.DatashareCliDoiUpdater</class>
+            <class>uk.ac.ed.datashare.identifier.doi.DatashareCliDoiUpdater</class>
         </step>
     </command>
     <!-- DATASHARE - end -->

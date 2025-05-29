@@ -261,7 +261,7 @@ spring.servlet.multipart.max-file-size = 20GB
 spring.servlet.multipart.max-request-size = 20GB
 
 # datashare event listener
-event.consumer.datashare.class = org.datashare.event.DatashareConsumer
+event.consumer.datashare.class = uk.ac.ed.datashare.event.DatashareConsumer
 event.consumer.datashare.filters = Collection|Item+Add|Remove
 
 # the location of dataset zip file
