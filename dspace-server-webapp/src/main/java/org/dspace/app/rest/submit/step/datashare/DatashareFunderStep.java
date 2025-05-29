@@ -5,10 +5,8 @@
  *
  * http://www.dspace.org/license/
  */
-package org.dspace.app.rest.submit.step;
+package org.dspace.app.rest.submit.step.datashare;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,8 +38,6 @@ import org.dspace.content.service.MetadataFieldService;
 import org.dspace.content.service.MetadataValueService;
 import org.dspace.core.Context;
 import org.dspace.core.Utils;
-import org.dspace.license.factory.LicenseServiceFactory;
-import org.dspace.license.service.CreativeCommonsService;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
 

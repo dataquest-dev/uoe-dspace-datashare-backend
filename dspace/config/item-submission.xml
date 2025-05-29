@@ -257,21 +257,21 @@
         <!-- Add Datashare license step -->
         <step-definition id="datashareLicenseForm">
             <heading>submit.progressbar.datashare.license</heading>
-            <processing-class>org.dspace.app.rest.submit.step.DatashareLicenseStep</processing-class>
+            <processing-class>org.dspace.app.rest.submit.step.datashare.DatashareLicenseStep</processing-class>
 	        <type>submission-form</type>
         </step-definition>
 
          <!-- Add Datashare Time Period step -->
         <step-definition id="datashareTimePeriodForm">
              <heading>submit.progressbar.datashare.timeperiod</heading>
-            <processing-class>org.dspace.app.rest.submit.step.DatashareTimePeriodStep</processing-class>
+            <processing-class>org.dspace.app.rest.submit.step.datashare.DatashareTimePeriodStep</processing-class>
             <type>submission-form</type>
         </step-definition>
 
          <!-- Add Datashare Funder step -->
         <step-definition id="datashareFunderForm">
              <heading>submit.progressbar.datashare.funder</heading>
-            <processing-class>org.dspace.app.rest.submit.step.DatashareFunderStep</processing-class>
+            <processing-class>org.dspace.app.rest.submit.step.datashare.DatashareFunderStep</processing-class>
             <type>submission-form</type>
         </step-definition>
 

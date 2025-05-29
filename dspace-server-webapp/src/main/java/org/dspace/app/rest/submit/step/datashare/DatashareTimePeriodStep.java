@@ -5,7 +5,7 @@
  *
  * http://www.dspace.org/license/
  */
-package org.dspace.app.rest.submit.step;
+package org.dspace.app.rest.submit.step.datashare;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -58,9 +58,9 @@ import org.dspace.services.factory.DSpaceServicesFactory;
  * @author John Pinto (Research Data Service, Information Services Group,
  *         University of Edinburgh)
  */
-public class DatashareLicenseStep extends AbstractProcessingStep {
+public class DatashareTimePeriodStep extends AbstractProcessingStep {
 
-    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(DatashareLicenseStep.class);
+    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(DatashareTimePeriodStep.class);
 
     // Input reader for form configuration
     private DCInputsReader inputReader;
@@ -77,8 +77,7 @@ public class DatashareLicenseStep extends AbstractProcessingStep {
 
     private MetadataValueService metadataValueService = ContentServiceFactory.getInstance().getMetadataValueService();
 
-
-    public DatashareLicenseStep() throws DCInputsReaderException {
+    public DatashareTimePeriodStep() throws DCInputsReaderException {
         inputReader = new DCInputsReader();
     }
 
@@ -204,74 +203,87 @@ public class DatashareLicenseStep extends AbstractProcessingStep {
         if ("remove".equals(op.getOp()) || "add".equals(op.getOp()) || "replace".equals(op.getOp())) {
             List<MetadataValue> metadataValues = source.getItem().getMetadata();
 
-            MetadataValue dcRightsMetadataValue = null;
-            MetadataValue dsLicenseDropdownValueMetadataValue = null;
-            MetadataValue dsRightsTextMetadataValue = null;
-            MetadataField dcRightsMetadataField = metadataFieldService.findByElement(context, "dc", "rights", "");
-            MetadataField dsLicenseDropdownValueField = metadataFieldService.findByElement(context, "ds", "license",
-                    "dropdown-value");
-            MetadataField dsLicenseRightsTextField = metadataFieldService.findByElement(context, "ds", "license",
-                    "rights-text");
+            MetadataValue dcCoverageTemporalMetadataValue = null;
+            MetadataValue dsTimePeriodStartDateValueMetadataValue = null;
+            MetadataValue dsTimePeriodEndDateMetadataValue = null;
+            MetadataField dcCoverageTemporalMetadataField = metadataFieldService.findByElement(context, "dc",
+                    "coverage", "temporal");
+            MetadataField dsTimePeriodStartDateValueField = metadataFieldService.findByElement(context, "ds",
+                    "timeperiod",
+                    "start-date");
+            MetadataField dsTimePeriodEndDateField = metadataFieldService.findByElement(context, "ds", "timeperiod",
+                    "end-date");
             for (MetadataValue mv : metadataValues) {
                 log.info("mv.getMetadataField().getID(): " + mv.getMetadataField().getID());
 
-                if (dcRightsMetadataField != null && mv.getMetadataField().getID() == dcRightsMetadataField.getID()) {
-                    dcRightsMetadataValue = mv;
-                    log.info("dcRightsMetadataValue: " + dcRightsMetadataValue.getValue());
-                } else if (dsLicenseDropdownValueField != null
-                        && mv.getMetadataField().getID() == dsLicenseDropdownValueField.getID()) {
-                    dsLicenseDropdownValueMetadataValue = mv;
-                    log.info("dsLicenseDropdownValueMetadataValue: " + dsLicenseDropdownValueMetadataValue.getValue());
-                } else if (dsLicenseRightsTextField != null
-                        && mv.getMetadataField().getID() == dsLicenseRightsTextField.getID()) {
-                    dsRightsTextMetadataValue = mv;
-                    log.info("dsRightsTextMetadataValue: " + dsRightsTextMetadataValue.getValue());
+                if (dcCoverageTemporalMetadataField != null
+                        && mv.getMetadataField().getID() == dcCoverageTemporalMetadataField.getID()) {
+                    dcCoverageTemporalMetadataValue = mv;
+                    log.info("dcCoverageTemporalMetadataValue: " + dcCoverageTemporalMetadataValue.getValue());
+                } else if (dsTimePeriodStartDateValueField != null
+                        && mv.getMetadataField().getID() == dsTimePeriodStartDateValueField.getID()) {
+                    dsTimePeriodStartDateValueMetadataValue = mv;
+                    log.info("dsTimePeriodStartDateValueMetadataValue: "
+                            + dsTimePeriodStartDateValueMetadataValue.getValue());
+                } else if (dsTimePeriodEndDateField != null
+                        && mv.getMetadataField().getID() == dsTimePeriodEndDateField.getID()) {
+                    dsTimePeriodEndDateMetadataValue = mv;
+                    log.info("dsTimePeriodEndDateMetadataValue: " + dsTimePeriodEndDateMetadataValue.getValue());
                 }
             }
-            log.info("dcRightsMetadataValue: " + dcRightsMetadataValue);
-            log.info("dsRightsTextMetadataValue: " + dsRightsTextMetadataValue);
-            log.info("dsLicenseDropdownValueMetadataValue: " + dsLicenseDropdownValueMetadataValue);
+            log.info("dcCoverageTemporalMetadataValue: " + dcCoverageTemporalMetadataValue);
+            log.info("dsTimePeriodEndDateMetadataValue: " + dsTimePeriodEndDateMetadataValue);
+            log.info("dsTimePeriodStartDateValueMetadataValue: " + dsTimePeriodStartDateValueMetadataValue);
 
-            MetadataField metadataField = metadataFieldService.findByElement(context, "dc", "rights", "");
-            if (dcRightsMetadataValue == null) {
-                dcRightsMetadataValue = metadataValueService.create(context, source.getItem(), metadataField);
-            }
-            if (dsLicenseDropdownValueMetadataValue != null
-                    && !dsLicenseDropdownValueMetadataValue.getValue().equals("Other")) {
-                dcRightsMetadataValue.setValue(dsLicenseDropdownValueMetadataValue.getValue());
-                metadataValueService.update(context, dcRightsMetadataValue);
-                if (dsRightsTextMetadataValue != null) {
-                    deleteItemMetadataValue(context, source, dsRightsTextMetadataValue);
-                }
-            }
-            if (dsLicenseDropdownValueMetadataValue != null
-                    && dsLicenseDropdownValueMetadataValue.getValue().equals("Other")) {
-                String rightsText = dsRightsTextMetadataValue == null
-                        || StringUtils.isBlank(dsRightsTextMetadataValue.getValue()) ? ""
-                                : dsRightsTextMetadataValue.getValue();
-
-                dcRightsMetadataValue.setValue(rightsText);
-                metadataValueService.update(context, dcRightsMetadataValue);
+            if (dcCoverageTemporalMetadataValue == null) {
+                dcCoverageTemporalMetadataValue = metadataValueService.create(context, source.getItem(),
+                        dcCoverageTemporalMetadataField);
             }
 
-            if (dsLicenseDropdownValueMetadataValue == null) {
-
-                if (dsRightsTextMetadataValue != null) {
-                    deleteItemMetadataValue(context, source, dsRightsTextMetadataValue);
-                }
-                if (dcRightsMetadataValue != null) {
-                    deleteItemMetadataValue(context, source, dcRightsMetadataValue);
-                }
+            if (dsTimePeriodStartDateValueMetadataValue != null && dsTimePeriodEndDateMetadataValue != null) {
+                String encodedTimePeriod = encodeTimePeriod(dsTimePeriodStartDateValueMetadataValue.getValue(),
+                        dsTimePeriodEndDateMetadataValue.getValue());
+                log.info("encodedTimePeriod: " + encodedTimePeriod);
+                dcCoverageTemporalMetadataValue.setValue(encodedTimePeriod);
+                metadataValueService.update(context, dcCoverageTemporalMetadataValue);
             }
 
-            if (dcRightsMetadataValue != null && dcRightsMetadataValue.getValue()
-                    .equals("Creative Commons Attribution 4.0 International Public License")) {
-                setCCLicense(context, source);
-            } else {
-                removeCCLicense(context, source);
+            // Remove the metadata values if the start or end date are not present
+            if (dsTimePeriodStartDateValueMetadataValue == null || dsTimePeriodEndDateMetadataValue == null) {
+                deleteItemMetadataValue(context, source, dcCoverageTemporalMetadataValue);
             }
-
         }
+    }
+
+    /**
+     * Encode a start and end date into W3CDTF profile of ISO 8601.
+     * 
+     * @param start Start date.
+     * @param end   End date.
+     * @return W3CDTF profile of ISO 8601.
+     */
+    private String encodeTimePeriod(String start, String end) {
+        String ENCODING_SCHEME = "W3C-DTF";
+        String startStr = "";
+        String endString = "";
+
+        if (start != null) {
+            startStr = start;
+        }
+
+        if (end != null) {
+            endString = end;
+        }
+
+        StringBuffer buf = new StringBuffer("start=");
+        buf.append(startStr);
+        buf.append("; end=");
+        buf.append(endString);
+        buf.append("; ");
+        buf.append("scheme=");
+        buf.append(ENCODING_SCHEME);
+
+        return buf.toString();
     }
 
     private void deleteItemMetadataValue(Context context, InProgressSubmission source, MetadataValue mv)
@@ -286,7 +298,8 @@ public class DatashareLicenseStep extends AbstractProcessingStep {
 
     private void setCCLicense(Context context, InProgressSubmission source) {
         try {
-            creativeCommonsService.setLicense(context, source.getItem(), new FileInputStream(CREATIVE_COMMONS_BY_LICENCE_FILE),
+            creativeCommonsService.setLicense(context, source.getItem(),
+                    new FileInputStream(CREATIVE_COMMONS_BY_LICENCE_FILE),
                     "text/plain");
         } catch (Exception e) {
             log.error(e.getMessage(), e);
