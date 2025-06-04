@@ -1085,13 +1085,7 @@
         <!-- Datshare License specific value pairs -->
 
         <value-pairs value-pairs-name="datashare_license_types" dc-term="license">
-
             <!-- Based on: http://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/latest/field_licensecondition.html#dc-rightslicensecondition -->
-
-            <pair>
-                <displayed-value>Without Licence</displayed-value>
-                <stored-value>Without Licence</stored-value>
-            </pair>
             <pair>
                 <displayed-value>Creative Commons Attribution 4.0 International Public License</displayed-value>
                 <stored-value>Creative Commons Attribution 4.0 International Public License</stored-value>
