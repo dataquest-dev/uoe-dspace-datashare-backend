@@ -355,10 +355,10 @@
         </step>
     </command>
     <command>
-        <name>ds-doi</name>
+        <name>ds-doi-citation</name>
         <description>Update citations with dois in DataShare</description>
         <step>
-            <class>uk.ac.ed.datashare.commands.DatashareDoiUpdaterCLI</class>
+            <class>uk.ac.ed.datashare.commands.DatashareDoiCitationUpdaterCLI</class>
         </step>
     </command>
     <!-- DATASHARE - end -->

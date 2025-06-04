@@ -37,17 +37,20 @@ import org.dspace.utils.DSpace;
  * Functionality to register items with no DOIs and update Metadata in Datashare
  * with DOI. Currently only Dublin Core dc.identifier.citation is added.
  * 
+ * Cron:
+ * 5 8-19 * * * $DSPACE/bin/dspace ds-doi-citation -c > $DSPACE/log/doi-citation-updater.log 2>&1
+ * 
  * @author John Pinto
  * 
  * 
  */
-public class DatashareDoiUpdaterCLI {
+public class DatashareDoiCitationUpdaterCLI {
 
-	private static final Logger log = LogManager.getLogger(DatashareDoiUpdaterCLI.class);
+	private static final Logger log = LogManager.getLogger(DatashareDoiCitationUpdaterCLI.class);
 
 	private Context context;
 
-	public DatashareDoiUpdaterCLI(Context context) {
+	public DatashareDoiCitationUpdaterCLI(Context context) {
 		this.context = context;
 	}
 
@@ -60,24 +63,33 @@ public class DatashareDoiUpdaterCLI {
 		options.addOption("d", "register-dois", false, "Register dois for items that have no doi");
 		options.addOption("c", "create citations", false, "Create citation for items that have a newly created doi");
 
-		DatashareDoiUpdaterCLI du = new DatashareDoiUpdaterCLI(new Context());
+		DatashareDoiCitationUpdaterCLI du = new DatashareDoiCitationUpdaterCLI(new Context());
 		HelpFormatter helpformater = new HelpFormatter();
 		try {
 			CommandLine line = parser.parse(options, argv);
 			if (line.hasOption('d')) {
-				du.registerDios();
+				log.info("Started Registering DOIs");
+				System.out.println("Started Registering citations");
+				du.registerDois();
+				log.info("Completed Registering DOIs");
+				System.out.println("Completed Registering citations");
 			} else if (line.hasOption('c')) {
+				log.info("Started Creating citations");
+				System.out.println("Started Creating citations");
 				du.createCitations();
+				log.info("Completed Creating citations");
+				System.out.println("Completed Creating citations");
 			} else {
 				helpformater.printHelp("\nDataShare DOI\n", options);
 			}
 		} catch (ParseException ex) {
 			log.info(ex);
+			System.out.println(ex.getMessage());
 			helpformater.printHelp("\nDataShare DOI\n", options);
 		}
 	}
 
-	private void registerDios() {
+	private void registerDois() {
 		this.context.turnOffAuthorisationSystem();
 
 		try {
@@ -250,7 +262,7 @@ public class DatashareDoiUpdaterCLI {
 		boolean needsNewCitation = hasDoi && citation == null;
 
 		// Case 2: Has citation but it doesn't contain the DOI URL
-		boolean needsUpdatedCitation = citation != null && !citation.contains("https://doi.org");
+		boolean needsUpdatedCitation = hasDoi && citation != null && !citation.contains("https://doi.org");
 
 		log.info("Item {} needsNewCitation: {} needsUpdatedCitation: {}",
 				item.getID(), needsNewCitation, needsUpdatedCitation);
