@@ -258,8 +258,8 @@ public class DatashareDoiCitationUpdaterCLI {
 
 		log.info("Item {} citation: '{}' hasDoi: {}", item.getID(), citation, hasDoi);
 
-		// Case 1: Has DOI but no citation
-		boolean needsNewCitation = hasDoi && citation == null;
+		// Case 1: No citation
+		boolean needsNewCitation = citation == null;
 
 		// Case 2: Has citation but it doesn't contain the DOI URL
 		boolean needsUpdatedCitation = hasDoi && citation != null && !citation.contains("https://doi.org");
@@ -286,7 +286,7 @@ public class DatashareDoiCitationUpdaterCLI {
 
 			log.info("Item " + item.getID() + " citation: " + citation);
 
-			if (citation == null && hasDoi) {
+			if (citation == null) {
 				// Create new citation
 				String newCitation = createCitation(item);
 				if (newCitation != null) {
