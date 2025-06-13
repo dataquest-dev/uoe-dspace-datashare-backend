@@ -61,7 +61,7 @@ public class Constants {
      */
     public static final int LDN_MESSAGE = 8;
 
-    // Datashare - start
+    // DATASHARE - start
     /** Type of dataset objects */
     public static final int DATASHARE_DATASET = 9;
     
@@ -76,7 +76,7 @@ public class Constants {
      */
     public static final String[] typeText = { "BITSTREAM", "BUNDLE", "ITEM", "COLLECTION", "COMMUNITY", "SITE", "GROUP",
         "EPERSON", "LDN_MESSAGE", "DATASHARE_DATASET", "BATCH_IMPORT", "UUN_2_EMAIL"};
-    // Datashare - end
+    // DATASHARE - end
 
     /**
      * Special Bundle and Bitstream Names:
