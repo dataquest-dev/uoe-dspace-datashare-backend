@@ -193,7 +193,7 @@ public class ContentServiceFactoryImpl extends ContentServiceFactory {
         return duplicateDetectionService;
     }
 
-    // Datashare services
+    // DATASHARE services
     @Override
     public DatashareDatasetService getDatashareDatasetService() {
         return datashareDatasetService;

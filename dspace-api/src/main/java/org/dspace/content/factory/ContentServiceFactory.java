@@ -77,7 +77,7 @@ public abstract class ContentServiceFactory {
 
     public abstract SubscribeService getSubscribeService();
 
-    // Datashare services
+    // DATASHARE services
     public abstract DatashareDatasetService getDatashareDatasetService();
 
     /**

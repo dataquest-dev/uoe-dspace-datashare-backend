@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!DOCTYPE item-submission SYSTEM "item-submission.dtd">
 
+ <!-- // DATASHARE - start -->
 <!-- Configurable Submission configuration file -->
 
 <!-- This XML configuration file allows you to configure the ordering -->
@@ -356,3 +357,4 @@
     </submission-definitions>
 
 </item-submission>
+<!-- // DATASHARE - end -->

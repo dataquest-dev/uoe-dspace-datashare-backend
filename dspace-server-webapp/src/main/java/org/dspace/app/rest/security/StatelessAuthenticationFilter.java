@@ -136,7 +136,7 @@ public class StatelessAuthenticationFilter extends BasicAuthenticationFilter {
                 //Pass the eperson ID to the request service
                 requestService.setCurrentUserId(eperson.getID());
 
-                // Datashare - start
+                // DATASHARE - start
                 // Adding special group DATASHARE_USERS to the context
                 log.info("No special groups found");
                 // If no special groups are found, we need to add the default group to the
@@ -149,7 +149,7 @@ public class StatelessAuthenticationFilter extends BasicAuthenticationFilter {
                 } else {
                     log.info("DATASHARE_USERS group not found");
                 }
-                // Datashare - end
+                // DATASHARE - end
 
                 //Get the Spring authorities for this eperson
                 List<GrantedAuthority> authorities = authenticationProvider.getGrantedAuthorities(context);
