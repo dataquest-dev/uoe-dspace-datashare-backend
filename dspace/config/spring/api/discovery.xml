@@ -192,12 +192,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <!-- DATASHARE: Start-->
+                <!-- // DATASHARE - start -->
                 <ref bean="searchFilterAccessioned" />
                 <ref bean="searchFilterAvailable" />
                 <ref bean="searchFilterEmbargo" />
                 <!-- <ref bean="searchFilterIssued" /> -->
-                <!-- DATASHARE: End-->
+                <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -210,12 +210,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <!-- DATASHARE: Start-->
+                <!-- // DATASHARE - start -->
                 <ref bean="searchFilterAccessioned" />
                 <ref bean="searchFilterAvailable" />
                 <ref bean="searchFilterEmbargo" />
                 <!-- <ref bean="searchFilterIssued" /> -->
-                <!-- DATASHARE: End-->
+                <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -234,13 +234,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned"/>-->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -358,12 +358,12 @@
                         <!-- <ref bean="sortDateAccessioned"/> -->
                         <ref bean="sortScore"/>
                         <ref bean="sortTitle"/>
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -379,12 +379,12 @@
                         <!-- <ref bean="sortDateAccessioned"/> -->
                         <ref bean="sortScore"/>
                         <ref bean="sortTitle"/>
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -397,12 +397,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -415,12 +415,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <!-- DATASHARE: Start-->
+                <!-- // DATASHARE - start -->
                 <ref bean="searchFilterAccessioned" />
                 <ref bean="searchFilterAvailable" />
                 <ref bean="searchFilterEmbargo" />
                 <!-- <ref bean="searchFilterIssued" /> -->
-                <!-- DATASHARE: End-->
+                <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -439,13 +439,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -551,12 +551,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -569,12 +569,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <!-- DATASHARE: Start-->
+                <!-- // DATASHARE - start -->
                 <ref bean="searchFilterAccessioned" />
                 <ref bean="searchFilterAvailable" />
                 <ref bean="searchFilterEmbargo" />
                 <!-- <ref bean="searchFilterIssued" /> -->
-                <!-- DATASHARE: End-->
+                <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -593,13 +593,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -706,12 +706,12 @@
                 <ref bean="searchFilterDiscoverable" />
                 <ref bean="searchFilterWithdrawn" />
                 <ref bean="searchFilterAuthor" />
-                <ref bean="searchFilterSubject" />  <!-- DATASHARE: Start-->
+                <ref bean="searchFilterSubject" />  <!-- // DATASHARE - start -->
                 <ref bean="searchFilterAccessioned" />
                 <ref bean="searchFilterAvailable" />
                 <ref bean="searchFilterEmbargo" />
                 <!-- <ref bean="searchFilterIssued" /> -->
-                <!-- DATASHARE: End-->
+                <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
                 <ref bean="searchFilterNotifyRelation" />
@@ -729,12 +729,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <!-- DATASHARE: Start-->
+                <!-- // DATASHARE - start -->
                 <ref bean="searchFilterAccessioned" />
                 <ref bean="searchFilterAvailable" />
                 <ref bean="searchFilterEmbargo" />
                 <!-- <ref bean="searchFilterIssued" /> -->
-                <!-- DATASHARE: End-->
+                <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -756,12 +756,12 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -866,12 +866,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
             </list>
         </property>
         <!--The search filters which can be used on the discovery search page -->
@@ -879,12 +879,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                 <!-- DATASHARE: Start-->
+                 <!-- // DATASHARE - start -->
                  <ref bean="searchFilterAccessioned" />
                  <ref bean="searchFilterAvailable" />
                  <ref bean="searchFilterEmbargo" />
                  <!-- <ref bean="searchFilterIssued" /> -->
-                 <!-- DATASHARE: End-->
+                 <!-- // DATASHARE - end -->
             </list>
         </property>
         <!--The sort filters for the discovery search-->
@@ -897,12 +897,12 @@
                         <ref bean="sortLastModified" />
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -955,12 +955,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
             </list>
         </property>
         <!--The search filters which can be used on the discovery search page -->
@@ -968,12 +968,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
             </list>
         </property>
         <!--The sort filters for the discovery search-->
@@ -985,12 +985,12 @@
                     <list>
                         <ref bean="sortLastModified" />
                         <ref bean="sortTitleAsc" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!-- <ref bean="sortDateIssuedDesc" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -1043,12 +1043,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
             </list>
         </property>
@@ -1057,12 +1057,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
             </list>
         </property>
@@ -1074,13 +1074,13 @@
                         <ref bean="sortLastModified" />
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -1133,12 +1133,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
             </list>
         </property>
@@ -1147,12 +1147,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
             </list>
         </property>
@@ -1163,13 +1163,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -1220,12 +1220,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
                 <ref bean="searchFilterSupervision" />
             </list>
@@ -1235,12 +1235,12 @@
             <list>
                 <ref bean="searchFilterObjectNamedType" />
                 <ref bean="searchFilterType" />
-                 <!-- DATASHARE: Start-->
+                 <!-- // DATASHARE - start -->
                  <ref bean="searchFilterAccessioned" />
                  <ref bean="searchFilterAvailable" />
                  <ref bean="searchFilterEmbargo" />
                  <!-- <ref bean="searchFilterIssued" /> -->
-                 <!-- DATASHARE: End-->
+                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
                 <ref bean="searchFilterSupervision" />
             </list>
@@ -1252,13 +1252,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -1310,12 +1310,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -1328,12 +1328,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <!-- DATASHARE: Start-->
+                <!-- // DATASHARE - start -->
                 <ref bean="searchFilterAccessioned" />
                 <ref bean="searchFilterAvailable" />
                 <ref bean="searchFilterEmbargo" />
                 <!-- <ref bean="searchFilterIssued" /> -->
-                <!-- DATASHARE: End-->
+                <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -1352,13 +1352,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -1395,12 +1395,12 @@
             <list>
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                  <!-- DATASHARE: Start-->
+                  <!-- // DATASHARE - start -->
                   <ref bean="searchFilterAccessioned" />
                   <ref bean="searchFilterAvailable" />
                   <ref bean="searchFilterEmbargo" />
                   <!-- <ref bean="searchFilterIssued" /> -->
-                  <!-- DATASHARE: End-->
+                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
             </list>
@@ -1413,12 +1413,12 @@
                 <ref bean="searchFilterTitle" />
                 <ref bean="searchFilterAuthor" />
                 <ref bean="searchFilterSubject" />
-                <!-- DATASHARE: Start-->
+                <!-- // DATASHARE - start -->
                 <ref bean="searchFilterAccessioned" />
                 <ref bean="searchFilterAvailable" />
                 <ref bean="searchFilterEmbargo" />
                 <!-- <ref bean="searchFilterIssued" /> -->
-                <!-- DATASHARE: End-->
+                <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
                 <ref bean="searchFilterFileDescriptionInOriginalBundle" />
@@ -1437,13 +1437,13 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
-                        <!-- DATASHARE: Start-->
+                        <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
                         <ref bean="sortDateAvailable" />
                         <ref bean="sortDateEmbargo" />
                         <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
-                        <!-- DATASHARE: End-->
+                        <!-- // DATASHARE - end -->
                     </list>
                 </property>
             </bean>
@@ -3429,7 +3429,7 @@
         <property name="exposeMinAndMaxValue" value="true"/>
     </bean>
 
-    <!-- DATASHARE: Start-->
+    <!-- // DATASHARE - start -->
     <!-- Datashare specific Search filters for: dc.date.accessioned,dc.date.available,dc.date.embargo -->
     <bean id="searchFilterAccessioned" class="org.dspace.discovery.configuration.DiscoverySearchFilterFacet">
         <property name="indexFieldName" value="dateAccessioned"/>
@@ -3480,7 +3480,7 @@
 
     </bean>
 
-    <!-- DATASHARE: End-->
+    <!-- // DATASHARE - end -->
 
     <!--Sort properties-->
     <bean id="sortScore" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
@@ -3599,7 +3599,7 @@
         <property name="defaultSortOrder" value="desc"/>
     </bean>
 
-    <!-- DATASHARE: Start-->
+    <!-- // DATASHARE - start -->
     <!-- Datashare specific sort fields: dc.date.accessioned,dc.date.available,dc.date.embargo -->
     <!-- Bean with sortDateAccessioned is defined above. -->
     <bean id="sortDateAccessionedAsc" class="org.dspace.discovery.configuration.DiscoverySortFieldConfiguration">
@@ -3627,5 +3627,5 @@
         <property name="type" value="date"/>
         <property name="defaultSortOrder" value="asc"/>
     </bean>
-    <!-- DATASHARE: End-->
+    <!-- // DATASHARE - end -->
 </beans>

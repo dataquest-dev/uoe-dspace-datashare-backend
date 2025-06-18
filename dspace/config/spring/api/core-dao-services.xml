@@ -73,8 +73,10 @@
     <bean class="org.dspace.app.ldn.dao.impl.NotifyServiceInboundPatternDaoImpl"/>
     <bean class="org.dspace.app.ldn.dao.impl.LDNMessageDaoImpl"/>
     <bean class="org.dspace.app.ldn.dao.impl.NotifyPatternToTriggerDaoImpl"/>
-
+    
+    <!-- // DATASHARE - start -->
     <!-- Datashare DAOs -->
     <bean class="org.dspace.content.datashare.dao.impl.DatashareDatasetDAOImpl"/>
+    <!-- // DATASHARE - end -->
 
 </beans>

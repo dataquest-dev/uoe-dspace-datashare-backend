@@ -165,9 +165,11 @@
     <bean class="org.dspace.submit.service.SubmissionConfigServiceImpl"/>
 
     <bean class="org.dspace.correctiontype.service.impl.CorrectionTypeServiceImpl"/>
-
+    
+    <!-- // DATASHARE - start -->
     <!-- Datashare Services -->
     <bean class="org.dspace.content.datashare.service.impl.DatashareDatasetServiceImpl"/>
+    <!-- // DATASHARE - end -->
 
 </beans>
 
