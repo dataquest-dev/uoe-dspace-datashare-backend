@@ -164,6 +164,7 @@ public class SubmissionService {
                 throw new RESTAuthorizationException("collectionUUID=" + collectionUUID + " not found");
             }
             wsi = workspaceItemService.create(context, collection, true);
+
             // DATASHARE - start
             // Set depositor as item submitter
             EPerson depositor = wsi.getSubmitter();
