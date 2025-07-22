@@ -107,7 +107,7 @@
         <!-- // DATASHARE - start -->
         <!-- Datashare specific mappings -->
         <mapping class="org.dspace.content.datashare.DatashareDataset"/>
-        <!-- // DATASHARE - start -->
+        <!-- // DATASHARE - end -->
 
     </session-factory>
 </hibernate-configuration>
