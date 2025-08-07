@@ -50,7 +50,7 @@
 
         <!-- Form which defines the first page/section of the "traditional" DSpace submission process,
              often used when depositing normal Items (i.e. Items which are not Entities). -->
-        <form name="traditionalpageone">
+        <form name="metadatapageone">
 
             <!--***** Title *****-->
             <row>
@@ -204,11 +204,7 @@
                     <required></required>
                 </field>
             </row>
-        </form>
-
-        <!-- Form which defines the second page/section of the "traditional" DSpace submission process,
-             often used when depositing normal Items. -->
-        <form name="traditionalpagetwo">
+    
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>

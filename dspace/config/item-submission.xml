@@ -109,13 +109,8 @@
 
         <!-- The following set of DescribeStep <step-definition>s all point to forms (of the same name) which are
              defined in submission-forms.xml -->
-        <step-definition id="traditionalpageone" mandatory="true">
-            <heading>submit.progressbar.describe.stepone</heading>
-            <processing-class>org.dspace.app.rest.submit.step.DescribeStep</processing-class>
-            <type>submission-form</type>
-        </step-definition>
-        <step-definition id="traditionalpagetwo" mandatory="true">
-            <heading>submit.progressbar.describe.steptwo</heading>
+        <step-definition id="metadatapageone" mandatory="true">
+            <heading>submit.progressbar.metadatapageone</heading>
             <processing-class>org.dspace.app.rest.submit.step.DescribeStep</processing-class>
             <type>submission-form</type>
         </step-definition>
@@ -304,13 +299,13 @@
                  that identifiers.cfg and identifier-service.xml are properly configured. -->
             <!--<step id="identifiers"/>-->
             <!--Step will be to Describe the item. -->
-            <step id="traditionalpageone"/>
+            <step id="metadatapageone"/>
 
             <!-- Datashare Funder-->
             <step id="datashareFunderForm"/>
 
 
-            <step id="traditionalpagetwo"/>
+            <!-- <step id="traditionalpagetwo"/> -->
 
             <!-- Uncomment this step to allow the user to embargo or access restrict the entire item -->
             <!-- <step id="itemAccessConditions"/> -->
