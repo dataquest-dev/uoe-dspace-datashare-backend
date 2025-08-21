@@ -257,10 +257,10 @@
 	        <type>submission-form</type>
         </step-definition>
 
-         <!-- Add Datashare Time Period step -->
-        <step-definition id="datashareTimePeriodForm">
-             <heading>submit.progressbar.datashare.timeperiod</heading>
-            <processing-class>org.dspace.app.rest.submit.step.datashare.DatashareTimePeriodStep</processing-class>
+         <!-- Add Datashare Spatial and Temporal step -->
+        <step-definition id="datashareSpatialAndTemporalForm">
+             <heading>submit.progressbar.datashare.spatial_and_temporal</heading>
+            <processing-class>org.dspace.app.rest.submit.step.datashare.DatashareSpatialAndTemporalStep</processing-class>
             <type>submission-form</type>
         </step-definition>
 
@@ -321,8 +321,8 @@
             <!--Step will be COAR Notify services to the item -->
             <!-- <step id="coarnotify"/> -->
 
-            <!-- Datashare Time Period-->
-            <step id="datashareTimePeriodForm"/>
+            <!-- Datashar Spatial and Temporal -->
+            <step id="datashareSpatialAndTemporalForm"/>
             <!--Step will be to Upload the item -->
             <step id="upload"/>
 

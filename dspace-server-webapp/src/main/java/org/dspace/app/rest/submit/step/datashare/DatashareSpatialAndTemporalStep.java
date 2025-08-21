@@ -58,9 +58,9 @@ import org.dspace.services.factory.DSpaceServicesFactory;
  * @author John Pinto (Research Data Service, Information Services Group,
  *         University of Edinburgh)
  */
-public class DatashareTimePeriodStep extends AbstractProcessingStep {
+public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
 
-    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(DatashareTimePeriodStep.class);
+    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(DatashareSpatialAndTemporalStep.class);
 
     // Input reader for form configuration
     private DCInputsReader inputReader;
@@ -77,7 +77,7 @@ public class DatashareTimePeriodStep extends AbstractProcessingStep {
 
     private MetadataValueService metadataValueService = ContentServiceFactory.getInstance().getMetadataValueService();
 
-    public DatashareTimePeriodStep() throws DCInputsReaderException {
+    public DatashareSpatialAndTemporalStep() throws DCInputsReaderException {
         inputReader = new DCInputsReader();
     }
 

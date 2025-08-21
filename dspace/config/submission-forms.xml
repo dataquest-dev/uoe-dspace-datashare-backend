@@ -324,36 +324,6 @@
                 </field>
             </row>
 
-
-            <!--***** Spatial Coverage - country (note: the hijacking of subject.dcc) *****-->
-            <row>
-                <field>
-                    <dc-schema>dc</dc-schema>
-                    <dc-element>subject</dc-element>
-                    <dc-qualifier>ddc</dc-qualifier>
-                    <repeatable>true</repeatable>
-                    <label>Spatial Coverage: Country</label>
-                    <input-type value-pairs-name="countries">dropdown</input-type>
-                    <hint> Enter the country to which the data relate, if relevant. </hint>
-                    <required></required>
-                </field>
-            </row>
-            <!--***** Spatial Coverage - place *****-->
-            <row>
-                <field>
-                    <dc-schema>dc</dc-schema>
-                    <dc-element>coverage</dc-element>
-                    <dc-qualifier>spatial</dc-qualifier>
-                    <repeatable>true</repeatable>
-                    <label>Spatial Coverage: Place</label>
-                    <input-type>onebox</input-type>
-                    <hint> Enter the most appropriate placenames to which the data relate, if relevant. </hint>
-                    <required></required>
-                </field>
-
-            </row>
-
-
         </form>
 
         <!-- Form which defines the metadata page/section for depositing Person Entities -->
@@ -461,8 +431,39 @@
             </row>
         </form>
 
-        <!-- Datashare Time Period form-->
-        <form name="datashareTimePeriodForm">
+        <!-- Datashare Spatial and Temporal form-->
+        <form name="datashareSpatialAndTemporalForm">
+
+        <!--***** Spatial Coverage - country (note: the hijacking of subject.dcc) *****-->
+            <row>
+                <field>
+                    <dc-schema>dc</dc-schema>
+                    <dc-element>subject</dc-element>
+                    <dc-qualifier>ddc</dc-qualifier>
+                    <repeatable>true</repeatable>
+                    <label>Spatial Coverage: Country</label>
+                    <input-type value-pairs-name="countries">dropdown</input-type>
+                    <hint> Enter the country to which the data relate, if relevant. </hint>
+                    <required></required>
+                </field>
+            </row>
+            <!--***** Spatial Coverage - place *****-->
+            <row>
+                <field>
+                    <dc-schema>dc</dc-schema>
+                    <dc-element>coverage</dc-element>
+                    <dc-qualifier>spatial</dc-qualifier>
+                    <repeatable>true</repeatable>
+                    <label>Spatial Coverage: Place</label>
+                    <input-type>onebox</input-type>
+                    <hint> Enter the most appropriate placenames to which the data relate, if relevant. </hint>
+                    <required></required>
+                </field>
+
+            </row>
+
+
+           
             <row>
                 <field>
                     <dc-schema>ds</dc-schema>
