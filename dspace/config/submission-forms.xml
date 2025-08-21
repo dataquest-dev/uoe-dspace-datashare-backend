@@ -247,14 +247,14 @@
                 <required></required>
             </field>
 
-            <!--***** Relation (Is Referenced By) *****-->
+            <!--***** Publications and other outputs *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
                     <dc-element>relation</dc-element>
                     <dc-qualifier>isreferencedby</dc-qualifier>
                     <repeatable>true</repeatable>
-                    <label>Relation (Is Referenced By)</label>
+                    <label>Publications and other outputs</label>
                     <input-type>onebox</input-type>
                     <hint>Have you published a paper based on this dataset? If so, enter the URI /URL. If
             there is an Open Access version lodged in a publications repository (for example, UK
