@@ -309,7 +309,7 @@
             </row>
 
             <!--***** Dataset Description (TOC)  *****-->
-            <row>
+            <!-- <row>
                 <field>
                     <dc-schema>dc</dc-schema>
                     <dc-element>description</dc-element>
@@ -322,7 +322,7 @@
             Readme.txt file) refer to the filename of the relevant documentation. </hint>
                     <required></required>
                 </field>
-            </row>
+            </row> -->
 
         </form>
 
