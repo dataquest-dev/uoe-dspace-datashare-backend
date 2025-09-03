@@ -61,8 +61,8 @@
                     <repeatable>false</repeatable>
                     <label>Title</label>
                     <input-type>onebox</input-type>
-                    <hint>Enter the main title of the item.</hint>
-                    <required>You must enter a main title for this item.</required>
+                    <hint> Enter the title of the item. </hint>
+                    <required>You must enter a title for this item.</required>
                 </field>
             </row>
 
@@ -75,8 +75,7 @@
                     <repeatable>true</repeatable>
                     <label>Type</label>
                     <input-type value-pairs-name="common_types">dropdown</input-type>
-                    <hint>Select the type of content of the item.
-                    </hint>
+                    <hint> Select type from dropdown menu. </hint>
                     <required>You must choose at least one type.</required>
                 </field>
             </row>
@@ -149,9 +148,8 @@
                     <repeatable>false</repeatable>
                     <label>Data Publisher</label>
                     <input-type>onebox</input-type>
-                    <hint> Enter the name of the organisation or service responsible for making the data
-            available. Example: University of Edinburgh. School of GeoSciences. Institute of
-            Geography. Note: Publisher is a mandatory field if no Creator is specified. </hint>
+                    <hint> Enter the organisation or service responsible for making the data available using the following convention.  
+                    Example: "University of Edinburgh. School of GeoSciences. Institute of Geography </hint>
                     <required>Publisher is mandatory.</required>
                 </field>
             </row>
@@ -180,10 +178,9 @@
                     <label>Embargo Date</label>
                     <style>col-sm-4</style>
                     <input-type>date</input-type>
-                    <hint>The date on which files will become available to download.
-                    Enter the date when the embargo should expire (up to 5 years from today). 
-                    If no embargo is required, leave blank.
-                    </hint>
+                    <hint> The date on which files will become available to download. Enter the date when the embargo should expire (up to 1 year from today). 
+                    If a longer embargo is required, please contact data-support@ed.ac.uk. 
+                    If no embargo is required, leave blank. </hint>
                     <required></required>
                 </field>
             </row>
@@ -227,7 +224,7 @@
                     <repeatable>true</repeatable>
                     <label>Subject Keywords</label>
                     <input-type>tag</input-type>
-                    <hint> Enter as many appropriate subject keywords or phrases as you like. </hint>
+                    <hint> Enter as many appropriate subject keywords or phrases as you like, separated by a comma or by entering return. </hint>
                     <required></required>
                     <vocabulary></vocabulary>
                 </field>
@@ -242,7 +239,7 @@
                 <label>Relation (Is Version Of)</label>
                 <input-type>onebox</input-type>
                 <hint> If there is another version of this dataset lodged in this repository or another
-            archive (for example, in the UK Data Archive) enter the URI / URL of the corresponding
+            archive (for example, in the UK Data Archive) enter the persistent identifier (e.g., DOI) of the corresponding
             item. </hint>
                 <required></required>
             </field>
@@ -256,9 +253,9 @@
                     <repeatable>true</repeatable>
                     <label>Publications and other outputs</label>
                     <input-type>onebox</input-type>
-                    <hint>Have you published a paper based on this dataset? If so, enter the URI /URL. If
-            there is an Open Access version lodged in a publications repository (for example, UK
-            PubMed Central), that is the preferred URI /URL.</hint>
+                    <hint> Does this data support a manuscript or research output?  If so, please provide the persistent identifier such as a DOI.
+                    An identifier for an Open Access version of the research output is preferred, if available.
+                    If your output is in submission or under review, please provide the working title, list of authors, journal and status. </hint>
                     <required></required>
                 </field>
             </row>
@@ -273,7 +270,7 @@
                     <label>Supersedes </label>
                     <input-type>onebox</input-type>
                     <hint> If this dataset supersedes an earlier dataset deposited in this repository enter
-            the URI /URL of the previous dataset. </hint>
+            the persistent identifier (e.g., DOI) of the previous dataset. </hint>
                     <required></required>
                 </field>
             </row>
@@ -287,7 +284,7 @@
                     <label>Superseded By</label>
                     <input-type>onebox</input-type>
                     <hint>Only fill out this field if this dataset has been superseded by a later data
-            deposit. Enter the URI /URL of the newest data item.</hint>
+            deposit. Enter the persistent identifier (e.g., DOI) of the newest data item.</hint>
                     <required></required>
                 </field>
             </row>
@@ -443,7 +440,7 @@
                     <repeatable>true</repeatable>
                     <label>Spatial Coverage: Country</label>
                     <input-type value-pairs-name="countries">dropdown</input-type>
-                    <hint> Enter the country to which the data relate, if relevant. </hint>
+                    <hint> If location is important to the meaning or context of the data, add the country. </hint>
                     <required></required>
                 </field>
             </row>
@@ -456,7 +453,7 @@
                     <repeatable>true</repeatable>
                     <label>Spatial Coverage: Place</label>
                     <input-type>onebox</input-type>
-                    <hint> Enter the most appropriate placenames to which the data relate, if relevant. </hint>
+                    <hint> If location is important to the meaning or context of the data, add the place. </hint>
                     <required></required>
                 </field>
 
@@ -483,7 +480,7 @@
                     <repeatable>false</repeatable>
                     <label>To: </label>
                     <input-type>date</input-type>
-                    <hint>Enter the time period to which the data relate, if relevant.</hint>
+                    <hint> If time period is important to the meaning or context of the data, add here. </hint>
                     <required></required>
                 </field>
             </row>
@@ -499,7 +496,7 @@
                     <repeatable>true</repeatable>
                     <label>Funder</label>
                     <input-type value-pairs-name="funding_bodies">dropdown</input-type>
-                    <hint> Select each agency that funded the creation of the dataset. Choose 'Other' if you can't find funders in list and add your funders below.</hint>
+                    <hint> Select each organisation that funded the creation of the dataset. For funders not in the list use the free text field below. </hint>
                     <required>A Funder is mandatory.</required>
                 </field>
             </row>
