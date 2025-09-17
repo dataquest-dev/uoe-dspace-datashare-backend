@@ -38,6 +38,10 @@
     <xsl:param name="hostinginstitution"><xsl:value-of select="$publisher" /></xsl:param>
     <!-- Please take a look into the DataCite schema documentation if you want to know how to use these elements.
          http://schema.datacite.org -->
+    <!-- Metadata-field to retrieve DOI from items -->
+    <xsl:param name="mdSchema">dc</xsl:param>
+    <xsl:param name="mdElement">identifier</xsl:param>
+    <xsl:param name="mdQualifier">uri</xsl:param>
 
     <xsl:output method="xml" indent="yes" encoding="utf-8" />
 
@@ -641,4 +645,3 @@
     </xsl:template>
 
 </xsl:stylesheet>
-<!-- // DATASHARE - end -->
