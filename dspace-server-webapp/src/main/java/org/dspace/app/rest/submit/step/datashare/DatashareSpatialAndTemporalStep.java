@@ -217,16 +217,16 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
                 log.info("mv.getMetadataField().getID(): " + mv.getMetadataField().getID());
 
                 if (dcCoverageTemporalMetadataField != null
-                        && mv.getMetadataField().getID() == dcCoverageTemporalMetadataField.getID()) {
+                        && mv.getMetadataField().getID().equals(dcCoverageTemporalMetadataField.getID())) {
                     dcCoverageTemporalMetadataValue = mv;
                     log.info("dcCoverageTemporalMetadataValue: " + dcCoverageTemporalMetadataValue.getValue());
                 } else if (dsTimePeriodStartDateValueField != null
-                        && mv.getMetadataField().getID() == dsTimePeriodStartDateValueField.getID()) {
+                        && mv.getMetadataField().getID().equals(dsTimePeriodStartDateValueField.getID())) {
                     dsTimePeriodStartDateValueMetadataValue = mv;
                     log.info("dsTimePeriodStartDateValueMetadataValue: "
                             + dsTimePeriodStartDateValueMetadataValue.getValue());
                 } else if (dsTimePeriodEndDateField != null
-                        && mv.getMetadataField().getID() == dsTimePeriodEndDateField.getID()) {
+                        && mv.getMetadataField().getID().equals(dsTimePeriodEndDateField.getID())) {
                     dsTimePeriodEndDateMetadataValue = mv;
                     log.info("dsTimePeriodEndDateMetadataValue: " + dsTimePeriodEndDateMetadataValue.getValue());
                 }

@@ -215,15 +215,15 @@ public class DatashareLicenseStep extends AbstractProcessingStep {
             for (MetadataValue mv : metadataValues) {
                 log.info("mv.getMetadataField().getID(): " + mv.getMetadataField().getID());
 
-                if (dcRightsMetadataField != null && mv.getMetadataField().getID() == dcRightsMetadataField.getID()) {
+                if (dcRightsMetadataField != null && mv.getMetadataField().getID().equals(dcRightsMetadataField.getID())) {
                     dcRightsMetadataValue = mv;
                     log.info("dcRightsMetadataValue: " + dcRightsMetadataValue.getValue());
                 } else if (dsLicenseDropdownValueField != null
-                        && mv.getMetadataField().getID() == dsLicenseDropdownValueField.getID()) {
+                        && mv.getMetadataField().getID().equals(dsLicenseDropdownValueField.getID())) {
                     dsLicenseDropdownValueMetadataValue = mv;
                     log.info("dsLicenseDropdownValueMetadataValue: " + dsLicenseDropdownValueMetadataValue.getValue());
                 } else if (dsLicenseRightsTextField != null
-                        && mv.getMetadataField().getID() == dsLicenseRightsTextField.getID()) {
+                        && mv.getMetadataField().getID().equals(dsLicenseRightsTextField.getID())) {
                     dsRightsTextMetadataValue = mv;
                     log.info("dsRightsTextMetadataValue: " + dsRightsTextMetadataValue.getValue());
                 }

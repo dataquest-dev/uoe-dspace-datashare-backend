@@ -216,18 +216,18 @@ public class DatashareFunderStep extends AbstractProcessingStep {
                 log.info("mv.getMetadataField().getID(): " + mv.getMetadataField().getID());
 
                 if (dcContributorOtherMetadataField != null
-                        && mv.getMetadataField().getID() == dcContributorOtherMetadataField.getID()) {
+                        && mv.getMetadataField().getID().equals(dcContributorOtherMetadataField.getID())) {
                     dcContributorOtherMetadataValues.add(mv);
                     dcContributorOtherValue = mv.getValue();
                     dcContributorOtherValues.add(dcContributorOtherValue);
                     log.info("dcContributorOtherValue: " + dcContributorOtherValue);
                 } else if (dsFunderDropdownValueField != null
-                        && mv.getMetadataField().getID() == dsFunderDropdownValueField.getID()) {
+                        && mv.getMetadataField().getID().equals(dsFunderDropdownValueField.getID())) {
                     dsFunderDropdownValue = mv.getValue();
                     dsFunderDropdownValues.add(dsFunderDropdownValue);
                     log.info("dsFunderDropdownValue: " + dsFunderDropdownValue);
                 } else if (dsFunderTextField != null
-                        && mv.getMetadataField().getID() == dsFunderTextField.getID()) {
+                        && mv.getMetadataField().getID().equals(dsFunderTextField.getID())) {
                     dsFunderTextValue = mv.getValue();
                     dsFunderTextValues.add(dsFunderTextValue);
                     log.info("dsFunderTextMetadataValue: " + dsFunderTextValue);
