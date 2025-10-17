@@ -88,7 +88,9 @@ public class DOIOrganiser {
      * @param args  - the command line arguments to parse as parameters
      */
     public static void main(String[] args) {
-        LOG.debug("Starting DOI organiser ");
+        // Datshare - start
+        LOG.info("Starting DOI organiser ");
+        // Datshare - end
 
         // setup Context
         Context context = new Context();
@@ -104,6 +106,9 @@ public class DOIOrganiser {
         try {
             context.complete();
         } catch (SQLException sqle) {
+            // Datshare - start
+            LOG.error("Cannot save changes to database", sqle);
+            // Datshare - end
             System.err.println("Cannot save changes to database: " + sqle.getMessage());
             System.exit(-1);
         }
@@ -221,6 +226,10 @@ public class DOIOrganiser {
                 List<DOI> dois = doiService
                     .getDOIsByStatus(context, Arrays.asList(DOIIdentifierProvider.TO_BE_RESERVED));
                 if (dois.isEmpty()) {
+                    // Datshare - start
+                    LOG.info("There are no objects in the database that could be reserved.");
+                    // Datshare - end
+
                     System.err.println("There are no objects in the database "
                                            + "that could be reserved.");
                 }
@@ -231,6 +240,12 @@ public class DOIOrganiser {
                         organiser.reserve(doi);
                         context.commit();
                     } catch (RuntimeException e) {
+                        // Datshare - start
+                        LOG.error(String.format("DOI %s for object %s reservation failed, skipping:  %s%n",
+                                doi.getDSpaceObject().getID().toString(),
+                                doi.getDoi(), e.getMessage()), e);
+                        // Datshare - end
+
                         System.err.format("DOI %s for object %s reservation failed, skipping:  %s%n",
                                 doi.getDSpaceObject().getID().toString(),
                                 doi.getDoi(), e.getMessage());
@@ -238,9 +253,21 @@ public class DOIOrganiser {
                     }
                 }
             } catch (SQLException ex) {
+                // Datshare - start
+                LOG.error("Error in database connection:  {}", ex.getMessage(), ex);
+                // Datshare - end
+
                 System.err.println("Error in database connection:" + ex.getMessage());
                 ex.printStackTrace(System.err);
+            // Datshare - start
+            } catch (RuntimeException ex) {
+                LOG.error("Error reserving DOI identifier:  {}", ex.getMessage(), ex);
+                System.err.println("Error reserving DOI identifier: " + ex.getMessage());
+            } catch (Exception ex) {
+                LOG.error("Error reserving DOI identifier:  {}", ex.getMessage(), ex);
+                System.err.println("Error reserving DOI identifier: " + ex.getMessage());
             }
+            // Datshare - end
         }
 
         if (line.hasOption('r')) {
@@ -248,6 +275,10 @@ public class DOIOrganiser {
                 List<DOI> dois = doiService
                     .getDOIsByStatus(context, Arrays.asList(DOIIdentifierProvider.TO_BE_REGISTERED));
                 if (dois.isEmpty()) {
+                    // Datshare - start
+                    LOG.info("There are no objects in the database that could be registered.");
+                    // Datshare - end
+
                     System.err.println("There are no objects in the database "
                                            + "that could be registered.");
                 }
@@ -257,16 +288,40 @@ public class DOIOrganiser {
                         organiser.register(doi);
                         context.commit();
                     } catch (SQLException e) {
+                        // Datshare - start
+                        LOG.error(String.format("DOI %s for object %s registration failed, skipping:  %s%n",
+                                doi.getDSpaceObject().getID().toString(),
+                                doi.getDoi(), e.getMessage()), e);
+                        // Datshare - end
+
                         System.err.format("DOI %s for object %s registration failed, skipping:  %s%n",
                                 doi.getDSpaceObject().getID().toString(),
                                 doi.getDoi(), e.getMessage());
                         context.rollback();
+                    } catch (Exception ex) {
+                        // Datshare - start
+                        LOG.error(String.format("DOI %s for object %s registration failed, skipping:  %s%n",
+                                doi.getDSpaceObject().getID().toString(),
+                                doi.getDoi(), ex.getMessage()), ex);
+                        System.err.format("DOI %s for object %s registration failed, skipping:  %s%n",
+                                doi.getDSpaceObject().getID().toString(),
+                                doi.getDoi(), ex.getMessage());
+                        // Datshare - end
                     }
                 }
             } catch (SQLException ex) {
+                // Datshare - start
+                LOG.error("Error in database connection:  {}", ex.getMessage(), ex);
+                // Datshare - end
                 System.err.format("Error in database connection:  %s%n", ex.getMessage());
                 ex.printStackTrace(System.err);
             } catch (RuntimeException ex) {
+                // Datshare - start
+                LOG.error("Error registering DOI identifier:  {}", ex.getMessage(), ex);
+                System.err.format("Error registering DOI identifier:  %s%n", ex.getMessage());
+            } catch (Exception ex) {
+                LOG.error("Error registering DOI identifier:  {}", ex.getMessage(), ex);
+                // Datshare - end
                 System.err.format("Error registering DOI identifier:  %s%n", ex.getMessage());
             }
         }
@@ -278,6 +333,7 @@ public class DOIOrganiser {
                     DOIIdentifierProvider.UPDATE_RESERVED,
                     DOIIdentifierProvider.UPDATE_REGISTERED));
                 if (dois.isEmpty()) {
+                    LOG.info("There are no objects in the database whose metadata needs an update.");
                     System.err.println("There are no objects in the database "
                                            + "whose metadata needs an update.");
                 }
@@ -288,9 +344,20 @@ public class DOIOrganiser {
                     context.commit();
                 }
             } catch (SQLException ex) {
+                // Datshare - start
+                LOG.error("Error in database connection:  {}", ex.getMessage(), ex);
+                // Datshare - end
                 System.err.println("Error in database connection:" + ex.getMessage());
                 ex.printStackTrace(System.err);
+            // Datshare - start
+            } catch (RuntimeException ex) {
+                LOG.error("Error updating DOI identifier:  {}", ex.getMessage(), ex);
+                System.err.println("Error updating DOI identifier: " + ex.getMessage());
+            } catch (Exception ex) {
+                LOG.error("Error updating DOI identifier:  {}", ex.getMessage(), ex);
+                System.err.println("Error updating DOI identifier: " + ex.getMessage());
             }
+            // Datshare - end
         }
 
         if (line.hasOption('d')) {
@@ -308,6 +375,12 @@ public class DOIOrganiser {
                         organiser.delete(doi.getDoi());
                         context.commit();
                     } catch (SQLException e) {
+                        // Datshare - start
+                        LOG.error(String.format("DOI %s for object %s deletion failed, skipping:  %s%n",
+                                doi.getDSpaceObject().getID().toString(),
+                                doi.getDoi(), e.getMessage()), e);
+                        // Datshare - end
+
                         System.err.format("DOI %s for object %s deletion failed, skipping:  %s%n",
                                 doi.getDSpaceObject().getID().toString(),
                                 doi.getDoi(), e.getMessage());
@@ -315,9 +388,21 @@ public class DOIOrganiser {
                     }
                 }
             } catch (SQLException ex) {
+                // Datshare - start
+                LOG.error("Error in database connection:  {}", ex.getMessage(), ex);
+                // Datshare - end
+
                 System.err.println("Error in database connection:" + ex.getMessage());
                 ex.printStackTrace(System.err);
+            // Datshare - start
+            } catch (RuntimeException ex) {
+                LOG.error("Error deleting DOI identifier:  {}", ex.getMessage(), ex);
+                System.err.println("Error deleting DOI identifier: " + ex.getMessage());
+            } catch (Exception ex) {
+                LOG.error("Error deleting DOI identifier:  {}", ex.getMessage(), ex);
+                System.err.println("Error deleting DOI identifier: " + ex.getMessage());
             }
+            // Datshare - end
         }
 
         if (line.hasOption("reserve-doi")) {
@@ -330,7 +415,13 @@ public class DOIOrganiser {
                     DOI doiRow = organiser.resolveToDOI(identifier);
                     organiser.reserve(doiRow);
                 } catch (SQLException | IllegalArgumentException | IllegalStateException | IdentifierException ex) {
+                    // Datshare - start
+                    System.err.println("Error reserving DOI: " + ex.getMessage());
                     LOG.error(ex);
+                } catch (RuntimeException ex) {
+                    LOG.error("Error reserving DOI identifier:  {}", ex.getMessage(), ex);
+                    System.err.println("Error reserving DOI identifier: " + ex.getMessage());
+                    // Datshare - end
                 }
             }
         }
@@ -345,7 +436,13 @@ public class DOIOrganiser {
                     DOI doiRow = organiser.resolveToDOI(identifier);
                     organiser.register(doiRow);
                 } catch (SQLException | IllegalArgumentException | IllegalStateException | IdentifierException ex) {
+                    // Datshare - start
+                    System.err.println("Error registering DOI: " + ex.getMessage());
                     LOG.error(ex);
+                } catch (RuntimeException ex) {
+                    LOG.error("Error registering DOI identifier:  {}", ex.getMessage(), ex);
+                    System.err.println("Error registering DOI identifier: " + ex.getMessage());
+                    // Datshare - end
                 }
             }
         }
@@ -360,7 +457,16 @@ public class DOIOrganiser {
                     DOI doiRow = organiser.resolveToDOI(identifier);
                     organiser.update(doiRow);
                 } catch (SQLException | IllegalArgumentException | IllegalStateException | IdentifierException ex) {
+                    // Datshare - start
+                    System.err.println("Error updating DOI: " + ex.getMessage());
                     LOG.error(ex);
+                } catch (RuntimeException ex) {
+                    LOG.error("Error updating DOI identifier:  {}", ex.getMessage(), ex);
+                    System.err.println("Error updating DOI identifier: " + ex.getMessage());
+                } catch (Exception ex) {
+                    LOG.error("Error updating DOI identifier:  {}", ex.getMessage(), ex);
+                    System.err.println("Error updating DOI identifier: " + ex.getMessage());
+                    // Datshare - end  
                 }
             }
         }
@@ -374,7 +480,16 @@ public class DOIOrganiser {
                 try {
                     organiser.delete(identifier);
                 } catch (SQLException | IllegalArgumentException ex) {
+                    // Datshare - start
+                    System.err.println("Error deleting DOI: " + ex.getMessage());
                     LOG.error(ex);
+                } catch (RuntimeException ex) {
+                    LOG.error("Error deleting DOI identifier:  {}", ex.getMessage(), ex);
+                    System.err.println("Error deleting DOI identifier: " + ex.getMessage());
+                } catch (Exception ex) {
+                    LOG.error("Error deleting DOI identifier:  {}", ex.getMessage(), ex);
+                    System.err.println("Error deleting DOI identifier: " + ex.getMessage());
+                    // Datshare - end
                 }
             }
         }
@@ -415,8 +530,17 @@ public class DOIOrganiser {
             }
             out.println("");
         } catch (SQLException ex) {
+            // Datshare - start
+            LOG.error("Error in database Connection:  {}", ex.getMessage(), ex);
             err.println("Error in database Connection: " + ex.getMessage());
             ex.printStackTrace(err);
+        } catch (RuntimeException ex) {
+            LOG.error("Error listing DOI identifiers:  {}", ex.getMessage(), ex);
+            err.println("Error listing DOI identifiers: " + ex.getMessage());
+        } catch (Exception ex) {
+            LOG.error("Error listing DOI identifiers:  {}", ex.getMessage(), ex);
+            err.println("Error listing DOI identifiers: " + ex.getMessage());
+            // Datshare - end
         }
     }
 
@@ -472,6 +596,10 @@ public class DOIOrganiser {
             LOG.error(message, ex);
 
             if (!quiet) {
+                // Datshare - start
+                LOG.error("It wasn't possible to register this identifier: "
+                        + DOI.SCHEME + doiRow.getDoi());
+                // Datshare - end
                 System.err.println("It wasn't possible to register this identifier: "
                                        + DOI.SCHEME + doiRow.getDoi());
             }
@@ -490,6 +618,10 @@ public class DOIOrganiser {
                                                 + DOI.SCHEME + doiRow.getDoi() + "!", ex);
         } catch (SQLException ex) {
             LOG.error("Error while trying to get data from database", ex);
+            // Datshare - start
+            LOG.error("It wasn't possible to register this identifier: "
+                    + DOI.SCHEME + doiRow.getDoi());
+            // Datshare - end
 
             if (!quiet) {
                 System.err.println("It wasn't possible to register this identifier: "
@@ -514,7 +646,8 @@ public class DOIOrganiser {
 
     /**
      * Reserve DOI with the provider,
-     * @param doiRow        - doi to reserve
+     * 
+     * @param doiRow - doi to reserve
      */
     public void reserve(DOI doiRow) {
         reserve(doiRow, this.filter);
@@ -531,6 +664,10 @@ public class DOIOrganiser {
     public void reserve(DOI doiRow, Filter filter) {
         DSpaceObject dso = doiRow.getDSpaceObject();
         if (Constants.ITEM != dso.getType()) {
+            // Datshare - start
+            LOG.error("Currently DSpace supports DOIs for Items only.");
+            // Datshare - end
+
             throw new IllegalArgumentException("Currently DSpace supports DOIs for Items only.");
         }
 
@@ -594,6 +731,10 @@ public class DOIOrganiser {
     public void update(DOI doiRow) {
         DSpaceObject dso = doiRow.getDSpaceObject();
         if (Constants.ITEM != dso.getType()) {
+            // Datshare - start
+            LOG.error("Currently DSpace supports DOIs for Items only.");
+            // Datshare - end
+
             throw new IllegalArgumentException("Currently DSpace supports DOIs for Items only.");
         }
 
@@ -635,6 +776,9 @@ public class DOIOrganiser {
         } catch (IllegalArgumentException ex) {
             LOG.error("Database table DOI contains a DOI that is not valid: "
                           + DOI.SCHEME + doiRow.getDoi() + "!", ex);
+            // Datshare - start
+            LOG.error("It wasn't possible to update this identifier: " + DOI.SCHEME + doiRow.getDoi());
+            // Datshare - end
 
             if (!quiet) {
                 System.err.println("It wasn't possible to update this identifier: " + DOI.SCHEME + doiRow.getDoi());
@@ -645,6 +789,13 @@ public class DOIOrganiser {
                                                 + DOI.SCHEME + doiRow.getDoi() + "!", ex);
         } catch (SQLException ex) {
             LOG.error("It wasn't possible to connect to the Database!", ex);
+        // Datshare - start
+        } catch (RuntimeException ex) {
+            LOG.error("Error updating DOI identifier:  {}", ex.getMessage(), ex);
+            if (!quiet) {
+                System.err.println("Error updating DOI identifier: " + ex.getMessage());
+            }
+        // Datshare - end
         }
     }
 
@@ -665,6 +816,10 @@ public class DOIOrganiser {
                                           doi.substring(DOI.SCHEME.length()));
 
             if (null == doiRow) {
+                // Datshare - start
+                LOG.error("You specified a valid DOI, that is not stored in our database.");
+                // Datshare - end
+
                 throw new IllegalStateException("You specified a valid DOI, that is not stored in our database.");
             }
             provider.deleteOnline(context, doi);
@@ -686,11 +841,37 @@ public class DOIOrganiser {
                                        + identifier);
             }
         } catch (IllegalArgumentException ex) {
+
             if (!quiet) {
-                System.err.println("It wasn't possible to delete this identifier: "
-                                       + DOI.SCHEME + doiRow.getDoi()
-                                       + " online. Take a look in log file.");
+                // Datshare - start
+                if (doiRow != null) {
+                    System.err.println("It wasn't possible to delete this identifier: "
+                            + DOI.SCHEME + doiRow.getDoi()
+                            + " online. Take a look in log file.");
+                } else {
+                    System.err.println("It wasn't possible to delete this identifier: "
+                            + identifier
+                            + " online. Take a look in log file.");
+                }
             }
+            if (doiRow != null) {
+                LOG.error("It wasn't possible to delete this identifier: "
+                        + DOI.SCHEME + doiRow.getDoi()
+                        + " online. Take a look in log file.");
+            } else {
+                LOG.error("It wasn't possible to delete this identifier: "
+                        + identifier
+                        + " online. Take a look in log file.");
+            }
+        } catch (SQLException ex) {
+            LOG.error("It wasn't possible to connect to the Database!", ex);
+            throw ex;
+        } catch (RuntimeException ex) {
+            LOG.error("Error deleting DOI identifier:  {}", ex.getMessage(), ex);
+            if (!quiet) {
+                System.err.println("Error deleting DOI identifier: " + ex.getMessage());
+            }
+            // Datshare - end
         }
     }
 
@@ -780,7 +961,20 @@ public class DOIOrganiser {
             if (!quiet) {
                 System.err.println("It wasn't possible to detect this DOI identifier: "
                                        + identifier);
+            // Datshare - start
             }
+
+            LOG.error("It wasn't possible to detect this DOI identifier: "
+                    + identifier);
+        } catch (SQLException ex) {
+            LOG.error("It wasn't possible to connect to the Database!", ex);
+            throw ex;
+        } catch (RuntimeException ex) {
+            LOG.error("Error resolving DOI identifier:  {}", ex.getMessage(), ex);
+            if (!quiet) {
+                System.err.println("Error resolving DOI identifier: " + ex.getMessage());
+            }
+            // Datshare - end
         }
 
         return doiRow;
@@ -819,7 +1013,15 @@ public class DOIOrganiser {
             LOG.warn("Unable to send email alert", e);
             if (!quiet) {
                 System.err.println("Unable to send email alert.");
+
+        // Datshare - start
             }
+        } catch (RuntimeException e) {
+            LOG.warn("Unable to send email alert, cannot determine object type", e);
+            if (!quiet) {
+                System.err.println("Unable to send email alert, cannot determine object type.");
+            }
+         // Datshare - end
         }
     }
 
