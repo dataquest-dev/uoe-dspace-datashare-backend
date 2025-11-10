@@ -7,8 +7,9 @@
                            http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.3.xsd">
 
     <!--  Irus statistics tracking  -->
-    <bean class="org.dspace.statistics.export.IrusExportUsageEventListener">
+    <!-- DISABLED -->
+    <!-- <bean class="org.dspace.statistics.export.IrusExportUsageEventListener">
         <property name="eventService" ref="org.dspace.services.EventService"/>
-    </bean>
+    </bean> -->
 
 </beans>

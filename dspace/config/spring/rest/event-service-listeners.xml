@@ -20,8 +20,10 @@
     </bean>
 
     <!--  Irus statistics tracking  -->
+    <!-- DISABLED -->
+    <!--
     <bean class="org.dspace.statistics.export.IrusExportUsageEventListener">
         <property name="eventService" ref="org.dspace.services.EventService"/>
     </bean>
-
+    -->
 </beans>

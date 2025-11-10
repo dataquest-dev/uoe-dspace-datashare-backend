@@ -59,11 +59,13 @@ import org.dspace.usage.UsageEvent;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.Ignore;
 
 /**
  * Test class for the IrusExportUsageEventListener
  */
 //@RunWith(MockitoJUnitRunner.class)
+@Ignore("IRUS No longer used.")
 public class ITIrusExportUsageEventListener extends AbstractIntegrationTestWithDatabase {
 
     private static final Logger log = LogManager.getLogger();
