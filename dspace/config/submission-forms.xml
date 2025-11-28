@@ -118,11 +118,11 @@
                     <dc-element>creator</dc-element>
                     <dc-qualifier></dc-qualifier>
                     <repeatable>true</repeatable>
-                    <label>Data Creator</label>
+                    <label>Data Creator (Last name - First name)</label>
                     <input-type>name</input-type>
                     <hint> Enter the names of the data creators / principal investigators of this item. If the
             name of the data creator is unknown please be sure to fill out the Publisher field. </hint>
-                    <required></required>
+                    <required>You must enter a Data Creator for this dataset.</required>
                 </field>
             </row>
 
