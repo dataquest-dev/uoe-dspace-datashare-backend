@@ -128,15 +128,15 @@ services:
       cp -r /opt/solr/server/solr/configsets/suggestion/* suggestion
       exec solr -f
 
-  mailcatcher:
-    image: hausgold/mailcatcher
-    networks:
-      - dspacenet # Connect mailcatcher to the dspacenet network
-    ports:
-      - published: 1080
-        target: 1080
-      - published: 1025
-        target: 1025
+  # mailcatcher:
+  #   image: hausgold/mailcatcher
+  #   networks:
+  #     - dspacenet # Connect mailcatcher to the dspacenet network
+  #   ports:
+  #     - published: 1080
+  #       target: 1080
+  #     - published: 1025
+  #       target: 1025
       
 volumes:
   assetstore:
