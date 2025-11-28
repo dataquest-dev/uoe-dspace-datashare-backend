@@ -301,10 +301,6 @@
             <!--Step will be to Describe the item. -->
             <step id="metadatapageone"/>
 
-            <!-- Datashare Funder-->
-            <step id="datashareFunderForm"/>
-
-
             <!-- <step id="traditionalpagetwo"/> -->
 
             <!-- Uncomment this step to allow the user to embargo or access restrict the entire item -->

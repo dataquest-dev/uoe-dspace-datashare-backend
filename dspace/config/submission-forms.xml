@@ -142,18 +142,18 @@
             </row>
 
             <!--***** Funder *****-->
-            <!-- <row>
+            <row>
                 <field>
-                    <dc-schema>dc</dc-schema>
-                    <dc-element>contributor</dc-element>
-                    <dc-qualifier>other</dc-qualifier>
+                    <dc-schema>ds</dc-schema>
+                    <dc-element>funder</dc-element>
+                    <dc-qualifier>dropdown-value</dc-qualifier>
                     <repeatable>true</repeatable>
                     <label>Funder</label>
                     <input-type value-pairs-name="funding_bodies">dropdown</input-type>
-                    <hint> Select each agency that funded the creation of the dataset. </hint>
+                    <hint> Select each organisation that funded the creation of the dataset. For funders not in the list use "Other". </hint>
                     <required>A Funder is mandatory.</required>
                 </field>
-            </row> -->
+            </row>
        
             <!--***** Date Available *****-->
             <row>
