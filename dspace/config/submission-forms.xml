@@ -197,7 +197,7 @@
                     <repeatable>false</repeatable>
                     <label>Subject Classification</label>
                     <input-type>onebox</input-type>
-                    <hint> Select the most appropriate subject for the study as a whole. </hint>
+                    <hint> earch for a subject and from the dropdown menu select the classification which most closely matches your research. </hint>
                     <required></required>
                     <vocabulary>jacs</vocabulary>
                 </field>
