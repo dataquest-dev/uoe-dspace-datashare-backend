@@ -451,7 +451,7 @@ public class DatashareItemDataset {
 				}
 			} catch (Exception ex) {
 				log.error("Failed to create DatashareDataset: ", ex);
-				throw new RuntimeException(ex);
+				// throw new RuntimeException(ex);
 			} finally {
 				try {
 					context.complete();
