@@ -179,9 +179,16 @@ public class DatashareItemDataset {
 		if (this.item != null) {
 			zip = new File(this.getFullPath());
 		} else {
-			zip = new File(dir + File.separator + DatashareItemDataset.getFileName(this.handle));
+			if( this.handle != null ) {
+			 zip = new File(dir + File.separator + DatashareItemDataset.getFileName(this.handle));
+			}
 		}
-
+      
+		if( zip == null ) {
+			log.warn("No dataset file to delete for item or handle.");
+			return;
+		}
+		
 		if (!zip.delete()) {
 			log.warn("Problem deleting " + zip);
 		} else {
