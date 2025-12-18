@@ -188,7 +188,7 @@ public class DatashareItemDataset {
 			log.warn("No dataset file to delete for item or handle.");
 			return;
 		}
-		
+
 		if (!zip.delete()) {
 			log.warn("Problem deleting " + zip);
 		} else {
@@ -364,7 +364,7 @@ public class DatashareItemDataset {
 				Date embargoDate = parseDate(embargoDateStr);
 				Date now = new Date();
 				log.info("embargoDate: " + embargoDate + ", now: " + now);
-				if (embargoDate != null && embargoDate.after(now)) {
+				if (embargoDate != null && embargoDate.before(now)) {
 					hasEmbargo = false;
 				}
 			} catch (Exception ex) {
