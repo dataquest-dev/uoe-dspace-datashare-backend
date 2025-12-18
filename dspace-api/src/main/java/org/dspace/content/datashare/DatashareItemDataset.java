@@ -53,6 +53,7 @@ public class DatashareItemDataset {
 	private static final String DATASHARE_SCHEMA = "ds";
 	private static final String TOMBSTONE_ELEMENT = "withdrawn";
 	private static final String TOMBSTONE_SHOW_QUALIFIER = "showtombstone";
+	private static final String DC_DATE_EMBARGO = "dc.date.embargo";
 
 	// Static variables
 	private static String dir = null;
@@ -341,12 +342,27 @@ public class DatashareItemDataset {
 	public static boolean hasEmbargo(Context context, Item item) {
 		boolean hasEmbargo = true;
 		ItemService itemService = ContentServiceFactory.getInstance().getItemService();
-		ConfigurationService configurationService = DSpaceServicesFactory.getInstance().getConfigurationService();
 
-		List<MetadataValue> embargoList = itemService.getMetadataByMetadataString(item,
-				configurationService.getProperty("embargo.field.lift"));
+		// List<MetadataValue> embargoList = itemService.getMetadataByMetadataString(item,
+		// 		configurationService.getProperty("embargo.field.lift"));
+        List<MetadataValue> embargoList = itemService.getMetadataByMetadataString(item, DC_DATE_EMBARGO);
 		if (embargoList == null || embargoList.size() == 0) {
 			hasEmbargo = false;
+		} else {
+			// Check if embargo date is in the past
+			try {
+				String embargoDateStr = embargoList.get(0).getValue();
+				log.info("embargoDateStr: " + embargoDateStr);
+
+				Date embargoDate = parseDate(embargoDateStr);
+				Date now = new Date();
+				log.info("embargoDate: " + embargoDate + ", now: " + now);
+				if (embargoDate != null && embargoDate.after(now)) {
+					hasEmbargo = false;
+				}
+			} catch (Exception ex) {
+				log.error("Problem parsing embargo date: " + ex.getMessage());
+			}
 		}
 
 		log.info(item.getID() + " hasEmbargo: " + hasEmbargo);
@@ -383,6 +399,30 @@ public class DatashareItemDataset {
 
 		log.info("isTombstoned(): " + show);
 		return show;
+	}
+	
+	/**
+	 * Parse a date string in ISO format yyyy-MM-dd and return a Date
+	 * representing the start of that day in the system default timezone.
+	 * Returns null when the input is null, empty or not in the expected format.
+	 *
+	 * @param dateStr date string expected in yyyy-MM-dd
+	 * @return parsed Date or null
+	 */
+	public static Date parseDate(String dateStr) {
+		if (dateStr == null || dateStr.trim().isEmpty()) {
+			return null;
+		}
+		try {
+			// Use Java 8 date time API to parse date
+			java.time.LocalDate ld = java.time.LocalDate.parse(dateStr,
+					java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+			java.time.ZonedDateTime zdt = ld.atStartOfDay(java.time.ZoneId.systemDefault());
+			return Date.from(zdt.toInstant());
+		} catch (java.time.format.DateTimeParseException ex) {
+			log.error("Problem parsing date: " + ex.getMessage());
+			return null;
+		}
 	}
 
 	/**
