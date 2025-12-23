@@ -48,11 +48,13 @@
             </row>
         </form>
 
-        <!-- Form which defines the first page/section of the "traditional" DSpace submission process,
+        <!-- Form which defines the first page/section of the "traditional" DSpace submission
+        process,
              often used when depositing normal Items (i.e. Items which are not Entities). -->
         <form name="metadatapageone">
 
-            <!--***** Title *****-->
+            <!--*****
+            Title *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -66,7 +68,8 @@
                 </field>
             </row>
 
-            <!--***** Type *****-->
+            <!--*****
+            Type *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -80,7 +83,8 @@
                 </field>
             </row>
 
-            <!--***** Dataset Description *****-->
+            <!--*****
+            Dataset Description *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -89,14 +93,15 @@
                     <repeatable>false</repeatable>
                     <label>Dataset Description</label>
                     <input-type>textarea</input-type>
-                    <hint> Please provide a summary description of the dataset or an abstract of the study in
-            which the data was generated. </hint>
+                    <hint> Please provide a summary description of the dataset or an abstract of the
+                        study in which the data was generated. </hint>
                     <required></required>
                 </field>
 
             </row>
 
-            <!--***** Depositor *****-->
+            <!--*****
+            Depositor *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -105,13 +110,15 @@
                     <repeatable>false</repeatable>
                     <label>Depositor</label>
                     <input-type>name</input-type>
-                    <!-- NOTE: DON'T FILL IN THE HINT AS IT WILL BE DIPLAYED AS WE CAN@T MASK IT WITH CSS. -->
+                    <!-- NOTE: DON'T FILL IN THE HINT AS IT WILL BE DIPLAYED AS WE CAN@T MASK IT
+                    WITH CSS. -->
                     <hint></hint>
                     <required>You must enter a Depositor for this dataset.</required>
                 </field>
             </row>
 
-            <!--***** Data Creator *****-->
+            <!--*****
+            Data Creator *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -120,13 +127,15 @@
                     <repeatable>true</repeatable>
                     <label>Data Creator (surname - first name)</label>
                     <input-type>name</input-type>
-                    <hint> Enter the names of the data creators / principal investigators of this item. If the
-            name of the data creator is unknown please be sure to fill out the Publisher field. </hint>
+                    <hint> Enter the names of the data creators / principal investigators of this
+                        item. If the name of the data creator is unknown please be sure to fill out
+                        the Publisher field. </hint>
                     <required>You must enter a Data Creator for this dataset.</required>
                 </field>
             </row>
 
-            <!--***** Publisher *****-->
+            <!--*****
+            Publisher *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -135,13 +144,15 @@
                     <repeatable>false</repeatable>
                     <label>Data Publisher</label>
                     <input-type>onebox</input-type>
-                    <hint> Enter the organisation or service responsible for making the data available using the following convention.  
-                    Example: "University of Edinburgh. School of GeoSciences. Institute of Geography" </hint>
+                    <hint> Enter the organisation or service responsible for making the data
+                        available using the following convention.  Example: "University of
+                        Edinburgh. School of GeoSciences. Institute of Geography" </hint>
                     <required>Publisher is mandatory.</required>
                 </field>
             </row>
 
-            <!--***** Funder *****-->
+            <!--*****
+            Funder *****-->
             <row>
                 <field>
                     <dc-schema>ds</dc-schema>
@@ -150,12 +161,14 @@
                     <repeatable>true</repeatable>
                     <label>Funder</label>
                     <input-type value-pairs-name="funding_bodies">dropdown</input-type>
-                    <hint> Select each organisation that funded the creation of the dataset. For funders not in the list use "Other". </hint>
+                    <hint> Select each organisation that funded the creation of the dataset. For
+                        funders not in the list use "Other". </hint>
                     <required>A Funder is mandatory.</required>
                 </field>
             </row>
-       
-            <!--***** Date Available *****-->
+
+            <!--*****
+            Date Available *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -165,14 +178,16 @@
                     <label>Embargo Date</label>
                     <style>col-sm-4</style>
                     <input-type>date</input-type>
-                    <hint> The date on which files will become available to download. Enter the date when the embargo should expire (up to 1 year from today). 
-                    If a longer embargo is required, please contact data-support@ed.ac.uk. 
-                    If no embargo is required, leave blank. </hint>
+                    <hint> The date on which files will become available to download. Enter the date
+                        when the embargo should expire (up to 1 year from today). If a longer
+                        embargo is required, please contact data-support@ed.ac.uk. If no embargo is
+                        required, leave blank. </hint>
                     <required></required>
                 </field>
             </row>
 
-            <!--***** Language *****-->
+            <!--*****
+            Language *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -181,14 +196,14 @@
                     <repeatable>false</repeatable>
                     <label>Language</label>
                     <input-type value-pairs-name="common_iso_languages">dropdown</input-type>
-                    <hint> Select the language of the data files and/or documentation. If the language does not appear in the
-                        list, please select 'Other'. If the content does not really have a language (for example, if it
-                        is a dataset or an image) please select 'N/A'.
-                    </hint>
+                    <hint> Select the language of the data files and/or documentation. If the
+                        language does not appear in the list, please select 'Other'. If the content
+                        does not really have a language (for example, if it is a dataset or an
+                        image) please select 'N/A'. </hint>
                     <required></required>
                 </field>
             </row>
-    
+
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -197,7 +212,8 @@
                     <repeatable>false</repeatable>
                     <label>Subject Classification</label>
                     <input-type>onebox</input-type>
-                    <hint> Search for a subject and from the dropdown menu select the classification which most closely matches your research. </hint>
+                    <hint> Search for a subject and from the dropdown menu select the classification
+                        which most closely matches your research. </hint>
                     <required></required>
                     <vocabulary>jacs</vocabulary>
                 </field>
@@ -211,13 +227,15 @@
                     <repeatable>true</repeatable>
                     <label>Subject Keywords</label>
                     <input-type>tag</input-type>
-                    <hint> Enter as many appropriate subject keywords or phrases as you like, separated by a comma or by entering return. </hint>
+                    <hint> Enter as many appropriate subject keywords or phrases as you like,
+                        separated by a comma or by entering return. </hint>
                     <required></required>
                     <vocabulary></vocabulary>
                 </field>
             </row>
 
-            <!--***** Relation (Is Version Of) *****-->
+            <!--*****
+            Relation (Is Version Of) *****-->
             <field>
                 <dc-schema>dc</dc-schema>
                 <dc-element>relation</dc-element>
@@ -225,13 +243,16 @@
                 <repeatable>false</repeatable>
                 <label>Relation (Is Version Of)</label>
                 <input-type>onebox</input-type>
-                <hint> If there is another version of this dataset lodged in this repository or another
-            archive (for example, in the UK Data Archive) enter the persistent identifier (e.g., DOI) of the corresponding
-            item. </hint>
+                <hint> If there is another version of this dataset lodged in this repository or
+                    another
+                    archive (for example, in the UK Data Archive) enter the persistent identifier
+                    (e.g., DOI) of the corresponding
+                    item. </hint>
                 <required></required>
             </field>
 
-            <!--***** Publications and other outputs *****-->
+            <!--*****
+            Publications and other outputs *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -240,14 +261,17 @@
                     <repeatable>true</repeatable>
                     <label>Publications and other outputs</label>
                     <input-type>onebox</input-type>
-                    <hint> Does this data support a manuscript or research output?  If so, please provide the persistent identifier such as a DOI.
-                    An identifier for an Open Access version of the research output is preferred, if available.
-                    If your output is in submission or under review, please provide the working title, list of authors, journal and status. </hint>
+                    <hint> Does this data support a manuscript or research output?  If so, please
+                        provide the persistent identifier such as a DOI. An identifier for an Open
+                        Access version of the research output is preferred, if available. If your
+                        output is in submission or under review, please provide the working title,
+                        list of authors, journal and status. </hint>
                     <required></required>
                 </field>
             </row>
 
-            <!--***** Supersedes *****-->
+            <!--*****
+            Supersedes *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -256,12 +280,14 @@
                     <repeatable>false</repeatable>
                     <label>Supersedes </label>
                     <input-type>onebox</input-type>
-                    <hint> If this dataset supersedes an earlier dataset deposited in this repository enter
-            the persistent identifier (e.g., DOI) of the previous dataset. </hint>
+                    <hint> If this dataset supersedes an earlier dataset deposited in this
+                        repository enter the persistent identifier (e.g., DOI) of the previous
+                        dataset. </hint>
                     <required></required>
                 </field>
             </row>
-            <!--***** Superseded By *****-->
+            <!--*****
+            Superseded By *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -270,13 +296,15 @@
                     <repeatable>false</repeatable>
                     <label>Superseded By</label>
                     <input-type>onebox</input-type>
-                    <hint>Only fill out this field if this dataset has been superseded by a later data
-            deposit. Enter the persistent identifier (e.g., DOI) of the newest data item.</hint>
+                    <hint>Only fill out this field if this dataset has been superseded by a later
+                        data deposit. Enter the persistent identifier (e.g., DOI) of the newest data
+                        item.</hint>
                     <required></required>
                 </field>
             </row>
 
-            <!--***** Source *****-->
+            <!--*****
+            Source *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -285,14 +313,15 @@
                     <repeatable>true</repeatable>
                     <label>Source</label>
                     <input-type>onebox</input-type>
-                    <hint> If dataset includes data created by a source other than the data creator, please
-            specify. Example: 2001 Census; Census Area Statistics. Optionally, add a URI /URL to the
-            source. </hint>
+                    <hint> If dataset includes data created by a source other than the data creator,
+                        please specify. Example: 2001 Census; Census Area Statistics. Optionally,
+                        add a URI /URL to the source. </hint>
                     <required></required>
                 </field>
             </row>
 
-            <!--***** Dataset Description (TOC)  *****-->
+            <!--*****
+            Dataset Description (TOC)  *****-->
             <!-- <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -418,7 +447,8 @@
         <!-- Datashare Spatial and Temporal form-->
         <form name="datashareSpatialAndTemporalForm">
 
-        <!--***** Spatial Coverage - country (note: the hijacking of subject.dcc) *****-->
+            <!--*****
+            Spatial Coverage - country (note: the hijacking of subject.dcc) *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -427,11 +457,13 @@
                     <repeatable>true</repeatable>
                     <label>Spatial Coverage: Country</label>
                     <input-type value-pairs-name="countries">dropdown</input-type>
-                    <hint> If location is important to the meaning or context of the data, add the country. </hint>
+                    <hint> If location is important to the meaning or context of the data, add the
+                        country. </hint>
                     <required></required>
                 </field>
             </row>
-            <!--***** Spatial Coverage - place *****-->
+            <!--*****
+            Spatial Coverage - place *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
@@ -440,14 +472,14 @@
                     <repeatable>true</repeatable>
                     <label>Spatial Coverage: Place</label>
                     <input-type>onebox</input-type>
-                    <hint> If location is important to the meaning or context of the data, add the place. </hint>
+                    <hint> If location is important to the meaning or context of the data, add the
+                        place. </hint>
                     <required></required>
                 </field>
 
             </row>
 
 
-           
             <row>
                 <field>
                     <dc-schema>ds</dc-schema>
@@ -467,7 +499,8 @@
                     <repeatable>false</repeatable>
                     <label>To: </label>
                     <input-type>date</input-type>
-                    <hint> If time period is important to the meaning or context of the data, add here. </hint>
+                    <hint> If time period is important to the meaning or context of the data, add
+                        here. </hint>
                     <required></required>
                 </field>
             </row>
@@ -483,7 +516,8 @@
                     <repeatable>true</repeatable>
                     <label>Funder</label>
                     <input-type value-pairs-name="funding_bodies">dropdown</input-type>
-                    <hint> Select each organisation that funded the creation of the dataset. For funders not in the list use the free text field below. </hint>
+                    <hint> Select each organisation that funded the creation of the dataset. For
+                        funders not in the list use the free text field below. </hint>
                     <required>A Funder is mandatory.</required>
                 </field>
             </row>
@@ -495,7 +529,8 @@
                     <repeatable>true</repeatable>
                     <label>Funder</label>
                     <input-type>onebox</input-type>
-                    <hint> Enter a funder here if you have chosen 'Other' above or have additional funders not in dropdown. </hint>
+                    <hint> Enter a funder here if you have chosen 'Other' above or have additional
+                        funders not in dropdown. </hint>
                     <required></required>
                 </field>
             </row>
@@ -547,92 +582,36 @@
 
         <value-pairs value-pairs-name="common_types" dc-term="type">
             <pair>
-                <displayed-value>Animation</displayed-value>
-                <stored-value>Animation</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Article</displayed-value>
-                <stored-value>Article</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Book</displayed-value>
-                <stored-value>Book</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Book chapter</displayed-value>
-                <stored-value>Book chapter</stored-value>
-            </pair>
-            <pair>
                 <displayed-value>Dataset</displayed-value>
-                <stored-value>Dataset</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Learning Object</displayed-value>
-                <stored-value>Learning Object</stored-value>
+                <stored-value>dataset</stored-value>
             </pair>
             <pair>
                 <displayed-value>Image</displayed-value>
-                <stored-value>Image</stored-value>
+                <stored-value>image</stored-value>
             </pair>
             <pair>
-                <displayed-value>Image, 3-D</displayed-value>
-                <stored-value>Image, 3-D</stored-value>
+                <displayed-value>Interactive Resource</displayed-value>
+                <stored-value>interactive resource</stored-value>
             </pair>
             <pair>
-                <displayed-value>Map</displayed-value>
-                <stored-value>Map</stored-value>
+                <displayed-value>Moving Image</displayed-value>
+                <stored-value>moving image</stored-value>
             </pair>
             <pair>
-                <displayed-value>Musical Score</displayed-value>
-                <stored-value>Musical Score</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Plan or blueprint</displayed-value>
-                <stored-value>Plan or blueprint</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Preprint</displayed-value>
-                <stored-value>Preprint</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Presentation</displayed-value>
-                <stored-value>Presentation</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Recording, acoustical</displayed-value>
-                <stored-value>Recording, acoustical</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Recording, musical</displayed-value>
-                <stored-value>Recording, musical</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Recording, oral</displayed-value>
-                <stored-value>Recording, oral</stored-value>
+                <displayed-value>Service</displayed-value>
+                <stored-value>service</stored-value>
             </pair>
             <pair>
                 <displayed-value>Software</displayed-value>
-                <stored-value>Software</stored-value>
+                <stored-value>software</stored-value>
             </pair>
             <pair>
-                <displayed-value>Technical Report</displayed-value>
-                <stored-value>Technical Report</stored-value>
+                <displayed-value>Sound</displayed-value>
+                <stored-value>sound</stored-value>
             </pair>
             <pair>
-                <displayed-value>Thesis</displayed-value>
-                <stored-value>Thesis</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Video</displayed-value>
-                <stored-value>Video</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Working Paper</displayed-value>
-                <stored-value>Working Paper</stored-value>
-            </pair>
-            <pair>
-                <displayed-value>Other</displayed-value>
-                <stored-value>Other</stored-value>
+                <displayed-value>Text</displayed-value>
+                <stored-value>text</stored-value>
             </pair>
         </value-pairs>
 
@@ -977,7 +956,8 @@
                 <stored-value>DOCOMOMO International</stored-value>
             </pair>
             <pair>
-                <displayed-value>Edinburgh Experimental Cancer Medicine Centre, University of Edinburgh</displayed-value>
+                <displayed-value>Edinburgh Experimental Cancer Medicine Centre, University of
+                    Edinburgh</displayed-value>
                 <stored-value>Edinburgh Experimental Cancer Medicine Centre, University of Edinburgh</stored-value>
             </pair>
             <pair>
@@ -1045,8 +1025,10 @@
                 <stored-value>University of Edinburgh</stored-value>
             </pair>
             <pair>
-                <displayed-value>University of Edinburgh. Scottish Centre for Conservation Studies (SCCS)</displayed-value>
-                <stored-value>University of Edinburgh. Scottish Centre for Conservation Studies (SCCS)</stored-value>
+                <displayed-value>University of Edinburgh. Scottish Centre for Conservation Studies
+                    (SCCS)</displayed-value>
+                <stored-value>University of Edinburgh. Scottish Centre for Conservation Studies
+                    (SCCS)</stored-value>
             </pair>
             <pair>
                 <displayed-value>Volkswagen Foundation</displayed-value>
@@ -1066,7 +1048,8 @@
         <!-- Datshare License specific value pairs -->
 
         <value-pairs value-pairs-name="datashare_license_types" dc-term="license">
-            <!-- Based on: http://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/latest/field_licensecondition.html#dc-rightslicensecondition -->
+            <!-- Based on:
+            http://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/latest/field_licensecondition.html#dc-rightslicensecondition -->
             <pair>
                 <displayed-value>Creative Commons Attribution 4.0 International Public License</displayed-value>
                 <stored-value>Creative Commons Attribution 4.0 International Public License</stored-value>
