@@ -27,6 +27,11 @@ with reusable workflows.
 6. **Added checkstyle suppressions** for DataShare custom code and modified upstream files
    (1893 pre-existing violations)
 7. **Removed unused imports** in `StatelessAuthenticationFilter.java`
+8. **Re-enabled `searchFilterIssued`** in `defaultConfiguration.searchFilters` in `discovery.xml`
+   — DataShare commented out the `dateIssued` discovery filter but didn't update the upstream
+   `MetadataExportSearchIT` integration test that uses it. Uncommented it only in
+   `searchFilters` (not `sidebarFacets`) to allow search/CLI queries by `dateIssued`
+   while keeping the UI sidebar unchanged.
 
 All other workflow files (`build.yml`, `docker.yml`, `reusable-docker-build.yml`)
 already had up-to-date action versions on the target branch.
