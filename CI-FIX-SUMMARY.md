@@ -12,10 +12,14 @@ The original PR branch was also based on `master` instead of the target branch
 already had `build.yml` and `docker.yml` upgraded to v4 actions and restructured
 with reusable workflows.
 
-## Fix
+## Fixes
 
 1. **Rebased** the PR branch onto `datashare-UoEMainLibrary-dspace-8_x` (eliminating conflicts)
 2. **Upgraded** `codescan.yml`: `github/codeql-action/*` v2 → v3
+3. **Added Flyway migration** `V8.0_2025.04.12__create_dataset_table.sql` (H2 + PostgreSQL)
+   — The `DatashareDataset` JPA entity maps to a `dataset` table, but no migration existed
+   to create it. Hibernate 6 schema validation failed with "missing table [dataset]",
+   causing 59 unit test failures.
 
 All other workflow files (`build.yml`, `docker.yml`, `reusable-docker-build.yml`)
 already had up-to-date action versions on the target branch.
