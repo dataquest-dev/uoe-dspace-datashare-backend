@@ -159,8 +159,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     // DSpaceObjectService<DatashareDataset> and DSpaceObjectLegacySupportService<DatashareDataset>
     @Override
     public DatashareDataset find(Context context, UUID uuid) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'find'");
+        return null;
     }
 
     @Override
