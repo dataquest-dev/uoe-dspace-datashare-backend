@@ -164,8 +164,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Override
     public String getName(DatashareDataset dso) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getName'");
+        return dso != null ? dso.getName() : null;
     }
 
     @Override
@@ -374,8 +373,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Override
     public int getSupportsTypeConstant() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getSupportsTypeConstant'");
+        return Constants.DATASHARE_DATASET;
     }
 
     @Override
@@ -386,14 +384,12 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Override
     public DatashareDataset findByIdOrLegacyId(Context context, String id) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'findByIdOrLegacyId'");
+        return null;
     }
 
     @Override
     public DatashareDataset findByLegacyId(Context context, int id) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'findByLegacyId'");
+        return null;
     }
 
 }
