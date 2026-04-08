@@ -32,6 +32,11 @@ with reusable workflows.
    `MetadataExportSearchIT` integration test that uses it. Uncommented it only in
    `searchFilters` (not `sidebarFacets`) to allow search/CLI queries by `dateIssued`
    while keeping the UI sidebar unchanged.
+9. **Fixed `DatashareDatasetServiceImpl.find()`** to return `null` instead of throwing
+   `UnsupportedOperationException` — The unimplemented `find(Context, UUID)` method broke
+   `DSpaceObjectUtilsImpl.findDSpaceObject()` which iterates all `DSpaceObjectService`
+   implementations. This caused `MetadataExportIT.metadataExportToCsvTest_NonValidIdentifier`
+   to fail (caught `UnsupportedOperationException` instead of expected `IllegalArgumentException`).
 
 All other workflow files (`build.yml`, `docker.yml`, `reusable-docker-build.yml`)
 already had up-to-date action versions on the target branch.
