@@ -37,6 +37,14 @@ with reusable workflows.
    `DSpaceObjectUtilsImpl.findDSpaceObject()` which iterates all `DSpaceObjectService`
    implementations. This caused `MetadataExportIT.metadataExportToCsvTest_NonValidIdentifier`
    to fail (caught `UnsupportedOperationException` instead of expected `IllegalArgumentException`).
+   Also fixed `getSupportsTypeConstant()`, `getName()`, `findByIdOrLegacyId()`, and
+   `findByLegacyId()` stubs.
+10. **Re-enabled `searchFilterIssued` in ALL discovery configurations** — Fix #8 only
+    uncommented it in `defaultConfiguration.searchFilters`. Multiple IT test classes
+    (`DiscoveryRestControllerIT`, `DiscoveryScopeBasedRestControllerIT`,
+    `BrowsesResourceControllerIT`, `OpenSearchControllerIT`) expect `dateIssued` in both
+    `searchFilters` AND `sidebarFacets` across all configurations. Uncommented all 21
+    remaining `searchFilterIssued` references.
 
 All other workflow files (`build.yml`, `docker.yml`, `reusable-docker-build.yml`)
 already had up-to-date action versions on the target branch.
