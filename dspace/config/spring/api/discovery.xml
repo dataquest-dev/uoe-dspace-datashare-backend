@@ -217,7 +217,7 @@
                 <ref bean="searchFilterAccessioned" />
                <!-- <ref bean="searchFilterAvailable" /> -->
                 <ref bean="searchFilterEmbargo" />
-                <!-- <ref bean="searchFilterIssued" /> -->
+                <ref bean="searchFilterIssued" />
                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
