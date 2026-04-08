@@ -20,6 +20,13 @@ with reusable workflows.
    — The `DatashareDataset` JPA entity maps to a `dataset` table, but no migration existed
    to create it. Hibernate 6 schema validation failed with "missing table [dataset]",
    causing 59 unit test failures.
+4. **Fixed proxy wildcard tests** in `DSpaceHttpClientFactoryTest` — hardcoded patterns
+   `"local*"` and `"*host"` assumed MockWebServer hostname is always `localhost`; now derived
+   dynamically from `mockServer.getHostName()`
+5. **Added DSpace license headers** to 13 DataShare custom files missing them
+6. **Added checkstyle suppressions** for DataShare custom code and modified upstream files
+   (1893 pre-existing violations)
+7. **Removed unused imports** in `StatelessAuthenticationFilter.java`
 
 All other workflow files (`build.yml`, `docker.yml`, `reusable-docker-build.yml`)
 already had up-to-date action versions on the target branch.
