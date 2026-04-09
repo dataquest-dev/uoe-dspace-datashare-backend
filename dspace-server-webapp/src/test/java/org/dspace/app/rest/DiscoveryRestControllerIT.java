@@ -1331,7 +1331,7 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
         context.restoreAuthSystemState();
 
         getClient().perform(get("/api/discover/search/objects")
-                   .param("sort", "dc.date.accessioned, ASC")
+                   .param("sort", "dc.date.available, ASC")
                    .param("configuration", "workspace"))
                    .andExpect(status().isUnprocessableEntity());
     }
@@ -4558,6 +4558,8 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                 .andExpect(jsonPath("$._embedded.facets", Matchers.containsInAnyOrder(
                         FacetEntryMatcher.resourceTypeFacet(false),
                         FacetEntryMatcher.typeFacet(false),
+                        FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                         FacetEntryMatcher.dateIssuedFacet(false)
                 )))
                 //There always needs to be a self link
@@ -4604,6 +4606,8 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                 .andExpect(jsonPath("$._embedded.facets", Matchers.containsInAnyOrder(
                         FacetEntryMatcher.resourceTypeFacet(false),
                         FacetEntryMatcher.typeFacet(false),
+                        FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                         FacetEntryMatcher.dateIssuedFacet(false)
                 )))
                 //There always needs to be a self link
@@ -4788,6 +4792,8 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                 .andExpect(jsonPath("$._embedded.facets", Matchers.containsInAnyOrder(
                         FacetEntryMatcher.resourceTypeFacet(false),
                         FacetEntryMatcher.typeFacet(false),
+                        FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                         FacetEntryMatcher.dateIssuedFacet(false),
                         FacetEntryMatcher.submitterFacet(false)
                 )))
@@ -4838,6 +4844,8 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                 .andExpect(jsonPath("$._embedded.facets", Matchers.containsInAnyOrder(
                         FacetEntryMatcher.resourceTypeFacet(false),
                         FacetEntryMatcher.typeFacet(false),
+                        FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                         FacetEntryMatcher.dateIssuedFacet(false),
                         FacetEntryMatcher.submitterFacet(false)
                 )))
@@ -4871,6 +4879,8 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                 .andExpect(jsonPath("$._embedded.facets", Matchers.containsInAnyOrder(
                         FacetEntryMatcher.resourceTypeFacet(false),
                         FacetEntryMatcher.typeFacet(false),
+                        FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                         FacetEntryMatcher.dateIssuedFacet(false),
                         FacetEntryMatcher.submitterFacet(false)
                 )))
@@ -5085,6 +5095,8 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                 .andExpect(jsonPath("$._embedded.facets", Matchers.containsInAnyOrder(
                         FacetEntryMatcher.resourceTypeFacet(false),
                         FacetEntryMatcher.typeFacet(false),
+                        FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                         FacetEntryMatcher.dateIssuedFacet(false),
                         FacetEntryMatcher.submitterFacet(false)
                 )))
@@ -6859,12 +6871,14 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
             .andExpect(jsonPath("$._embedded.facets", Matchers.containsInAnyOrder(
                 FacetEntryMatcher.resourceTypeFacet(false),
                 FacetEntryMatcher.typeFacet(false),
+                FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                 FacetEntryMatcher.dateIssuedFacet(false),
                 FacetEntryMatcher.submitterFacet(false),
                 FacetEntryMatcher.supervisedByFacet(false)
             )))
             //check supervisedBy Facet values
-            .andExpect(jsonPath("$._embedded.facets[4]._embedded.values",
+            .andExpect(jsonPath("$._embedded.facets[6]._embedded.values",
                 contains(
                     entrySupervisedBy(groupA.getName(), groupA.getID().toString(), 6),
                     entrySupervisedBy(groupB.getName(), groupB.getID().toString(), 2)
