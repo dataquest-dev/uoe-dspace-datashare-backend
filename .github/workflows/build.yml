@@ -85,6 +85,8 @@ jobs:
     # Must run after 'tests' job above
     needs: tests
     runs-on: ubuntu-latest
+    # Don't let codecov upload failures block the overall workflow status
+    if: ${{ secrets.CODECOV_TOKEN != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
