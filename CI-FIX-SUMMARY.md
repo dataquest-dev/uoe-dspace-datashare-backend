@@ -53,8 +53,36 @@ with reusable workflows.
     `DiscoveryScopeBasedRestControllerIT` default-fallback expectations, and uncommented
     `sortDateIssued` in all 12 discovery configurations.
 
+12. **Fixed BrowsesResourceControllerIT and browse configuration** — DataShare adds
+    `subject_classification` (dc.subject.classification) and `dateaccessioned` browse
+    indexes, `dateembargo` sort option, and disables `srsc` vocabulary. Fixed `dspace.cfg`
+    duplicate property issue (commented out first-set browse/sort config so DataShare's
+    section is authoritative), added `BrowseIndexMatcher` entries for all 6 indexes,
+    updated `findAll` to expect 6 indexes and `findBrowseByVocabulary` to expect 404 (srsc
+    disabled).
+13. **Fixed ChoiceAuthorityServiceImpl NPE** — `getVocabularyIndex()` crashed with
+    `NullPointerException` when iterating `formsToFields` for vocabularies (`farm`, `nsi`)
+    not referenced in `submission-forms.xml`. Added null check returning null before the
+    loop. This caused `BrowsesResourceControllerIT.findAll` to return HTTP 500.
+14. **Fixed DiscoveryRestControllerIT workspace/workflow/workflowAdmin/supervision tests**
+    — DataShare adds `dateAccessioned` and `dateEmbargo` facets to workspace, workflow,
+    workflowAdmin, and supervision discovery configurations. Added these facets to hardcoded
+    assertion blocks. Also changed `discoverSearchByFieldNotConfiguredTest` to use
+    `dc.date.available` instead of `dc.date.accessioned` (now a valid sort field).
+    Fixed supervision test `supervisedBy` index shift (`facets[4]` → `facets[6]`).
+15. **Fixed VocabularyRestRepositoryIT.findAllTest** — DataShare adds `jacs` vocabulary
+    to `submission-forms.xml`, making 7 total vocabularies instead of upstream's 6. Added
+    `jacs` to expected vocabulary list and updated `totalElements` assertion.
+
 All other workflow files (`build.yml`, `docker.yml`, `reusable-docker-build.yml`)
 already had up-to-date action versions on the target branch.
+
+## Pre-existing IT failures (not caused by DataShare changes)
+
+These tests also fail on the upstream target branch:
+- **Import service ITs** (ADS, Cinii, CrossRef, DataCite, Epo, PubmedEurope, Scielo, Scopus)
+  — live external API tests with hardcoded expected values that change over time
+- **CurationScriptIT.testURLRedirectCurateTest** — HTTP requests to external URLs
 
 ## Note
 
