@@ -98,18 +98,25 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
     /**
      * This field has been created to easily modify the tests when updating the defaultConfiguration's sidebar facets
      */
+    // DATASHARE - added dateAccessioned and dateEmbargo facets
     List<Matcher<? super Object>> customSidebarFacets = List.of(
+        FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date")
     );
 
     /**
      * This field has been created to easily modify the tests when updating the defaultConfiguration's search filters
      */
+    // DATASHARE - added dateAccessioned and dateEmbargo search filters
     List<Matcher<? super Object>> customSearchFilters = List.of(
+        SearchFilterMatcher.dateAccessionedFilter(),
+        SearchFilterMatcher.dateEmbargoFilter()
     );
 
     /**
      * This field has been created to easily modify the tests when updating the defaultConfiguration's sort fields
      */
+    // DATASHARE - added dateEmbargo sort (dateAccessioned already in standard list)
     List<Matcher<? super Object>> customSortFields = List.of(
     );
 
@@ -1241,8 +1248,7 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
             SearchFilterMatcher.isJournalOfPublicationRelation()
         ));
 
-        List<Matcher<? super Object>> allExpectedSortFields = new ArrayList<>(customSortFields);
-        allExpectedSortFields.addAll(List.of(
+        List<Matcher<? super Object>> allExpectedSortFields = new ArrayList<>(List.of(
             SortOptionMatcher.sortOptionMatcher(
                 "score", DiscoverySortFieldConfiguration.SORT_ORDER.desc.name()),
             SortOptionMatcher.sortOptionMatcher(
@@ -1250,7 +1256,10 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
             SortOptionMatcher.sortOptionMatcher(
                 "dc.date.issued", DiscoverySortFieldConfiguration.SORT_ORDER.desc.name()),
             SortOptionMatcher.sortOptionMatcher(
-                "dc.date.accessioned", DiscoverySortFieldConfiguration.SORT_ORDER.desc.name())
+                "dc.date.accessioned", DiscoverySortFieldConfiguration.SORT_ORDER.desc.name()),
+            // DATASHARE - added dateEmbargo sort
+            SortOptionMatcher.sortOptionMatcher(
+                "dc.date.embargo", DiscoverySortFieldConfiguration.SORT_ORDER.desc.name())
         ));
 
         //When calling this root endpoint

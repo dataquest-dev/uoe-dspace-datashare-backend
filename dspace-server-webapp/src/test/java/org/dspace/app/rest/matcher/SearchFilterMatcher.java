@@ -156,4 +156,26 @@ public class SearchFilterMatcher {
             checkOperators()
         );
     }
+
+    // DATASHARE - start
+    public static Matcher<? super Object> dateAccessionedFilter() {
+        return allOf(
+            hasJsonPath("$.filter", is("dateAccessioned")),
+            hasJsonPath("$.hasFacets", is(true)),
+            hasJsonPath("$.type", is("date")),
+            hasJsonPath("$.openByDefault", is(false)),
+            checkOperators()
+        );
+    }
+
+    public static Matcher<? super Object> dateEmbargoFilter() {
+        return allOf(
+            hasJsonPath("$.filter", is("dateEmbargo")),
+            hasJsonPath("$.hasFacets", is(true)),
+            hasJsonPath("$.type", is("date")),
+            hasJsonPath("$.openByDefault", is(false)),
+            checkOperators()
+        );
+    }
+    // DATASHARE - end
 }
