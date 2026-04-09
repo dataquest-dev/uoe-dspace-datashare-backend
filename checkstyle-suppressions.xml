@@ -8,19 +8,4 @@
          on JMockIt Expectations blocks and similar. See https://github.com/checkstyle/checkstyle/issues/3739 -->
     <suppress checks="Indentation" files="src[/\\]test[/\\]java"/>
     <suppress checks="Regexp" files="DSpaceHttpClientFactory\.java"/>
-
-    <!-- Suppress checkstyle for Edinburgh DataShare custom code (pre-existing violations) -->
-    <suppress files="[/\\]datashare[/\\]" checks=".*"/>
-    <suppress files="uk[/\\]ac[/\\]ed[/\\]datashare[/\\]" checks=".*"/>
-
-    <!-- Suppress checkstyle for upstream files modified by DataShare customisations -->
-    <suppress files="ItemUpdate\.java" checks=".*"/>
-    <suppress files="RequestItemEmailNotifier\.java" checks=".*"/>
-    <suppress files="Constants\.java" checks=".*"/>
-    <suppress files="DefaultEmbargoSetter\.java" checks=".*"/>
-    <suppress files="EmbargoServiceImpl\.java" checks=".*"/>
-    <suppress files="EmbargoService\.java" checks=".*"/>
-    <suppress files="DataCiteConnector\.java" checks=".*"/>
-    <suppress files="DOIOrganiser\.java" checks=".*"/>
-    <suppress files="ITIrusExportUsageEventListener\.java" checks=".*"/>
 </suppressions>

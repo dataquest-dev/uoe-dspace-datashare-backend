@@ -16,6 +16,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
+import jakarta.mail.MessagingException;
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.content.DCDate;
@@ -30,8 +31,6 @@ import org.dspace.core.service.PluginService;
 import org.dspace.embargo.service.EmbargoService;
 import org.dspace.services.ConfigurationService;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import jakarta.mail.MessagingException;
 
 /**
  * Public interface to the embargo subsystem.

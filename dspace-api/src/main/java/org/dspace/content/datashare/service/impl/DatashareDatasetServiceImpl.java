@@ -9,7 +9,6 @@ package org.dspace.content.datashare.service.impl;
 
 import java.io.File;
 import java.io.IOException;
-
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,12 +89,14 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
                 if (dataset != null) {
                     String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
                     log.info(filePath, filePath);
-                    if(filePath != null && !filePath.isEmpty()) {
-                    log.info("new File(filePath).exists(): "  + new File(filePath).exists());
-                    if (new File(filePath).exists()) {
-                        downloadLink = DatashareItemDataset.getURL(item) != null ? DatashareItemDataset.getURL(item) : "";
+                    if (filePath != null && !filePath.isEmpty()) {
+                        log.info("new File(filePath).exists(): "
+                            + new File(filePath).exists());
+                        if (new File(filePath).exists()) {
+                            downloadLink = DatashareItemDataset.getURL(item) != null
+                                ? DatashareItemDataset.getURL(item) : "";
+                        }
                     }
-                }
                 }
             }
         } catch (Exception e) {
@@ -155,7 +156,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         }
     }
 
-    // Unmplemented methods of the interfaces: 
+    // Unmplemented methods of the interfaces:
     // DSpaceObjectService<DatashareDataset> and DSpaceObjectLegacySupportService<DatashareDataset>
     @Override
     public DatashareDataset find(Context context, UUID uuid) throws SQLException {
