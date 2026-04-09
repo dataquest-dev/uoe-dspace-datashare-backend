@@ -45,6 +45,13 @@ with reusable workflows.
     `BrowsesResourceControllerIT`, `OpenSearchControllerIT`) expect `dateIssued` in both
     `searchFilters` AND `sidebarFacets` across all configurations. Uncommented all 21
     remaining `searchFilterIssued` references.
+11. **Fixed discovery IT test matchers for DataShare custom filters** — DataShare adds
+    `dateAccessioned` and `dateEmbargo` to default discovery config's search filters,
+    sidebar facets, and sort fields. Updated `SearchFilterMatcher` (added
+    `dateAccessionedFilter()` and `dateEmbargoFilter()`), populated `customSearchFilters`
+    and `customSidebarFacets` in `DiscoveryRestControllerIT`, added DataShare facets to
+    `DiscoveryScopeBasedRestControllerIT` default-fallback expectations, and uncommented
+    `sortDateIssued` in all 12 discovery configurations.
 
 All other workflow files (`build.yml`, `docker.yml`, `reusable-docker-build.yml`)
 already had up-to-date action versions on the target branch.
