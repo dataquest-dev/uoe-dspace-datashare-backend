@@ -107,7 +107,9 @@ public class DSpaceHttpClientFactoryTest {
 
     @Test
     public void testBuildWithProxyConfiguredAndHostPrefixToIgnoreSet() throws Exception {
-        setHttpProxyOnConfigurationService("local*", "www.test.com");
+        String hostName = mockServer.getHostName();
+        String prefix = hostName.substring(0, hostName.length() - 1) + "*";
+        setHttpProxyOnConfigurationService(prefix, "www.test.com");
         CloseableHttpClient httpClient = httpClientFactory.build();
         assertThat(mockProxy.getRequestCount(), is(0));
         assertThat(mockServer.getRequestCount(), is(0));
@@ -122,7 +124,9 @@ public class DSpaceHttpClientFactoryTest {
 
     @Test
     public void testBuildWithProxyConfiguredAndHostSuffixToIgnoreSet() throws Exception {
-        setHttpProxyOnConfigurationService("www.test.com", "*host");
+        String hostName = mockServer.getHostName();
+        String suffix = "*" + hostName.substring(1);
+        setHttpProxyOnConfigurationService("www.test.com", suffix);
         CloseableHttpClient httpClient = httpClientFactory.build();
         assertThat(mockProxy.getRequestCount(), is(0));
         assertThat(mockServer.getRequestCount(), is(0));

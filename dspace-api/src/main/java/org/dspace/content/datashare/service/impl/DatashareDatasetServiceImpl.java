@@ -1,8 +1,14 @@
+/**
+ * The contents of this file are subject to the license and copyright
+ * detailed in the LICENSE and NOTICE files at the root of the source
+ * tree and available online at
+ *
+ * http://www.dspace.org/license/
+ */
 package org.dspace.content.datashare.service.impl;
 
 import java.io.File;
 import java.io.IOException;
-
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,12 +89,14 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
                 if (dataset != null) {
                     String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
                     log.info(filePath, filePath);
-                    if(filePath != null && !filePath.isEmpty()) {
-                    log.info("new File(filePath).exists(): "  + new File(filePath).exists());
-                    if (new File(filePath).exists()) {
-                        downloadLink = DatashareItemDataset.getURL(item) != null ? DatashareItemDataset.getURL(item) : "";
+                    if (filePath != null && !filePath.isEmpty()) {
+                        log.info("new File(filePath).exists(): "
+                            + new File(filePath).exists());
+                        if (new File(filePath).exists()) {
+                            downloadLink = DatashareItemDataset.getURL(item) != null
+                                ? DatashareItemDataset.getURL(item) : "";
+                        }
                     }
-                }
                 }
             }
         } catch (Exception e) {
@@ -148,18 +156,16 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         }
     }
 
-    // Unmplemented methods of the interfaces: 
+    // Unmplemented methods of the interfaces:
     // DSpaceObjectService<DatashareDataset> and DSpaceObjectLegacySupportService<DatashareDataset>
     @Override
     public DatashareDataset find(Context context, UUID uuid) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'find'");
+        return null;
     }
 
     @Override
     public String getName(DatashareDataset dso) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getName'");
+        return dso != null ? dso.getName() : null;
     }
 
     @Override
@@ -368,8 +374,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Override
     public int getSupportsTypeConstant() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getSupportsTypeConstant'");
+        return Constants.DATASHARE_DATASET;
     }
 
     @Override
@@ -380,14 +385,12 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Override
     public DatashareDataset findByIdOrLegacyId(Context context, String id) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'findByIdOrLegacyId'");
+        return null;
     }
 
     @Override
     public DatashareDataset findByLegacyId(Context context, int id) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'findByLegacyId'");
+        return null;
     }
 
 }

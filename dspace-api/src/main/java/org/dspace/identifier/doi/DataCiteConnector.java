@@ -436,7 +436,7 @@ public class DataCiteConnector
                 format.setEncoding("UTF-8");
                 XMLOutputter xout = new XMLOutputter(format);
                 log.info("XML for when metadataDOI and DOI don't match:\n" + xout.outputString(root));
-            } catch(Exception e) {
+            } catch (Exception e) {
                 log.info("Cannot display XML when metadataDOI and doi don't match " + e.toString());
             }
             // DATASHARE - end
@@ -457,8 +457,8 @@ public class DataCiteConnector
             format.setEncoding("UTF-8");
             XMLOutputter xout = new XMLOutputter(format);
             log.info("XML sent to Datacite to reserve or update DOI:\n" + xout.outputString(root));
-        } catch(Exception e) {
-          log.info("Cannot display XML sent to Datacite " + e.toString());
+        } catch (Exception e) {
+            log.info("Cannot display XML sent to Datacite " + e.toString());
         }
         // DATASHARE - end
 

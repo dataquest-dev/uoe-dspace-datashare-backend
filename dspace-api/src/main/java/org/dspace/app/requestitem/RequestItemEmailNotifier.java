@@ -323,9 +323,9 @@ public class RequestItemEmailNotifier {
     // DATASHARE - start
     /**
      * Checks if requested item is emailable based on size constraints.
-     * Items/bitstreams larger than the configured maximum size emailable.bitstreams.max.size MB 
+     * Items/bitstreams larger than the configured maximum size emailable.bitstreams.max.size MB
      * will not be emailed.
-     * 
+     *
      * @param context DSpace context
      * @param ri      The request item
      * @return true if the item can be emailed, false otherwise

@@ -157,6 +157,7 @@ public class VocabularyRestRepositoryIT extends AbstractControllerIntegrationTes
                  .andExpect(status().isOk())
                  .andExpect(jsonPath("$._embedded.vocabularies", Matchers.containsInAnyOrder(
                      VocabularyMatcher.matchProperties("srsc", "srsc", false, true),
+                     VocabularyMatcher.matchProperties("jacs", "jacs", false, true),
                      VocabularyMatcher.matchProperties("common_types", "common_types", true, false),
                      VocabularyMatcher.matchProperties("common_iso_languages", "common_iso_languages", true , false),
                      VocabularyMatcher.matchProperties("SolrAuthorAuthority", "SolrAuthorAuthority", false , false),
@@ -165,7 +166,7 @@ public class VocabularyRestRepositoryIT extends AbstractControllerIntegrationTes
                  )))
         .andExpect(jsonPath("$._links.self.href",
             Matchers.containsString("api/submission/vocabularies")))
-        .andExpect(jsonPath("$.page.totalElements", is(6)));
+        .andExpect(jsonPath("$.page.totalElements", is(7)));
     }
 
     @Test

@@ -504,6 +504,9 @@ public class DiscoveryScopeBasedRestControllerIT extends AbstractControllerInteg
                    .andExpect(jsonPath("$._embedded.facets", containsInAnyOrder(
                                       FacetEntryMatcher.authorFacet(false),
                                       FacetEntryMatcher.subjectFacet(false),
+                                      // DATASHARE - added dateAccessioned and dateEmbargo facets
+                                      FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                                      FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                                       FacetEntryMatcher.dateIssuedFacet(false),
                                       FacetEntryMatcher.hasContentInOriginalBundleFacet(false),
                                       FacetEntryMatcher.entityTypeFacet(false)
@@ -616,6 +619,9 @@ public class DiscoveryScopeBasedRestControllerIT extends AbstractControllerInteg
                    .andExpect(jsonPath("$._embedded.facets", containsInAnyOrder(
                                       FacetEntryMatcher.authorFacet(false),
                                       FacetEntryMatcher.subjectFacet(false),
+                                      // DATASHARE - added dateAccessioned and dateEmbargo facets
+                                      FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                                      FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                                       FacetEntryMatcher.dateIssuedFacet(false),
                                       FacetEntryMatcher.hasContentInOriginalBundleFacet(false),
                                       FacetEntryMatcher.entityTypeFacet(false)
@@ -666,6 +672,9 @@ public class DiscoveryScopeBasedRestControllerIT extends AbstractControllerInteg
                    .andExpect(jsonPath("$._embedded.facets", containsInAnyOrder(
                                       FacetEntryMatcher.authorFacet(false),
                                       FacetEntryMatcher.subjectFacet(false),
+                                      // DATASHARE - added dateAccessioned and dateEmbargo facets
+                                      FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
+                                      FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
                                       FacetEntryMatcher.dateIssuedFacet(false),
                                       FacetEntryMatcher.hasContentInOriginalBundleFacet(false),
                                       FacetEntryMatcher.entityTypeFacet(false)

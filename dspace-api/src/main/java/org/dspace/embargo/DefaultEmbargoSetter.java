@@ -170,17 +170,19 @@ public class DefaultEmbargoSetter implements EmbargoSetter {
                         .getPoliciesActionFilter(context, bn, Constants.READ)) {
                         if (rp.getStartDate() == null) {
                             // DATASHARE - start
-                            // In Datashare, we have found items where EPerson is null on the ResourcePolicy of item bitstreams.
+                            // In Datashare, we have found items where EPerson is null
+                            // on the ResourcePolicy of item bitstreams.
                             // This has caused the display of the warning message to fail with a NullPointerException.
                             // System.out.println("CHECK WARNING: Item " + item.getHandle() + ", Bundle " + bn
                             //         .getName() + " allows READ by " +
                             //         ((rp.getEPerson() != null) ? "Group " + rp.getGroup().getName() :
                             //                 "EPerson " + rp.getEPerson().getFullName()));
                             System.out.println("CHECK WARNING: Item " + item.getHandle() + ", Bundle " + bn
-                                    .getName() + " allows READ by " +
-                                    ((rp.getGroup() != null) ? "Group " + rp.getGroup().getName() : "Group not set" ) +
-                                    ((rp.getEPerson() != null) ? "EPerson " + rp.getEPerson().getFullName() : "; EPerson not set"));
-                            
+                                    .getName() + " allows READ by "
+                                    + ((rp.getGroup() != null) ? "Group " + rp.getGroup().getName() : "Group not set")
+                                    + ((rp.getEPerson() != null) ? "EPerson " + rp.getEPerson().getFullName()
+                                    : "; EPerson not set"));
+
                             // DATASHARE - end
                         }
                     }
@@ -191,16 +193,18 @@ public class DefaultEmbargoSetter implements EmbargoSetter {
                         .getPoliciesActionFilter(context, bs, Constants.READ)) {
                         if (rp.getStartDate() == null) {
                             // DATASHARE - start
-                            // In Datashare, we have found items where EPerson is null on the ResourcePolicy of item bitstreams.
+                            // In Datashare, we have found items where EPerson is null
+                            // on the ResourcePolicy of item bitstreams.
                             // This has caused the display of the warning message to fail with a NullPointerException.
                             // System.out.println("CHECK WARNING: Item " + item.getHandle() + ", Bitstream " + bs
                             //         .getName() + " (in Bundle " + bn.getName() + ") allows READ by " +
                             //         ((rp.getEPerson() != null) ? "Group " + rp.getGroup().getName() :
                             //                 "EPerson " + rp.getEPerson().getFullName()));
-                             System.out.println("CHECK WARNING: Item " + item.getHandle() + ", Bitstream " + bs
-                                    .getName() + " (in Bundle " + bn.getName() + ") allows READ by " +
-                                    ((rp.getGroup() != null) ? "Group " + rp.getGroup().getName() : "Group not set" ) +
-                                    ((rp.getEPerson() != null) ? "EPerson " + rp.getEPerson().getFullName() : "; EPerson not set"));
+                            System.out.println("CHECK WARNING: Item " + item.getHandle() + ", Bitstream " + bs
+                                    .getName() + " (in Bundle " + bn.getName() + ") allows READ by "
+                                    + ((rp.getGroup() != null) ? "Group " + rp.getGroup().getName() : "Group not set")
+                                    + ((rp.getEPerson() != null) ? "EPerson " + rp.getEPerson().getFullName()
+                                    : "; EPerson not set"));
                             // DATASHARE - end
                         }
                     }

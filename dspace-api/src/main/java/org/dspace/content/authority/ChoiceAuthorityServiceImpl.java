@@ -571,6 +571,9 @@ public final class ChoiceAuthorityServiceImpl implements ChoiceAuthorityService 
 
                 Set<String> metadataFields = new HashSet<>();
                 Map<String, List<String>> formsToFields = this.authoritiesFormDefinitions.get(nameVocab);
+                if (formsToFields == null) {
+                    return null;
+                }
                 for (Map.Entry<String, List<String>> formToField : formsToFields.entrySet()) {
                     metadataFields.addAll(formToField.getValue().stream().map(value ->
                                     StringUtils.replace(value, "_", "."))

@@ -64,10 +64,10 @@ public class Constants {
     // DATASHARE - start
     /** Type of dataset objects */
     public static final int DATASHARE_DATASET = 9;
-    
+
     /** Type of batch import objects */
     public static final int BATCH_IMPORT = 10;
-    
+
     /** Type of uun2email objects */
     public static final int UUN_2_EMAIL = 11;
 

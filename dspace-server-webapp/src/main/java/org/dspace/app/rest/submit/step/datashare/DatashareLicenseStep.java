@@ -215,7 +215,8 @@ public class DatashareLicenseStep extends AbstractProcessingStep {
             for (MetadataValue mv : metadataValues) {
                 log.info("mv.getMetadataField().getID(): " + mv.getMetadataField().getID());
 
-                if (dcRightsMetadataField != null && mv.getMetadataField().getID().equals(dcRightsMetadataField.getID())) {
+                if (dcRightsMetadataField != null
+                    && mv.getMetadataField().getID().equals(dcRightsMetadataField.getID())) {
                     dcRightsMetadataValue = mv;
                     log.info("dcRightsMetadataValue: " + dcRightsMetadataValue.getValue());
                 } else if (dsLicenseDropdownValueField != null
@@ -286,7 +287,8 @@ public class DatashareLicenseStep extends AbstractProcessingStep {
 
     private void setCCLicense(Context context, InProgressSubmission source) {
         try {
-            creativeCommonsService.setLicense(context, source.getItem(), new FileInputStream(CREATIVE_COMMONS_BY_LICENCE_FILE),
+            creativeCommonsService.setLicense(context, source.getItem(),
+                    new FileInputStream(CREATIVE_COMMONS_BY_LICENCE_FILE),
                     "text/plain");
         } catch (Exception e) {
             log.error(e.getMessage(), e);

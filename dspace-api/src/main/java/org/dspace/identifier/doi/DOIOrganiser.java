@@ -466,7 +466,7 @@ public class DOIOrganiser {
                 } catch (Exception ex) {
                     LOG.error("Error updating DOI identifier:  {}", ex.getMessage(), ex);
                     System.err.println("Error updating DOI identifier: " + ex.getMessage());
-                    // Datshare - end  
+                    // Datshare - end
                 }
             }
         }
@@ -646,7 +646,7 @@ public class DOIOrganiser {
 
     /**
      * Reserve DOI with the provider,
-     * 
+     *
      * @param doiRow - doi to reserve
      */
     public void reserve(DOI doiRow) {

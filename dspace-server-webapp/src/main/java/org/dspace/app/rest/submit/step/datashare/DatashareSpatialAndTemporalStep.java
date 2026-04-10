@@ -60,7 +60,8 @@ import org.dspace.services.factory.DSpaceServicesFactory;
  */
 public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
 
-    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(DatashareSpatialAndTemporalStep.class);
+    private static final Logger log =
+        org.apache.logging.log4j.LogManager.getLogger(DatashareSpatialAndTemporalStep.class);
 
     // Input reader for form configuration
     private DCInputsReader inputReader;

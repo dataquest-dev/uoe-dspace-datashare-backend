@@ -1,17 +1,22 @@
+/**
+ * The contents of this file are subject to the license and copyright
+ * detailed in the LICENSE and NOTICE files at the root of the source
+ * tree and available online at
+ *
+ * http://www.dspace.org/license/
+ */
 package org.dspace.content.datashare.dao.impl;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.UUID;
 
+import jakarta.persistence.Query;
 import org.apache.logging.log4j.Logger;
 import org.dspace.content.Item;
 import org.dspace.content.datashare.DatashareDataset;
 import org.dspace.content.datashare.dao.DatashareDatasetDAO;
 import org.dspace.core.AbstractHibernateDSODAO;
 import org.dspace.core.Context;
-
-import jakarta.persistence.Query;
 
 public class DatashareDatasetDAOImpl extends AbstractHibernateDSODAO<DatashareDataset> implements DatashareDatasetDAO {
 
@@ -59,7 +64,7 @@ public class DatashareDatasetDAOImpl extends AbstractHibernateDSODAO<DatashareDa
 
     @Override
     public DatashareDataset findLatestDatashareDatasetByItem(Context context, Item item) throws SQLException {
-        String queryString = "SELECT ddset FROM DatashareDataset ddset WHERE ddset.item = :item" 
+        String queryString = "SELECT ddset FROM DatashareDataset ddset WHERE ddset.item = :item"
                     + " AND ddset.id = (SELECT MAX(d.id) FROM DatashareDataset d WHERE d.item = :item)";
         Query query = createQuery(context, queryString);
         query.setParameter("item", item);
