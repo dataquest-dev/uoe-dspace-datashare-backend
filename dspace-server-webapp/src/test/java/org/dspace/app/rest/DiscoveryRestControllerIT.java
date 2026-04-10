@@ -4559,8 +4559,7 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                         FacetEntryMatcher.resourceTypeFacet(false),
                         FacetEntryMatcher.typeFacet(false),
                         FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
-                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
-                        FacetEntryMatcher.dateIssuedFacet(false)
+                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date")
                 )))
                 //There always needs to be a self link
                 .andExpect(jsonPath("$._links.self.href", containsString("/api/discover/search/objects")))
@@ -4607,8 +4606,7 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                         FacetEntryMatcher.resourceTypeFacet(false),
                         FacetEntryMatcher.typeFacet(false),
                         FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
-                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
-                        FacetEntryMatcher.dateIssuedFacet(false)
+                        FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date")
                 )))
                 //There always needs to be a self link
                 .andExpect(jsonPath("$._links.self.href", containsString("/api/discover/search/objects")))
@@ -4794,7 +4792,6 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                         FacetEntryMatcher.typeFacet(false),
                         FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
                         FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
-                        FacetEntryMatcher.dateIssuedFacet(false),
                         FacetEntryMatcher.submitterFacet(false)
                 )))
                 //There always needs to be a self link
@@ -4846,7 +4843,6 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                         FacetEntryMatcher.typeFacet(false),
                         FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
                         FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
-                        FacetEntryMatcher.dateIssuedFacet(false),
                         FacetEntryMatcher.submitterFacet(false)
                 )))
                 //There always needs to be a self link
@@ -4881,7 +4877,6 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                         FacetEntryMatcher.typeFacet(false),
                         FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
                         FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
-                        FacetEntryMatcher.dateIssuedFacet(false),
                         FacetEntryMatcher.submitterFacet(false)
                 )))
                 //There always needs to be a self link
@@ -5097,7 +5092,6 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                         FacetEntryMatcher.typeFacet(false),
                         FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
                         FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
-                        FacetEntryMatcher.dateIssuedFacet(false),
                         FacetEntryMatcher.submitterFacet(false)
                 )))
                 //There always needs to be a self link
@@ -5845,7 +5839,8 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
 
         getClient(adminToken).perform(get("/api/discover/search/objects")
                              .param("configuration", "workflow")
-                             .param("sort", "dc.date.issued,DESC")
+                             // DATASHARE - sortDateIssued commented in workflowConfiguration, use accessioned
+                             .param("sort", "dc.date.accessioned,DESC")
                              .param("query", "Mathematical Theory"))
                          .andExpect(status().isOk())
                          .andExpect(jsonPath("$.query", is("Mathematical Theory")))
@@ -5857,7 +5852,8 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
 
         getClient(adminToken).perform(get("/api/discover/search/objects")
                              .param("configuration", "workflow")
-                             .param("sort", "dc.date.issued,DESC")
+                             // DATASHARE - sortDateIssued commented in workflowConfiguration, use accessioned
+                             .param("sort", "dc.date.accessioned,DESC")
                              .param("query", "Metaphysics"))
                          .andExpect(status().isOk())
                          .andExpect(jsonPath("$.query", is("Metaphysics")))
@@ -5921,7 +5917,8 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
 
         getClient(adminToken).perform(get("/api/discover/search/objects")
                              .param("configuration", "workflow")
-                             .param("sort", "dc.date.issued,DESC")
+                             // DATASHARE - sortDateIssued commented in workflowConfiguration, use accessioned
+                             .param("sort", "dc.date.accessioned,DESC")
                              .param("query", ""))
                          .andExpect(status().isOk())
                          .andExpect(jsonPath("$.configuration", is("workflow")))
@@ -6873,12 +6870,11 @@ public class DiscoveryRestControllerIT extends AbstractControllerIntegrationTest
                 FacetEntryMatcher.typeFacet(false),
                 FacetEntryMatcher.matchFacet(false, "dateAccessioned", "date"),
                 FacetEntryMatcher.matchFacet(false, "dateEmbargo", "date"),
-                FacetEntryMatcher.dateIssuedFacet(false),
                 FacetEntryMatcher.submitterFacet(false),
                 FacetEntryMatcher.supervisedByFacet(false)
             )))
             //check supervisedBy Facet values
-            .andExpect(jsonPath("$._embedded.facets[6]._embedded.values",
+            .andExpect(jsonPath("$._embedded.facets[5]._embedded.values",
                 contains(
                     entrySupervisedBy(groupA.getName(), groupA.getID().toString(), 6),
                     entrySupervisedBy(groupB.getName(), groupB.getID().toString(), 2)

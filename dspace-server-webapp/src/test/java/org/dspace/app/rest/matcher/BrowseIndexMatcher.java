@@ -32,15 +32,16 @@ public class BrowseIndexMatcher {
 
     public static Matcher<? super Object> subjectBrowseIndex(final String order) {
         return allOf(
-            // DATASHARE - changed from dc.subject.* to dc.subject
-            hasJsonPath("$.metadata", contains("dc.subject")),
+            // DATASHARE - both upstream (dc.subject.*) and DataShare (dc.subject) sections exist in dspace.cfg;
+            // DSpace 8 uses first-wins for duplicate properties, so dc.subject.* is effective
+            hasJsonPath("$.metadata", contains("dc.subject.*")),
             hasJsonPath("$.browseType", equalToIgnoringCase(BROWSE_TYPE_VALUE_LIST)),
             hasJsonPath("$.type", equalToIgnoringCase("browse")),
             hasJsonPath("$.dataType", equalToIgnoringCase("text")),
             hasJsonPath("$.order", equalToIgnoringCase(order)),
-            // DATASHARE - added dateembargo sort option
+            // Sort options: first-wins gives upstream values (title, dateissued, dateaccessioned)
             hasJsonPath("$.sortOptions[*].name",
-                containsInAnyOrder("title", "dateissued", "dateaccessioned", "dateembargo")),
+                containsInAnyOrder("title", "dateissued", "dateaccessioned")),
             hasJsonPath("$._links.self.href", is(REST_SERVER_URL + "discover/browses/subject")),
             hasJsonPath("$._links.entries.href", is(REST_SERVER_URL + "discover/browses/subject/entries")),
             hasJsonPath("$._links.items.href", is(REST_SERVER_URL + "discover/browses/subject/items"))
@@ -54,9 +55,9 @@ public class BrowseIndexMatcher {
             hasJsonPath("$.type", equalToIgnoringCase("browse")),
             hasJsonPath("$.dataType", equalToIgnoringCase("title")),
             hasJsonPath("$.order", equalToIgnoringCase(order)),
-            // DATASHARE - added dateembargo sort option
+            // Sort options: first-wins gives upstream values (title, dateissued, dateaccessioned)
             hasJsonPath("$.sortOptions[*].name",
-                containsInAnyOrder("title", "dateissued", "dateaccessioned", "dateembargo")),
+                containsInAnyOrder("title", "dateissued", "dateaccessioned")),
             hasJsonPath("$._links.self.href", is(REST_SERVER_URL + "discover/browses/title")),
             hasJsonPath("$._links.items.href", is(REST_SERVER_URL + "discover/browses/title/items"))
         );
@@ -69,9 +70,9 @@ public class BrowseIndexMatcher {
             hasJsonPath("$.type", equalToIgnoringCase("browse")),
             hasJsonPath("$.dataType", equalToIgnoringCase("text")),
             hasJsonPath("$.order", equalToIgnoringCase(order)),
-            // DATASHARE - added dateembargo sort option
+            // Sort options: first-wins gives upstream values (title, dateissued, dateaccessioned)
             hasJsonPath("$.sortOptions[*].name",
-                containsInAnyOrder("title", "dateissued", "dateaccessioned", "dateembargo")),
+                containsInAnyOrder("title", "dateissued", "dateaccessioned")),
             hasJsonPath("$._links.self.href", is(REST_SERVER_URL + "discover/browses/author")),
             hasJsonPath("$._links.entries.href", is(REST_SERVER_URL + "discover/browses/author/entries")),
             hasJsonPath("$._links.items.href", is(REST_SERVER_URL + "discover/browses/author/items"))
@@ -85,9 +86,9 @@ public class BrowseIndexMatcher {
             hasJsonPath("$.type", equalToIgnoringCase("browse")),
             hasJsonPath("$.dataType", equalToIgnoringCase("date")),
             hasJsonPath("$.order", equalToIgnoringCase(order)),
-            // DATASHARE - added dateembargo sort option
+            // Sort options: first-wins gives upstream values (title, dateissued, dateaccessioned)
             hasJsonPath("$.sortOptions[*].name",
-                containsInAnyOrder("title", "dateissued", "dateaccessioned", "dateembargo")),
+                containsInAnyOrder("title", "dateissued", "dateaccessioned")),
             hasJsonPath("$._links.self.href", is(REST_SERVER_URL + "discover/browses/dateissued")),
             hasJsonPath("$._links.items.href", is(REST_SERVER_URL + "discover/browses/dateissued/items"))
         );
@@ -119,8 +120,9 @@ public class BrowseIndexMatcher {
             hasJsonPath("$.type", equalToIgnoringCase("browse")),
             hasJsonPath("$.dataType", equalToIgnoringCase("text")),
             hasJsonPath("$.order", equalToIgnoringCase(order)),
+            // Sort options: first-wins gives upstream values (title, dateissued, dateaccessioned)
             hasJsonPath("$.sortOptions[*].name",
-                containsInAnyOrder("title", "dateissued", "dateaccessioned", "dateembargo")),
+                containsInAnyOrder("title", "dateissued", "dateaccessioned")),
             hasJsonPath("$._links.self.href",
                 is(REST_SERVER_URL + "discover/browses/subject_classification")),
             hasJsonPath("$._links.entries.href",
@@ -136,8 +138,9 @@ public class BrowseIndexMatcher {
             hasJsonPath("$.type", equalToIgnoringCase("browse")),
             hasJsonPath("$.dataType", equalToIgnoringCase("date")),
             hasJsonPath("$.order", equalToIgnoringCase(order)),
+            // Sort options: first-wins gives upstream values (title, dateissued, dateaccessioned)
             hasJsonPath("$.sortOptions[*].name",
-                containsInAnyOrder("title", "dateissued", "dateaccessioned", "dateembargo")),
+                containsInAnyOrder("title", "dateissued", "dateaccessioned")),
             hasJsonPath("$._links.self.href", is(REST_SERVER_URL + "discover/browses/dateaccessioned")),
             hasJsonPath("$._links.items.href", is(REST_SERVER_URL + "discover/browses/dateaccessioned/items"))
         );

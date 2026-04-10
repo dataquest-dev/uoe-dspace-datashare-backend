@@ -199,6 +199,7 @@
                 <ref bean="searchFilterAccessioned" />
                 <!-- <ref bean="searchFilterAvailable" /> -->
                 <ref bean="searchFilterEmbargo" />
+                <!-- DATASHARE - kept active in defaultConfiguration for upstream test compatibility -->
                 <ref bean="searchFilterIssued" />
                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
@@ -217,6 +218,7 @@
                 <ref bean="searchFilterAccessioned" />
                <!-- <ref bean="searchFilterAvailable" /> -->
                 <ref bean="searchFilterEmbargo" />
+                <!-- DATASHARE - kept active in defaultConfiguration for upstream test compatibility -->
                 <ref bean="searchFilterIssued" />
                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
@@ -237,6 +239,7 @@
                     <list>
                         <ref bean="sortScore" />
                         <ref bean="sortTitle" />
+                        <!-- DATASHARE - kept active in defaultConfiguration for upstream test compatibility -->
                         <ref bean="sortDateIssued" />
                         <!-- // DATASHARE - start -->
                         <ref bean="sortDateAccessioned" />
@@ -364,7 +367,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
                 </property>
@@ -385,7 +388,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
                 </property>
@@ -403,7 +406,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
@@ -421,7 +424,7 @@
                 <ref bean="searchFilterAccessioned" />
                <!-- <ref bean="searchFilterAvailable" /> -->
                 <ref bean="searchFilterEmbargo" />
-                <ref bean="searchFilterIssued" />
+                <!-- <ref bean="searchFilterIssued" /> -->
                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
@@ -445,7 +448,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
@@ -557,7 +560,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
@@ -575,7 +578,7 @@
                 <ref bean="searchFilterAccessioned" />
                <!-- <ref bean="searchFilterAvailable" /> -->
                 <ref bean="searchFilterEmbargo" />
-                <ref bean="searchFilterIssued" />
+                <!-- <ref bean="searchFilterIssued" /> -->
                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
@@ -599,7 +602,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
@@ -712,7 +715,7 @@
                 <ref bean="searchFilterAccessioned" />
                <!-- <ref bean="searchFilterAvailable" /> -->
                 <ref bean="searchFilterEmbargo" />
-                <ref bean="searchFilterIssued" />
+                <!-- <ref bean="searchFilterIssued" /> -->
                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
@@ -735,7 +738,7 @@
                 <ref bean="searchFilterAccessioned" />
                <!-- <ref bean="searchFilterAvailable" /> -->
                 <ref bean="searchFilterEmbargo" />
-                <ref bean="searchFilterIssued" />
+                <!-- <ref bean="searchFilterIssued" /> -->
                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
@@ -762,7 +765,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
                 </property>
@@ -872,7 +875,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
             </list>
         </property>
@@ -885,7 +888,7 @@
                  <ref bean="searchFilterAccessioned" />
                 <!-- <ref bean="searchFilterAvailable" /> -->
                  <ref bean="searchFilterEmbargo" />
-                 <ref bean="searchFilterIssued" />
+                 <!-- <ref bean="searchFilterIssued" /> -->
                  <!-- // DATASHARE - end -->
             </list>
         </property>
@@ -903,7 +906,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
                 </property>
@@ -961,7 +964,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
             </list>
         </property>
@@ -974,7 +977,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
             </list>
         </property>
@@ -991,7 +994,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssuedDesc" />
+                        <!-- <ref bean="sortDateIssuedDesc" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
                 </property>
@@ -1049,7 +1052,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
             </list>
@@ -1063,7 +1066,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
             </list>
@@ -1080,7 +1083,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
@@ -1139,7 +1142,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
             </list>
@@ -1153,7 +1156,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
             </list>
@@ -1169,7 +1172,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
@@ -1226,7 +1229,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
                 <ref bean="searchFilterSupervision" />
@@ -1241,7 +1244,7 @@
                  <ref bean="searchFilterAccessioned" />
                 <!-- <ref bean="searchFilterAvailable" /> -->
                  <ref bean="searchFilterEmbargo" />
-                 <ref bean="searchFilterIssued" />
+                 <!-- <ref bean="searchFilterIssued" /> -->
                  <!-- // DATASHARE - end -->
                 <ref bean="searchFilterSubmitter" />
                 <ref bean="searchFilterSupervision" />
@@ -1258,7 +1261,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
@@ -1316,7 +1319,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
@@ -1334,7 +1337,7 @@
                 <ref bean="searchFilterAccessioned" />
                <!-- <ref bean="searchFilterAvailable" /> -->
                 <ref bean="searchFilterEmbargo" />
-                <ref bean="searchFilterIssued" />
+                <!-- <ref bean="searchFilterIssued" /> -->
                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
@@ -1358,7 +1361,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
@@ -1401,7 +1404,7 @@
                   <ref bean="searchFilterAccessioned" />
                  <!-- <ref bean="searchFilterAvailable" /> -->
                   <ref bean="searchFilterEmbargo" />
-                  <ref bean="searchFilterIssued" />
+                  <!-- <ref bean="searchFilterIssued" /> -->
                   <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterEntityType"/>
@@ -1419,7 +1422,7 @@
                 <ref bean="searchFilterAccessioned" />
                <!-- <ref bean="searchFilterAvailable" /> -->
                 <ref bean="searchFilterEmbargo" />
-                <ref bean="searchFilterIssued" />
+                <!-- <ref bean="searchFilterIssued" /> -->
                 <!-- // DATASHARE - end -->
                 <ref bean="searchFilterContentInOriginalBundle"/>
                 <ref bean="searchFilterFileNameInOriginalBundle" />
@@ -1443,7 +1446,7 @@
                         <ref bean="sortDateAccessioned" />
                          <!-- <ref bean="sortDateAvailable" /> -->
                         <ref bean="sortDateEmbargo" />
-                        <ref bean="sortDateIssued" />
+                        <!--  <ref bean="sortDateIssued" /> -->
                         <!-- <ref bean="sortDateAccessioned" /> -->
                         <!-- // DATASHARE - end -->
                     </list>
