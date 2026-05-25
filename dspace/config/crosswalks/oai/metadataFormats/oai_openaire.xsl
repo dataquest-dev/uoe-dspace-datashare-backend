@@ -24,10 +24,36 @@
             <!-- datacite:title -->
             <xsl:apply-templates
                 select="doc:metadata/doc:element[@name='dc']/doc:element[@name='title']" mode="datacite"/>
-            <!-- datacite:creator -->
-            <xsl:apply-templates
-                select="doc:metadata/doc:element[@name='dc']/doc:element[@name='contributor']/doc:element[@name='author']"
-                mode="datacite"/>
+            <!-- datacite:creators (Datashare patch: combine dc.contributor.author + dc.creator) -->
+            <datacite:creators>
+                <xsl:for-each select="doc:metadata/doc:element[@name='dc']/doc:element[@name='contributor']/doc:element[@name='author']/doc:element/doc:field[@name='value']
+                                    | doc:metadata/doc:element[@name='dc']/doc:element[@name='creator']/doc:element/doc:field[@name='value']">
+                    <xsl:variable name="isRelatedEntity">
+                        <xsl:call-template name="isRelatedEntity">
+                            <xsl:with-param name="element" select="."/>
+                        </xsl:call-template>
+                    </xsl:variable>
+                    <xsl:choose>
+                        <!-- if next sibling is authority and starts with virtual:: -->
+                        <xsl:when test="$isRelatedEntity = 'true'">
+                            <xsl:variable name="entity">
+                                <xsl:call-template name="buildEntityNode">
+                                    <xsl:with-param name="element" select="."/>
+                                </xsl:call-template>
+                            </xsl:variable>
+                            <xsl:apply-templates select="$entity" mode="entity_creator"/>
+                        </xsl:when>
+                        <!-- simple text metadata -->
+                        <xsl:otherwise>
+                            <datacite:creator>
+                                <datacite:creatorName>
+                                    <xsl:value-of select="./text()"/>
+                                </datacite:creatorName>
+                            </datacite:creator>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </xsl:for-each>
+            </datacite:creators>
             <datacite:contributors>
                 <!-- other types of contributors !=  -->
                 <xsl:apply-templates
@@ -727,11 +753,28 @@
     <!-- https://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/4.0.1/field_embargoenddate.html -->
     <!-- https://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/4.0.1/field_publicationdate.html -->
     <xsl:template match="doc:element[@name='dc']/doc:element[@name='date']" mode="datacite">
+        <xsl:variable name="hasIssued" select="boolean(doc:element[@name='issued']/doc:element/doc:field[@name='value'])"/>
+        <xsl:variable name="hasAvailable" select="boolean(doc:element[@name='available']/doc:element/doc:field[@name='value'])"/>
+        <xsl:variable name="hasAccessioned" select="boolean(doc:element[@name='accessioned']/doc:element/doc:field[@name='value'])"/>
         <datacite:dates>
-        <!-- datacite:date (embargo) -->
+            <!-- datacite:date (embargo / issued / accepted / available via per-name templates) -->
             <xsl:for-each select="./doc:element">
                 <xsl:apply-templates select="." mode="datacite"/>
             </xsl:for-each>
+            <!-- Datashare patch: if dc.date.issued missing, derive Issued from dc.date.available or dc.date.accessioned -->
+            <xsl:if test="not($hasIssued) and ($hasAvailable or $hasAccessioned)">
+                <xsl:variable name="fallbackDate">
+                    <xsl:choose>
+                        <xsl:when test="$hasAvailable">
+                            <xsl:value-of select="substring(doc:element[@name='available']/doc:element/doc:field[@name='value']/text(), 1, 10)"/>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:value-of select="substring(doc:element[@name='accessioned']/doc:element/doc:field[@name='value']/text(), 1, 10)"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                </xsl:variable>
+                <datacite:date dateType="Issued"><xsl:value-of select="$fallbackDate"/></datacite:date>
+            </xsl:if>
         </datacite:dates>
     </xsl:template>
 
@@ -772,7 +815,8 @@
                 <xsl:attribute name="dateType">
                     <xsl:value-of select="$dateType"/>
                 </xsl:attribute>
-                <xsl:value-of select="./doc:element/doc:field[@name='value']/text()"/>
+                <!-- Datashare patch: trim ISO timestamp to YYYY-MM-DD -->
+                <xsl:value-of select="substring(./doc:element/doc:field[@name='value']/text(), 1, 10)"/>
             </datacite:date>
         </xsl:if>
     </xsl:template>
@@ -1084,6 +1128,10 @@
             <xsl:when test="$lc_dc_date_type = 'embargo'">
                 <!-- Indicates the end of the embargo period. -->
                 <!-- https://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/4.0.1/field_embargoenddate.html -->
+                <xsl:text>Available</xsl:text>
+            </xsl:when>
+            <xsl:when test="$lc_dc_date_type = 'available'">
+                <!-- Datashare patch: expose dc.date.available as datacite:date dateType="Available" -->
                 <xsl:text>Available</xsl:text>
             </xsl:when>
         </xsl:choose>
