@@ -25,35 +25,38 @@
             <xsl:apply-templates
                 select="doc:metadata/doc:element[@name='dc']/doc:element[@name='title']" mode="datacite"/>
             <!-- datacite:creators (Datashare patch: combine dc.contributor.author + dc.creator) -->
-            <datacite:creators>
-                <xsl:for-each select="doc:metadata/doc:element[@name='dc']/doc:element[@name='contributor']/doc:element[@name='author']/doc:element/doc:field[@name='value']
-                                    | doc:metadata/doc:element[@name='dc']/doc:element[@name='creator']/doc:element/doc:field[@name='value']">
-                    <xsl:variable name="isRelatedEntity">
-                        <xsl:call-template name="isRelatedEntity">
-                            <xsl:with-param name="element" select="."/>
-                        </xsl:call-template>
-                    </xsl:variable>
-                    <xsl:choose>
-                        <!-- if next sibling is authority and starts with virtual:: -->
-                        <xsl:when test="$isRelatedEntity = 'true'">
-                            <xsl:variable name="entity">
-                                <xsl:call-template name="buildEntityNode">
-                                    <xsl:with-param name="element" select="."/>
-                                </xsl:call-template>
-                            </xsl:variable>
-                            <xsl:apply-templates select="$entity" mode="entity_creator"/>
-                        </xsl:when>
-                        <!-- simple text metadata -->
-                        <xsl:otherwise>
-                            <datacite:creator>
-                                <datacite:creatorName>
-                                    <xsl:value-of select="./text()"/>
-                                </datacite:creatorName>
-                            </datacite:creator>
-                        </xsl:otherwise>
-                    </xsl:choose>
-                </xsl:for-each>
-            </datacite:creators>
+            <xsl:variable name="creatorValues" select="doc:metadata/doc:element[@name='dc']/doc:element[@name='contributor']/doc:element[@name='author']/doc:element/doc:field[@name='value']
+                                                    | doc:metadata/doc:element[@name='dc']/doc:element[@name='creator']/doc:element/doc:field[@name='value']"/>
+            <xsl:if test="$creatorValues">
+                <datacite:creators>
+                    <xsl:for-each select="$creatorValues">
+                        <xsl:variable name="isRelatedEntity">
+                            <xsl:call-template name="isRelatedEntity">
+                                <xsl:with-param name="element" select="."/>
+                            </xsl:call-template>
+                        </xsl:variable>
+                        <xsl:choose>
+                            <!-- if next sibling is authority and starts with virtual:: -->
+                            <xsl:when test="$isRelatedEntity = 'true'">
+                                <xsl:variable name="entity">
+                                    <xsl:call-template name="buildEntityNode">
+                                        <xsl:with-param name="element" select="."/>
+                                    </xsl:call-template>
+                                </xsl:variable>
+                                <xsl:apply-templates select="$entity" mode="entity_creator"/>
+                            </xsl:when>
+                            <!-- simple text metadata -->
+                            <xsl:otherwise>
+                                <datacite:creator>
+                                    <datacite:creatorName>
+                                        <xsl:value-of select="./text()"/>
+                                    </datacite:creatorName>
+                                </datacite:creator>
+                            </xsl:otherwise>
+                        </xsl:choose>
+                    </xsl:for-each>
+                </datacite:creators>
+            </xsl:if>
             <datacite:contributors>
                 <!-- other types of contributors !=  -->
                 <xsl:apply-templates
@@ -163,39 +166,11 @@
 
 
     <!-- datacite.creators -->
-    <!-- https://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/4.0.1/field_creator.html -->
-    <xsl:template
-        match="doc:element[@name='dc']/doc:element[@name='contributor']/doc:element[@name='author']" mode="datacite">
-        <datacite:creators>
-            <!-- datacite.creator -->
-            <xsl:for-each select="./doc:element/doc:field[@name='value']">
-                <xsl:variable name="isRelatedEntity">
-                    <xsl:call-template name="isRelatedEntity">
-                        <xsl:with-param name="element" select="."/>
-                    </xsl:call-template>
-                </xsl:variable>
-                <xsl:choose>
-                    <!-- if next sibling is authority and starts with virtual:: -->
-                    <xsl:when test="$isRelatedEntity = 'true'">
-                        <xsl:variable name="entity">
-                            <xsl:call-template name="buildEntityNode">
-                                <xsl:with-param name="element" select="."/>
-                            </xsl:call-template>
-                        </xsl:variable>
-                        <xsl:apply-templates select="$entity" mode="entity_creator"/>
-                    </xsl:when>
-                    <!-- simple text metadata -->
-                    <xsl:otherwise>
-                        <datacite:creator>
-                            <datacite:creatorName>
-                                <xsl:value-of select="./text()"/>
-                            </datacite:creatorName>
-                        </datacite:creator>
-                    </xsl:otherwise>
-                </xsl:choose>
-            </xsl:for-each>
-        </datacite:creators>
-    </xsl:template>
+    <!-- Datashare patch: the original per-author template is no longer used because
+         the root template now emits <datacite:creators> from a combined
+         (dc.contributor.author | dc.creator) selector to also support records that
+         only populate dc.creator. The dead template has been removed to avoid
+         divergent logic. -->
 
     <!-- datacite:creator -->
     <xsl:template match="doc:element" mode="entity_creator">
@@ -783,7 +758,8 @@
     <xsl:template
         match="doc:element[@name='dc']/doc:element[@name='date']/doc:element[@name='issued']"
         mode="datacite">
-        <xsl:variable name="dc_date_value" select="doc:element/doc:field[@name='value']/text()"/>
+        <!-- Datashare patch: trim ISO timestamp to YYYY-MM-DD for consistency with other date outputs -->
+        <xsl:variable name="dc_date_value" select="substring(doc:element/doc:field[@name='value']/text(), 1, 10)"/>
         <datacite:date dateType="Accepted">
             <xsl:value-of select="$dc_date_value"/>
         </datacite:date>
@@ -1238,8 +1214,9 @@
 
    <!-- get the issued date globally -->
     <xsl:template name="getIssuedDate">
+        <!-- Datashare patch: trim ISO timestamp to YYYY-MM-DD for consistency -->
         <xsl:value-of
-            select="//doc:element[@name='date']/doc:element[@name='issued']/doc:element/doc:field[@name='value']/text()"/>
+            select="substring(//doc:element[@name='date']/doc:element[@name='issued']/doc:element/doc:field[@name='value']/text(), 1, 10)"/>
     </xsl:template>
 
    <!-- get the repository baseUrl globally -->
@@ -1795,8 +1772,9 @@
     </xsl:template>
 
     <!-- Prepare data for CC License -->
+    <!-- Datashare patch: trim ISO timestamp to YYYY-MM-DD for consistency -->
     <xsl:variable name="ccstart">
-        <xsl:value-of select="doc:metadata/doc:element[@name='dc']/doc:element[@name='date']/doc:element[@name='issued']/doc:element/doc:field[@name='value']/text()"/>
+        <xsl:value-of select="substring(doc:metadata/doc:element[@name='dc']/doc:element[@name='date']/doc:element[@name='issued']/doc:element/doc:field[@name='value']/text(), 1, 10)"/>
     </xsl:variable>
     
     <xsl:template
