@@ -117,7 +117,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
             for (Bundle bundle : itemService.getBundles(item, bundleName)) {
                 for (Bitstream bitstream : bundle.getBitstreams()) {
                     if (!authorizeService.authorizeActionBoolean(context, bitstream, Constants.READ)) {
-                        log.info("User not authorized to read bitstream {} of item {}; "
+                        log.debug("User not authorized to read bitstream {} of item {}; "
                                 + "zip download is forbidden.", bitstream.getID(), item.getID());
                         return false;
                     }

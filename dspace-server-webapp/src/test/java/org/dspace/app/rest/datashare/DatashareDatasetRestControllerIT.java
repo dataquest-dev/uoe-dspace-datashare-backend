@@ -77,10 +77,10 @@ public class DatashareDatasetRestControllerIT extends AbstractControllerIntegrat
     public void zipFileLinkForbiddenForAnonymousWhenFilesAreRestricted() throws Exception {
         context.turnOffAuthorisationSystem();
         // Restrict the file so that only administrators (no anonymous, no regular users) can read it
-        Group adminOnly = GroupBuilder.createGroup(context)
+        Group restrictedGroup = GroupBuilder.createGroup(context)
                 .withName("Restricted Group")
                 .build();
-        Item item = buildItemWithBitstream(adminOnly);
+        Item item = buildItemWithBitstream(restrictedGroup);
         context.restoreAuthSystemState();
 
         // Anonymous users are not authenticated: the link must not be exposed (401)
@@ -91,10 +91,10 @@ public class DatashareDatasetRestControllerIT extends AbstractControllerIntegrat
     @Test
     public void zipFileLinkForbiddenForUnauthorizedEPerson() throws Exception {
         context.turnOffAuthorisationSystem();
-        Group adminOnly = GroupBuilder.createGroup(context)
+        Group restrictedGroup = GroupBuilder.createGroup(context)
                 .withName("Restricted Group")
                 .build();
-        Item item = buildItemWithBitstream(adminOnly);
+        Item item = buildItemWithBitstream(restrictedGroup);
         EPerson outsider = EPersonBuilder.createEPerson(context)
                 .withEmail("outsider@example.com")
                 .withPassword(password)
@@ -110,10 +110,10 @@ public class DatashareDatasetRestControllerIT extends AbstractControllerIntegrat
     @Test
     public void zipFileLinkAccessibleForAdminWhenFilesAreRestricted() throws Exception {
         context.turnOffAuthorisationSystem();
-        Group adminOnly = GroupBuilder.createGroup(context)
+        Group restrictedGroup = GroupBuilder.createGroup(context)
                 .withName("Restricted Group")
                 .build();
-        Item item = buildItemWithBitstream(adminOnly);
+        Item item = buildItemWithBitstream(restrictedGroup);
         context.restoreAuthSystemState();
 
         // Administrators bypass resource policies, so the request is authorized (200)
@@ -136,10 +136,10 @@ public class DatashareDatasetRestControllerIT extends AbstractControllerIntegrat
     @Test
     public void zipFileDownloadableIsFalseForAnonymousWhenFilesAreRestricted() throws Exception {
         context.turnOffAuthorisationSystem();
-        Group adminOnly = GroupBuilder.createGroup(context)
+        Group restrictedGroup = GroupBuilder.createGroup(context)
                 .withName("Restricted Group")
                 .build();
-        Item item = buildItemWithBitstream(adminOnly);
+        Item item = buildItemWithBitstream(restrictedGroup);
         context.restoreAuthSystemState();
 
         // The button-visibility endpoint must report the dataset as not downloadable
