@@ -32,6 +32,7 @@ import org.dspace.core.Constants;
 import org.dspace.event.Event;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import uk.ac.ed.datashare.event.DatashareConsumer;
@@ -51,11 +52,20 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
             DSpaceServicesFactory.getInstance().getConfigurationService();
 
     private File datasetsDir;
+    private String originalDatasetsPath;
 
     @Before
     public void configureDatasetsPath() throws Exception {
+        originalDatasetsPath = configurationService.getProperty("datasets.path");
         datasetsDir = Files.createTempDirectory("datashare-datasets").toFile();
         configurationService.setProperty("datasets.path", datasetsDir.getAbsolutePath());
+    }
+
+    @After
+    public void restoreDatasetsPath() {
+        // ConfigurationService is shared across the JVM; restore datasets.path so this test does
+        // not leak into other integration tests and reintroduce order-dependent failures.
+        configurationService.setProperty("datasets.path", originalDatasetsPath);
     }
 
     private Item createArchivedItemWithFile() throws Exception {
