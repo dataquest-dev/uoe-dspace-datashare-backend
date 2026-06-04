@@ -85,6 +85,38 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     }
 
     @Override
+    public void deleteDatasetForItem(Context context, Item item) {
+        if (item == null || item.getHandle() == null) {
+            return;
+        }
+        String fileName = DatashareItemDataset.getFileName(item.getHandle());
+        // Drop the database record so the zip is no longer advertised as available...
+        deleteDatashareDataset(context, fileName);
+        // ...and remove the physical zip so the ds-datasets job regenerates it from the current
+        // fileset. This is best-effort: a missing file or unconfigured datasets.path must not
+        // break the operation that triggered this (e.g. a bitstream upload/delete).
+        deleteDatasetZipFile(item);
+    }
+
+    /**
+     * Best-effort deletion of the physical dataset zip file for the given item. Any problem
+     * (datasets.path not configured, file already gone, IO error) is logged and swallowed.
+     *
+     * @param item the item whose zip file should be deleted
+     */
+    private void deleteDatasetZipFile(Item item) {
+        try {
+            String fullPath = DatashareItemDataset.getFullFilePath(item.getHandle());
+            File zip = new File(fullPath);
+            if (zip.exists() && !zip.delete()) {
+                log.warn("Could not delete dataset zip file {} for item {}", fullPath, item.getID());
+            }
+        } catch (Exception e) {
+            log.warn("Error deleting dataset zip file for item " + item.getID(), e);
+        }
+    }
+
+    @Override
     public String fetchDatashareDatasetChecksum(Context context, Item item) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'fetchDatashareDatasetChecksum'");

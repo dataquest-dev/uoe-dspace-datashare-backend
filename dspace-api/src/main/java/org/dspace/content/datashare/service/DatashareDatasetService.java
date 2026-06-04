@@ -41,4 +41,17 @@ public interface DatashareDatasetService
      */
     public boolean isUserAuthorizedToDownloadZip(Context context, Item item) throws SQLException;
 
+    /**
+     * Delete the dataset zip for the given item: both the database record and the physical zip
+     * file on disk. This is used when the item's fileset changes (a file is added, replaced or
+     * removed) so that the stale "download all files" zip is dropped and regenerated from the
+     * current files by the {@code ds-datasets} job. The physical file is deleted on a best-effort
+     * basis; failure to delete it does not prevent the database record from being removed.
+     *
+     * @param context DSpace context
+     * @param item    the item whose dataset zip should be removed; ignored when {@code null} or
+     *                when it has no handle yet
+     */
+    public void deleteDatasetForItem(Context context, Item item);
+
 }

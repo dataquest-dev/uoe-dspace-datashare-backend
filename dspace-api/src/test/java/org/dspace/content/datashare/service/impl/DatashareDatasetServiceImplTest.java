@@ -10,6 +10,7 @@ package org.dspace.content.datashare.service.impl;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -114,6 +115,35 @@ public class DatashareDatasetServiceImplTest {
 
         assertFalse(datashareDatasetService.isDatashareDatasetZipFileDownloadable(context, item));
         // Authorization is checked first, so we never reach the dataset lookup.
+        verifyNoInteractions(datashareDatasetDAO);
+    }
+
+    @Test
+    public void deleteDatasetForItemRemovesTheDatabaseRecord() throws Exception {
+        Item item = mock(Item.class);
+        when(item.getHandle()).thenReturn("123456789/8967");
+
+        datashareDatasetService.deleteDatasetForItem(context, item);
+
+        // The DB record for the item's zip is dropped so it is no longer offered for download
+        // and gets regenerated from the current fileset by the ds-datasets job.
+        verify(datashareDatasetDAO).deleteByFileName(context, "DS_123456789_8967.zip");
+    }
+
+    @Test
+    public void deleteDatasetForItemIgnoresNullItem() throws Exception {
+        datashareDatasetService.deleteDatasetForItem(context, null);
+
+        verifyNoInteractions(datashareDatasetDAO);
+    }
+
+    @Test
+    public void deleteDatasetForItemIgnoresItemWithoutHandle() throws Exception {
+        Item item = mock(Item.class);
+        when(item.getHandle()).thenReturn(null);
+
+        datashareDatasetService.deleteDatasetForItem(context, item);
+
         verifyNoInteractions(datashareDatasetDAO);
     }
 }
