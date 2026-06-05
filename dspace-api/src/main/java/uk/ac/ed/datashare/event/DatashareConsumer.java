@@ -269,10 +269,14 @@ public class DatashareConsumer implements Consumer {
      * @param item the item to reconcile; ignored when {@code null}, not archived or without a handle
      */
     private void reconcileDatasetZip(Context ctx, Item item) {
-        if (item == null || !item.isArchived() || item.getHandle() == null) {
+        if (item == null || item.getHandle() == null) {
             return;
         }
-        boolean shouldExist = DatashareItemDataset.areAllItemBitstreamsAvailable(ctx, item);
+        // A withdrawn item is no longer archived, so it must NOT keep a zip: fold the archived
+        // check into "should exist" (rather than guarding on it) so withdrawal triggers deletion,
+        // while a non-archived workspace item is never given a zip.
+        boolean shouldExist = item.isArchived()
+                && DatashareItemDataset.areAllItemBitstreamsAvailable(ctx, item);
         boolean exists = datasetZipExists(item);
         if (shouldExist && !exists) {
             datasetService.createDatasetForItem(ctx, item);
