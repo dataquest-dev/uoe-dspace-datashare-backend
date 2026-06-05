@@ -23,6 +23,8 @@ import org.dspace.identifier.VersionedHandleIdentifierProvider;
 import org.dspace.identifier.VersionedHandleIdentifierProviderWithCanonicalHandles;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -39,11 +41,33 @@ public class CreateMissingIdentifiersIT
 
     private ConfigurationService configurationService = DSpaceServicesFactory.getInstance().getConfigurationService();
 
+    /** Original curation-task plugin configuration, preserved so it can be restored after the test. */
+    private String[] originalTaskConfig;
+
+    @Before
+    public void preserveCurationTaskConfig() {
+        originalTaskConfig = configurationService.getArrayProperty(P_TASK_DEF);
+    }
+
+    @After
+    public void restoreCurationTaskConfig() {
+        // testPerform() replaces the global "plugin.named.org.dspace.curate.CurationTask"
+        // configuration with a single dynamically-defined task and clears the plugin cache.
+        // If that pollution is left in place, later integration tests (notably
+        // WorkflowCurationIT, depending on test execution order) can no longer resolve other
+        // named curation tasks such as "marker", and fail intermittently. Restore the original
+        // configuration and clear the cache so it is rebuilt from the restored values.
+        configurationService.setProperty(P_TASK_DEF, originalTaskConfig);
+        CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
+    }
+
     @Test
     public void testPerform()
             throws IOException {
         // Must remove any cached named plugins before creating a new one
         CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
+        // Save the existing curation task definitions so we can restore them afterwards
+        prevTaskDef = configurationService.getArrayProperty(P_TASK_DEF);
         // Define a new task dynamically
         String[] prevTaskDef = configurationService.getArrayProperty(P_TASK_DEF);
         configurationService.setProperty(P_TASK_DEF,
@@ -84,5 +108,21 @@ public class CreateMissingIdentifiersIT
         int status = curator.getStatus(TASK_NAME);
         assertEquals("Curation should succeed", Curator.CURATE_SUCCESS, status);
         configurationService.setProperty(P_TASK_DEF, prevTaskDef);
+    }
+
+    /**
+     * Restore the original curation task configuration and clear the cached named plugins.
+     *
+     * <p>This test temporarily overrides {@code plugin.named.org.dspace.curate.CurationTask} with a single
+     * dynamically-defined task. Because the DSpace kernel (and therefore the {@code PluginService} named-plugin
+     * cache and the {@code ConfigurationService}) is cached and reused across all integration tests, failing to
+     * restore this would leak into later tests that rely on the file-based curation tasks - e.g. WorkflowCurationIT,
+     * whose "marker" task would otherwise fail to resolve. Run as {@code @After} so it executes even if the test
+     * fails.</p>
+     */
+    @After
+    public void restoreCuration() {
+        configurationService.setProperty(P_TASK_DEF, prevTaskDef);
+        CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
     }
 }
