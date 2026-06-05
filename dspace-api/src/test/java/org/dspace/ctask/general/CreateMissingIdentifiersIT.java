@@ -45,7 +45,6 @@ public class CreateMissingIdentifiersIT
         // Must remove any cached named plugins before creating a new one
         CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
         // Define a new task dynamically
-        String[] prevTaskDef = configurationService.getArrayProperty(P_TASK_DEF);
         configurationService.setProperty(P_TASK_DEF,
                 CreateMissingIdentifiers.class.getCanonicalName() + " = " + TASK_NAME);
 
@@ -83,6 +82,5 @@ public class CreateMissingIdentifiersIT
         curator.curate(context, item);
         int status = curator.getStatus(TASK_NAME);
         assertEquals("Curation should succeed", Curator.CURATE_SUCCESS, status);
-        configurationService.setProperty(P_TASK_DEF, prevTaskDef);
     }
 }
