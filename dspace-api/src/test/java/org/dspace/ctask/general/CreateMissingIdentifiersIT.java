@@ -66,8 +66,6 @@ public class CreateMissingIdentifiersIT
             throws IOException {
         // Must remove any cached named plugins before creating a new one
         CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
-        // Save the existing curation task definitions so we can restore them afterwards
-        prevTaskDef = configurationService.getArrayProperty(P_TASK_DEF);
         // Define a new task dynamically
         configurationService.setProperty(P_TASK_DEF,
                 CreateMissingIdentifiers.class.getCanonicalName() + " = " + TASK_NAME);
@@ -106,21 +104,5 @@ public class CreateMissingIdentifiersIT
         curator.curate(context, item);
         int status = curator.getStatus(TASK_NAME);
         assertEquals("Curation should succeed", Curator.CURATE_SUCCESS, status);
-    }
-
-    /**
-     * Restore the original curation task configuration and clear the cached named plugins.
-     *
-     * <p>This test temporarily overrides {@code plugin.named.org.dspace.curate.CurationTask} with a single
-     * dynamically-defined task. Because the DSpace kernel (and therefore the {@code PluginService} named-plugin
-     * cache and the {@code ConfigurationService}) is cached and reused across all integration tests, failing to
-     * restore this would leak into later tests that rely on the file-based curation tasks - e.g. WorkflowCurationIT,
-     * whose "marker" task would otherwise fail to resolve. Run as {@code @After} so it executes even if the test
-     * fails.</p>
-     */
-    @After
-    public void restoreCuration() {
-        configurationService.setProperty(P_TASK_DEF, prevTaskDef);
-        CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
     }
 }
