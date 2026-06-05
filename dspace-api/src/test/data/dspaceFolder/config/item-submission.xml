@@ -30,6 +30,7 @@
         <name-map collection-entity-type="CustomEntityType" submission-name="entitytypetest"/>
         <name-map collection-handle="123456789/test-duplicate-detection" submission-name="test-duplicate-detection"/>
         <name-map collection-handle="123456789/collection-test-patch" submission-name="publicationTestPatch"/>
+        <name-map collection-handle="123456789/datashare-temporal-test" submission-name="datashareTemporalTest"/>
     </submission-map>
 
 
@@ -86,6 +87,11 @@
 
         <step-definition id="qualdroptest">
             <processing-class>org.dspace.app.rest.submit.step.DescribeStep</processing-class>
+            <type>submission-form</type>
+        </step-definition>
+
+        <step-definition id="datashareSpatialAndTemporalForm">
+            <processing-class>org.dspace.app.rest.submit.step.datashare.DatashareSpatialAndTemporalStep</processing-class>
             <type>submission-form</type>
         </step-definition>
 
@@ -264,6 +270,10 @@
 
         <submission-process name="qualdroptest">
             <step id="qualdroptest" />
+        </submission-process>
+
+        <submission-process name="datashareTemporalTest">
+            <step id="datashareSpatialAndTemporalForm" />
         </submission-process>
 
         <submission-process name="typebindtest">
