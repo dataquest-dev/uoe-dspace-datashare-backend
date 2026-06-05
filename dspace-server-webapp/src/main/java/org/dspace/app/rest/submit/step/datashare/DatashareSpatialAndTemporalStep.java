@@ -174,7 +174,18 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
         if (ddc == null) {
             ddc = new ArrayList<>();
         }
-        ddc.addAll(countries);
+        // Avoid duplicating dropdown entries if a country value is already present in dc.subject.ddc
+        // (e.g. legacy items where country was persisted in that field).
+        Set<String> existingDdc = new HashSet<>();
+        for (MetadataValueRest mv : ddc) {
+            existingDdc.add(mv.getValue());
+        }
+        for (MetadataValueRest country : countries) {
+            if (!existingDdc.contains(country.getValue())) {
+                ddc.add(country);
+                existingDdc.add(country.getValue());
+            }
+        }
         data.getMetadata().put("dc.subject.ddc", ddc);
     }
 
@@ -205,7 +216,8 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
 
     /**
      * Partition dc.coverage.spatial string values into [countries, places]: values matching a known
-     * country code go to countries, the rest to places (input order preserved). Pure helper for testing.
+     * country code go to countries, the rest to places (input order preserved). Used by the country
+     * hydrate/populate logic; package-private and static so it can be unit-tested directly.
      */
     static List<List<String>> splitCountryAndPlace(List<String> spatialValues, Set<String> countryCodes) {
         List<String> countries = new ArrayList<>();
@@ -374,9 +386,19 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
             List<MetadataValue> countryValues = itemService.getMetadataByMetadataString(
                     source.getItem(), "dc.subject.ddc");
             if (!countryValues.isEmpty()) {
+                // Only add country values that aren't already in dc.coverage.spatial, to avoid duplicates
+                // (e.g. legacy/manual items where the same code is already present in both fields).
+                Set<String> existingSpatial = new HashSet<>();
+                for (MetadataValue mv : itemService.getMetadataByMetadataString(
+                        source.getItem(), "dc.coverage.spatial")) {
+                    existingSpatial.add(mv.getValue());
+                }
                 for (MetadataValue country : countryValues) {
-                    itemService.addMetadata(context, source.getItem(),
-                            "dc", "coverage", "spatial", null, country.getValue());
+                    if (!existingSpatial.contains(country.getValue())) {
+                        itemService.addMetadata(context, source.getItem(),
+                                "dc", "coverage", "spatial", null, country.getValue());
+                        existingSpatial.add(country.getValue());
+                    }
                 }
                 itemService.clearMetadata(context, source.getItem(),
                         "dc", "subject", "ddc", Item.ANY);
