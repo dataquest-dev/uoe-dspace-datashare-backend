@@ -87,6 +87,13 @@ public class DatashareConsumer implements Consumer {
 
     @Override
     public void consume(Context ctx, Event event) throws Exception {
+        // The DataShare zip feature is only active when datasets.path is configured. When it is not,
+        // do no work at all (no event resolution, no DB lookups) so that, although this consumer is
+        // in the default dispatcher list, it is a true no-op unless the feature is configured.
+        String datasetsPath = configurationService.getProperty("datasets.path");
+        if (datasetsPath == null || datasetsPath.isEmpty()) {
+            return;
+        }
         if (itemsToCreate == null) {
             itemsToCreate = new HashSet<>();
         }

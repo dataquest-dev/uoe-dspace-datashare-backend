@@ -262,8 +262,11 @@ spring.servlet.multipart.max-file-size = 20GB
 # spring.servlet.multipart.max-request-size = 512MB
 spring.servlet.multipart.max-request-size = 20GB
 
-# datashare event listener (append "datashare" to the default consumer list to enable it)
-event.dispatcher.default.consumers = versioning, discovery, eperson, qaeventsdelete, ldnmessage, datashare
+# datashare event listener. The "datashare" consumer is already enabled in dspace.cfg's default
+# event.dispatcher.default.consumers list, so it does not need to be re-declared here. Only override
+# the list below if your site customises it - and if you do, keep all the other default consumers
+# and simply append "datashare" (otherwise copying this example would disable them):
+# event.dispatcher.default.consumers = versioning, discovery, eperson, qaeventsdelete, ldnmessage, datashare
 event.consumer.datashare.class = uk.ac.ed.datashare.event.DatashareConsumer
 event.consumer.datashare.filters = Item|Bundle+Add|Remove|Install:Item+Modify|Modify_Metadata:Collection+Remove
 

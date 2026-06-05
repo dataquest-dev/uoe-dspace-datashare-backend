@@ -130,7 +130,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
                 log.warn("Could not delete dataset zip file {} for item {}", fullPath, item.getID());
             }
         } catch (Exception e) {
-            log.warn("Error deleting dataset zip file for item " + item.getID(), e);
+            log.error("Error deleting dataset zip file for item " + item.getID(), e);
         }
     }
 

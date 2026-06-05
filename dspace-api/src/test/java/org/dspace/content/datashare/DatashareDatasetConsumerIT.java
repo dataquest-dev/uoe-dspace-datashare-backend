@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.dspace.AbstractIntegrationTestWithDatabase;
 import org.dspace.builder.BitstreamBuilder;
@@ -72,6 +73,9 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         // ConfigurationService is shared across the JVM; restore datasets.path so this test does
         // not leak into other integration tests and reintroduce order-dependent failures.
         configurationService.setProperty("datasets.path", originalDatasetsPath);
+        // Remove the per-test temporary datasets directory so repeated runs do not leave behind
+        // many datashare-datasets* directories on disk.
+        FileUtils.deleteQuietly(datasetsDir);
     }
 
     private Item createArchivedItemWithFile() throws Exception {
