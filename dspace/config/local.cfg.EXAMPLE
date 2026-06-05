@@ -157,7 +157,7 @@ db.password = dspace
 
 # CNRI Handle prefix
 # (Defaults to the reserved dummy/fake prefix of 123456789)
-#handle.prefix = 123456789
+#handle.prefix = 10283
 
 #######################
 # PROXY CONFIGURATION #
