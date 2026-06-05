@@ -449,7 +449,15 @@
         <form name="datashareSpatialAndTemporalForm">
 
             <!--*****
-            Spatial Coverage - country (note: the hijacking of subject.dcc) *****-->
+            Spatial Coverage - country.
+            The dropdown binds to dc.subject.ddc as a TRANSIENT, form-only field. On save,
+            DatashareSpatialAndTemporalStep moves the selected country code(s) into dc.coverage.spatial
+            (and clears dc.subject.ddc), so stored items hold country AND place together in
+            dc.coverage.spatial - matching PRODUCTION v6 (datashare.ed.ac.uk), where OAI 'dim' metadata
+            shows country (codes/names) and place all in dc.coverage.spatial and dc.subject.ddc is never used.
+            On edit, the step splits dc.coverage.spatial back: values matching the 'countries' value-pairs
+            repopulate this dropdown, the rest stay in the Place field. Keeping a distinct form binding avoids
+            two inputs writing the same metadata field (which duplicates values in the DSpace 8 form). *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>

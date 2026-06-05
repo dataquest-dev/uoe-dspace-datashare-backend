@@ -11,6 +11,12 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.junit.Test;
 
 /**
@@ -98,5 +104,56 @@ public class DatashareSpatialAndTemporalStepTest {
         String encoded = DatashareSpatialAndTemporalStep.encodeTimePeriod("2021-03-15", "2023-12-31");
         String[] decoded = DatashareSpatialAndTemporalStep.decodeTimePeriod(encoded);
         assertArrayEquals(new String[]{"2021-03-15", "2023-12-31"}, decoded);
+    }
+
+    // ---- splitCountryAndPlace tests ----
+
+    private static final Set<String> COUNTRY_CODES = new HashSet<>(Arrays.asList("UK", "DZ", "AS", "FR"));
+
+    @Test
+    public void testSplitMixedCountryAndPlace() {
+        List<List<String>> result = DatashareSpatialAndTemporalStep.splitCountryAndPlace(
+                Arrays.asList("Edinburgh", "UK", "Bologna", "FR"), COUNTRY_CODES);
+        assertEquals(Arrays.asList("UK", "FR"), result.get(0));
+        assertEquals(Arrays.asList("Edinburgh", "Bologna"), result.get(1));
+    }
+
+    @Test
+    public void testSplitOnlyPlaces() {
+        List<List<String>> result = DatashareSpatialAndTemporalStep.splitCountryAndPlace(
+                Arrays.asList("Edinburgh", "Bologna"), COUNTRY_CODES);
+        assertEquals(Collections.emptyList(), result.get(0));
+        assertEquals(Arrays.asList("Edinburgh", "Bologna"), result.get(1));
+    }
+
+    @Test
+    public void testSplitOnlyCountries() {
+        List<List<String>> result = DatashareSpatialAndTemporalStep.splitCountryAndPlace(
+                Arrays.asList("UK", "DZ"), COUNTRY_CODES);
+        assertEquals(Arrays.asList("UK", "DZ"), result.get(0));
+        assertEquals(Collections.emptyList(), result.get(1));
+    }
+
+    @Test
+    public void testSplitPreservesOrder() {
+        List<List<String>> result = DatashareSpatialAndTemporalStep.splitCountryAndPlace(
+                Arrays.asList("FR", "Paris", "UK", "Glasgow", "DZ"), COUNTRY_CODES);
+        assertEquals(Arrays.asList("FR", "UK", "DZ"), result.get(0));
+        assertEquals(Arrays.asList("Paris", "Glasgow"), result.get(1));
+    }
+
+    @Test
+    public void testSplitNullList() {
+        List<List<String>> result = DatashareSpatialAndTemporalStep.splitCountryAndPlace(null, COUNTRY_CODES);
+        assertEquals(Collections.emptyList(), result.get(0));
+        assertEquals(Collections.emptyList(), result.get(1));
+    }
+
+    @Test
+    public void testSplitEmptyCountryCodesTreatsAllAsPlaces() {
+        List<List<String>> result = DatashareSpatialAndTemporalStep.splitCountryAndPlace(
+                Arrays.asList("UK", "Edinburgh"), new HashSet<>());
+        assertEquals(Collections.emptyList(), result.get(0));
+        assertEquals(Arrays.asList("UK", "Edinburgh"), result.get(1));
     }
 }
