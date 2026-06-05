@@ -23,6 +23,8 @@ import org.dspace.identifier.VersionedHandleIdentifierProvider;
 import org.dspace.identifier.VersionedHandleIdentifierProviderWithCanonicalHandles;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -38,6 +40,26 @@ public class CreateMissingIdentifiersIT
     private static final String TASK_NAME = "test";
 
     private ConfigurationService configurationService = DSpaceServicesFactory.getInstance().getConfigurationService();
+
+    /** Original curation-task plugin configuration, preserved so it can be restored after the test. */
+    private String[] originalTaskConfig;
+
+    @Before
+    public void preserveCurationTaskConfig() {
+        originalTaskConfig = configurationService.getArrayProperty(P_TASK_DEF);
+    }
+
+    @After
+    public void restoreCurationTaskConfig() {
+        // testPerform() replaces the global "plugin.named.org.dspace.curate.CurationTask"
+        // configuration with a single dynamically-defined task and clears the plugin cache.
+        // If that pollution is left in place, later integration tests (notably
+        // WorkflowCurationIT, depending on test execution order) can no longer resolve other
+        // named curation tasks such as "marker", and fail intermittently. Restore the original
+        // configuration and clear the cache so it is rebuilt from the restored values.
+        configurationService.setProperty(P_TASK_DEF, originalTaskConfig);
+        CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
+    }
 
     @Test
     public void testPerform()
