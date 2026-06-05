@@ -54,4 +54,18 @@ public interface DatashareDatasetService
      */
     public void deleteDatasetForItem(Context context, Item item);
 
+    /**
+     * Generate the dataset zip for the given item and register its database record, using the
+     * supplied context. This is used when a new item is archived (installed) so that the
+     * "download all files" zip is available immediately, mirroring the DataShare 6.x behaviour
+     * (rather than waiting for the next {@code ds-datasets} batch run). The zip is only created
+     * when all of the item's bitstreams may be exposed (item not under embargo and not withdrawn);
+     * any problem is logged and swallowed so it cannot break the operation that triggered it.
+     *
+     * @param context DSpace context
+     * @param item    the item whose dataset zip should be generated; ignored when {@code null} or
+     *                when it has no handle yet
+     */
+    public void createDatasetForItem(Context context, Item item);
+
 }

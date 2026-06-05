@@ -98,6 +98,24 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         deleteDatasetZipFile(item);
     }
 
+    @Override
+    public void createDatasetForItem(Context context, Item item) {
+        if (item == null || item.getHandle() == null) {
+            return;
+        }
+        try {
+            // Generate the zip synchronously using the current context so that, like DataShare 6.x,
+            // a freshly archived item immediately has a downloadable "download all files" zip. The
+            // DatashareItemDataset guards creation on the item being available (not embargoed/
+            // withdrawn) and registers the dataset record.
+            new DatashareItemDataset(context, item).createDatasetSync(context);
+        } catch (Exception e) {
+            // Best-effort: a problem generating the zip (e.g. datasets.path not configured) must not
+            // break the operation that triggered this (the item install).
+            log.warn("Error creating dataset zip for item " + item.getID(), e);
+        }
+    }
+
     /**
      * Best-effort deletion of the physical dataset zip file for the given item. Any problem
      * (datasets.path not configured, file already gone, IO error) is logged and swallowed.

@@ -174,6 +174,18 @@ public class DatashareItemDataset {
     }
 
     /**
+     * Synchronously create the dataset zip and register its database record using the supplied
+     * context (no new thread, no separate context). Used by the event consumer when a new item is
+     * archived so the zip is available immediately, mirroring DataShare 6.x. The batch
+     * {@link #createDataset()} path runs exactly the same logic on its own thread/context.
+     *
+     * @param context DSpace context used to read bitstreams and persist the dataset record.
+     */
+    public void createDatasetSync(Context context) {
+        new DatasetZip().generate(context);
+    }
+
+    /**
      * Delete dataset from system.
      */
     public void delete() {
@@ -393,7 +405,30 @@ public class DatashareItemDataset {
             Context context = null;
             try {
                 context = new Context();
+                generate(context);
+            } catch (Exception ex) {
+                log.error("Failed to create DatashareDataset: ", ex);
+                // throw new RuntimeException(ex);
+            } finally {
+                try {
+                    if (context != null) {
+                        context.complete();
+                    }
+                } catch (SQLException ex) {
+                    log.warn(ex);
+                }
+            }
+        }
 
+        /**
+         * Generate the zip and register the dataset record using the supplied context. Shared by
+         * the threaded {@link #run()} (batch) path and the synchronous
+         * {@link DatashareItemDataset#createDatasetSync(Context)} (event consumer) path.
+         *
+         * @param context DSpace context used to read bitstreams and persist the dataset record.
+         */
+        private void generate(Context context) {
+            try {
                 if (areAllItemBitstreamsAvailable(context, item)) {
                     log.info("create zip for " + item.getHandle());
                     createZip(context);
@@ -408,13 +443,6 @@ public class DatashareItemDataset {
                 }
             } catch (Exception ex) {
                 log.error("Failed to create DatashareDataset: ", ex);
-                // throw new RuntimeException(ex);
-            } finally {
-                try {
-                    context.complete();
-                } catch (SQLException ex) {
-                    log.warn(ex);
-                }
             }
         }
 

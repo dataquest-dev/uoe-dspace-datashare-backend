@@ -26,12 +26,19 @@ import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
 
 /**
- * Listens for events raised by DSpace for DataShare.
- * <p>
- * When an item's fileset changes - a bitstream is added to or removed from one of the bundles that
- * are packaged into the "download all files" zip - the existing dataset zip becomes stale. This
- * consumer deletes that zip (and its database record) so that it is regenerated from the current
- * files by the {@code ds-datasets} job, mirroring the DataShare 6.x behaviour.
+ * Listens for events raised by DSpace for DataShare and keeps the "download all files" dataset zip
+ * in sync with the item, restoring the DataShare 6.x behaviour:
+ * <ul>
+ *   <li><b>Create</b> - when a new item is installed (archived), generate its dataset zip
+ *       immediately so it is downloadable straight away (rather than only after the next
+ *       {@code ds-datasets} batch run).</li>
+ *   <li><b>Delete on removal</b> - when an item is removed from its collection, delete its dataset
+ *       zip (and database record).</li>
+ *   <li><b>Delete on fileset change</b> - when a bitstream is added to or removed from one of the
+ *       bundles packaged into the zip, the existing zip becomes stale, so delete it (and its
+ *       record) so that it is regenerated from the current files by the {@code ds-datasets} job.
+ *       The zip is deliberately not regenerated here because the fileset is mid-edit.</li>
+ * </ul>
  */
 public class DatashareConsumer implements Consumer {
 
@@ -54,8 +61,11 @@ public class DatashareConsumer implements Consumer {
     private ConfigurationService configurationService =
             DSpaceServicesFactory.getInstance().getConfigurationService();
 
-    /** Items whose dataset zip must be refreshed at the end of the current event batch. */
-    private Set<UUID> itemsToRefresh;
+    /** Items whose dataset zip must be (re)generated at the end of the current event batch. */
+    private Set<UUID> itemsToCreate;
+
+    /** Items whose stale dataset zip must be deleted at the end of the current event batch. */
+    private Set<UUID> itemsToDelete;
 
     @Override
     public void initialize() throws Exception {
@@ -64,18 +74,53 @@ public class DatashareConsumer implements Consumer {
 
     @Override
     public void consume(Context ctx, Event event) throws Exception {
-        if (itemsToRefresh == null) {
-            itemsToRefresh = new HashSet<>();
+        if (itemsToCreate == null) {
+            itemsToCreate = new HashSet<>();
+        }
+        if (itemsToDelete == null) {
+            itemsToDelete = new HashSet<>();
         }
         try {
-            Item item = resolveItemWhoseFilesetChanged(ctx, event);
-            if (item != null && item.isArchived()) {
-                itemsToRefresh.add(item.getID());
+            // A new item was installed (archived): generate its zip immediately.
+            if (event.getEventType() == Event.INSTALL && event.getSubjectType() == Constants.ITEM) {
+                itemsToCreate.add(event.getSubjectID());
+                return;
+            }
+            // An item was removed from its collection: delete its (now orphaned) zip.
+            Item removed = resolveItemRemovedFromCollection(ctx, event);
+            if (removed != null) {
+                itemsToDelete.add(removed.getID());
+                return;
+            }
+            // A bitstream/bundle that is part of the zip changed: delete the stale zip.
+            Item changed = resolveItemWhoseFilesetChanged(ctx, event);
+            if (changed != null && changed.isArchived()) {
+                itemsToDelete.add(changed.getID());
             }
         } catch (Exception ex) {
             // Never let a problem resolving the event break the operation that produced it.
             log.warn("DatashareConsumer: could not process event " + event, ex);
         }
+    }
+
+    /**
+     * Work out, for a Collection Remove event, the item that was removed from the collection, or
+     * {@code null} when the event is not an item-removed-from-collection event.
+     *
+     * @param ctx   DSpace context
+     * @param event the event being consumed
+     * @return the removed item, or {@code null}
+     * @throws Exception if the object of the event cannot be resolved
+     */
+    private Item resolveItemRemovedFromCollection(Context ctx, Event event) throws Exception {
+        if (event.getEventType() == Event.REMOVE && event.getSubjectType() == Constants.COLLECTION
+                && event.getObjectType() == Constants.ITEM) {
+            DSpaceObject object = event.getObject(ctx);
+            if (object instanceof Item) {
+                return (Item) object;
+            }
+        }
+        return null;
     }
 
     /**
@@ -126,25 +171,42 @@ public class DatashareConsumer implements Consumer {
 
     @Override
     public void end(Context ctx) throws Exception {
-        if (itemsToRefresh == null || itemsToRefresh.isEmpty()) {
-            itemsToRefresh = null;
+        Set<UUID> toDelete = itemsToDelete;
+        Set<UUID> toCreate = itemsToCreate;
+        itemsToDelete = null;
+        itemsToCreate = null;
+
+        boolean nothingToDelete = toDelete == null || toDelete.isEmpty();
+        boolean nothingToCreate = toCreate == null || toCreate.isEmpty();
+        if (nothingToDelete && nothingToCreate) {
+            return;
+        }
+        // Only do anything when the DataShare zip feature is configured.
+        String datasetsPath = configurationService.getProperty("datasets.path");
+        if (datasetsPath == null || datasetsPath.isEmpty()) {
             return;
         }
         try {
-            // Only do anything when the DataShare zip feature is configured.
-            String datasetsPath = configurationService.getProperty("datasets.path");
-            if (datasetsPath != null && !datasetsPath.isEmpty()) {
-                for (UUID itemId : itemsToRefresh) {
+            // Delete first: if an item was both installed and had files added in the same batch,
+            // the create below produces the final, fresh zip.
+            if (!nothingToDelete) {
+                for (UUID itemId : toDelete) {
                     Item item = itemService.find(ctx, itemId);
                     if (item != null) {
                         datasetService.deleteDatasetForItem(ctx, item);
                     }
                 }
             }
+            if (!nothingToCreate) {
+                for (UUID itemId : toCreate) {
+                    Item item = itemService.find(ctx, itemId);
+                    if (item != null) {
+                        datasetService.createDatasetForItem(ctx, item);
+                    }
+                }
+            }
         } catch (Exception ex) {
             log.warn("DatashareConsumer: failed to refresh dataset zip(s)", ex);
-        } finally {
-            itemsToRefresh = null;
         }
     }
 

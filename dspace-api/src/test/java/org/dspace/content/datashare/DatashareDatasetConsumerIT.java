@@ -38,10 +38,16 @@ import org.junit.Test;
 import uk.ac.ed.datashare.event.DatashareConsumer;
 
 /**
- * Integration tests for the DataShare "download all files" zip lifecycle. When an item's fileset
- * changes (a bitstream is added to / removed from one of the bundles packaged into the zip), the
- * stale dataset zip must be deleted so that it is regenerated from the current files by the
- * {@code ds-datasets} job. See https://github.com/dataquest-dev/dspace-customers/issues/647.
+ * Integration tests for the DataShare "download all files" zip lifecycle, restoring the DataShare
+ * 6.x behaviour:
+ * <ul>
+ *   <li>a fresh zip is generated when a new item is archived (installed),</li>
+ *   <li>the zip is deleted when the item is removed from its collection,</li>
+ *   <li>the stale zip is deleted when the item's fileset changes (a bitstream is added to / removed
+ *       from one of the bundles packaged into the zip) so it is regenerated from the current files
+ *       by the {@code ds-datasets} job.</li>
+ * </ul>
+ * See https://github.com/dataquest-dev/dspace-customers/issues/647.
  */
 public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatabase {
 
@@ -105,6 +111,61 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         Event event = new Event(eventType, Constants.BUNDLE, bundle.getID(), bundle.getName());
         consumer.consume(context, event);
         consumer.end(context);
+    }
+
+    /** Fire the event raised when a new item is installed (archived), as the submission flow does. */
+    private void fireItemInstallEvent(Item item) throws Exception {
+        DatashareConsumer consumer = new DatashareConsumer();
+        consumer.initialize();
+        Event event = new Event(Event.INSTALL, Constants.ITEM, item.getID(), item.getHandle());
+        consumer.consume(context, event);
+        consumer.end(context);
+    }
+
+    /** Fire the event raised when an item is removed from a collection. */
+    private void fireCollectionRemoveItemEvent(Collection collection, Item item) throws Exception {
+        DatashareConsumer consumer = new DatashareConsumer();
+        consumer.initialize();
+        Event event = new Event(Event.REMOVE, Constants.COLLECTION, collection.getID(),
+                Constants.ITEM, item.getID(), item.getHandle());
+        consumer.consume(context, event);
+        consumer.end(context);
+    }
+
+    @Test
+    public void datasetZipCreatedWhenItemInstalled() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        File zip = new File(datasetsDir, DatashareItemDataset.getFileName(item.getHandle()));
+        context.restoreAuthSystemState();
+
+        assertFalse("precondition: no zip exists for a freshly created item", zip.exists());
+
+        fireItemInstallEvent(item);
+
+        assertTrue("a fresh zip must be generated when a new item is archived", zip.exists());
+
+        // The create path registers a dataset DB record (item_id FK); drop it before the builder
+        // teardown deletes the item, so we do not hit a foreign-key violation during cleanup.
+        context.turnOffAuthorisationSystem();
+        datasetService.deleteDatasetForItem(context, item);
+        context.restoreAuthSystemState();
+    }
+
+    @Test
+    public void datasetZipDeletedWhenItemRemovedFromCollection() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        Collection owningCollection = item.getOwningCollection();
+        File zip = placeDatasetZipFile(item);
+        registerDatasetRecord(item);
+        context.restoreAuthSystemState();
+
+        assertTrue("precondition: the generated zip exists", zip.exists());
+
+        fireCollectionRemoveItemEvent(owningCollection, item);
+
+        assertFalse("the zip must be deleted when the item is removed from its collection", zip.exists());
     }
 
     @Test
