@@ -95,7 +95,7 @@
                     <input-type>textarea</input-type>
                     <hint> Please provide a summary description of the dataset or an abstract of the
                         study in which the data was generated. </hint>
-                    <required></required>
+                    <required>You must enter a description for this dataset.</required>
                 </field>
 
             </row>
