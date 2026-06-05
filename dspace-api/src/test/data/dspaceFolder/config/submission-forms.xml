@@ -465,33 +465,6 @@ it, please enter the types and the actual numbers or codes.</hint>
      </row>
    </form>
 
-   <!-- Datashare Spatial and Temporal form (used by DatashareSpatialAndTemporalStepIT /
-        WorkspaceItemRestRepositoryIT to verify temporal coverage date persistence) -->
-   <form name="datashareSpatialAndTemporalForm">
-     <row>
-       <field>
-         <dc-schema>dc</dc-schema>
-         <dc-element>coverage</dc-element>
-         <dc-qualifier>startDate</dc-qualifier>
-         <repeatable>false</repeatable>
-         <label>From</label>
-         <input-type>date</input-type>
-         <required></required>
-       </field>
-     </row>
-     <row>
-       <field>
-         <dc-schema>dc</dc-schema>
-         <dc-element>coverage</dc-element>
-         <dc-qualifier>endDate</dc-qualifier>
-         <repeatable>false</repeatable>
-         <label>To</label>
-         <input-type>date</input-type>
-         <required></required>
-       </field>
-     </row>
-   </form>
-
  </form-definitions>
 
 

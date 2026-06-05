@@ -9,6 +9,7 @@ package org.dspace.app.rest.submit.step.datashare;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -242,35 +243,36 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
         }
 
         if ("remove".equals(op.getOp()) || "add".equals(op.getOp()) || "replace".equals(op.getOp())) {
-            List<MetadataValue> startDates = itemService.getMetadataByMetadataString(
-                    source.getItem(), "dc.coverage.startDate");
-            List<MetadataValue> endDates = itemService.getMetadataByMetadataString(
-                    source.getItem(), "dc.coverage.endDate");
+            syncTemporalCoverage(itemService, context, source.getItem());
+        }
+    }
 
-            if (!startDates.isEmpty() && !endDates.isEmpty()) {
-                String encodedTimePeriod = encodeTimePeriod(
-                        startDates.get(0).getValue(), endDates.get(0).getValue());
-                log.info("encodedTimePeriod: " + encodedTimePeriod);
+    /**
+     * Keep the canonical dc.coverage.temporal value in sync with the individual
+     * dc.coverage.startDate / dc.coverage.endDate fields.
+     *
+     * <p>When both dates are present they are encoded into dc.coverage.temporal (consumed by the
+     * QDC/MODS/OAI crosswalks for export). The individual date fields are intentionally NOT cleared:
+     * the Angular submission form is populated from the item's stored metadata, so they must remain
+     * on the item for the entered values to be shown when the submission is reopened/refreshed.
+     * Clearing them previously caused the entered temporal dates to disappear on reload (they only
+     * survived inside the encoded temporal value, which the form does not decode). See
+     * uoe/temporal-metadata-issue.</p>
+     *
+     * <p>When the pair is incomplete any stale temporal encoding is removed.</p>
+     */
+    static void syncTemporalCoverage(ItemService itemService, Context context, Item item) throws SQLException {
+        List<MetadataValue> startDates = itemService.getMetadataByMetadataString(item, "dc.coverage.startDate");
+        List<MetadataValue> endDates = itemService.getMetadataByMetadataString(item, "dc.coverage.endDate");
 
-                // Encode the canonical dc.coverage.temporal value (used by the QDC/MODS/OAI
-                // crosswalks for export). Use itemService to keep the item's in-memory
-                // metadata list in sync.
-                itemService.clearMetadata(context, source.getItem(),
-                        "dc", "coverage", "temporal", Item.ANY);
-                itemService.addMetadata(context, source.getItem(),
-                        "dc", "coverage", "temporal", null, encodedTimePeriod);
-
-                // NOTE: dc.coverage.startDate / dc.coverage.endDate are intentionally NOT cleared.
-                // The Angular submission form is populated from the item's stored metadata, so the
-                // individual date fields must remain on the item for the values to be shown when the
-                // submission is reopened/refreshed. Clearing them here caused the entered temporal
-                // dates to disappear on reload (they only survived inside the encoded temporal value,
-                // which the form does not decode). See uoe/temporal-metadata-issue.
-            } else {
-                // Incomplete date pair — remove any stale temporal encoding
-                itemService.clearMetadata(context, source.getItem(),
-                        "dc", "coverage", "temporal", Item.ANY);
-            }
+        if (!startDates.isEmpty() && !endDates.isEmpty()) {
+            String encodedTimePeriod = encodeTimePeriod(startDates.get(0).getValue(), endDates.get(0).getValue());
+            log.info("encodedTimePeriod: " + encodedTimePeriod);
+            itemService.clearMetadata(context, item, "dc", "coverage", "temporal", Item.ANY);
+            itemService.addMetadata(context, item, "dc", "coverage", "temporal", null, encodedTimePeriod);
+        } else {
+            // Incomplete date pair — remove any stale temporal encoding
+            itemService.clearMetadata(context, item, "dc", "coverage", "temporal", Item.ANY);
         }
     }
 
