@@ -132,6 +132,34 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         consumer.end(context);
     }
 
+    /** Fire the Item MODIFY event raised when an item is withdrawn or reinstated. */
+    private void fireItemModifyEvent(Item item, String detail) throws Exception {
+        DatashareConsumer consumer = new DatashareConsumer();
+        consumer.initialize();
+        Event event = new Event(Event.MODIFY, Constants.ITEM, item.getID(), detail);
+        consumer.consume(context, event);
+        consumer.end(context);
+    }
+
+    /** Fire the Item MODIFY_METADATA event raised when an item's metadata (e.g. embargo) changes. */
+    private void fireItemModifyMetadataEvent(Item item) throws Exception {
+        DatashareConsumer consumer = new DatashareConsumer();
+        consumer.initialize();
+        Event event = new Event(Event.MODIFY_METADATA, Constants.ITEM, item.getID(), null);
+        consumer.consume(context, event);
+        consumer.end(context);
+    }
+
+    private void setEmbargo(Item item, String date) throws Exception {
+        itemService.addMetadata(context, item, "dc", "date", "embargo", null, date);
+        itemService.update(context, item);
+    }
+
+    private void clearEmbargo(Item item) throws Exception {
+        itemService.clearMetadata(context, item, "dc", "date", "embargo", Item.ANY);
+        itemService.update(context, item);
+    }
+
     @Test
     public void datasetZipCreatedWhenItemInstalled() throws Exception {
         context.turnOffAuthorisationSystem();
@@ -166,6 +194,78 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         fireCollectionRemoveItemEvent(owningCollection, item);
 
         assertFalse("the zip must be deleted when the item is removed from its collection", zip.exists());
+    }
+
+    @Test
+    public void datasetZipDeletedWhenItemWithdrawn() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        File zip = placeDatasetZipFile(item);
+        registerDatasetRecord(item);
+        itemService.withdraw(context, item);
+        context.restoreAuthSystemState();
+
+        assertTrue("precondition: the generated zip exists", zip.exists());
+
+        fireItemModifyEvent(item, "WITHDRAW");
+
+        assertFalse("the zip must be deleted when the item is withdrawn", zip.exists());
+    }
+
+    @Test
+    public void datasetZipCreatedWhenItemReinstated() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        File zip = new File(datasetsDir, DatashareItemDataset.getFileName(item.getHandle()));
+        itemService.withdraw(context, item);
+        itemService.reinstate(context, item);
+        context.restoreAuthSystemState();
+
+        assertFalse("precondition: a withdrawn item has no zip", zip.exists());
+
+        fireItemModifyEvent(item, "REINSTATE");
+
+        assertTrue("the zip must be regenerated when the item is reinstated", zip.exists());
+
+        context.turnOffAuthorisationSystem();
+        datasetService.deleteDatasetForItem(context, item);
+        context.restoreAuthSystemState();
+    }
+
+    @Test
+    public void datasetZipDeletedWhenEmbargoApplied() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        File zip = placeDatasetZipFile(item);
+        registerDatasetRecord(item);
+        setEmbargo(item, "2099-01-01");
+        context.restoreAuthSystemState();
+
+        assertTrue("precondition: the generated zip exists", zip.exists());
+
+        fireItemModifyMetadataEvent(item);
+
+        assertFalse("the zip must be deleted when the item is put under embargo", zip.exists());
+    }
+
+    @Test
+    public void datasetZipCreatedWhenEmbargoLifted() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        setEmbargo(item, "2099-01-01");
+        File zip = new File(datasetsDir, DatashareItemDataset.getFileName(item.getHandle()));
+        clearEmbargo(item);
+        context.restoreAuthSystemState();
+
+        assertFalse("precondition: an embargoed item has no zip", zip.exists());
+
+        fireItemModifyMetadataEvent(item);
+
+        assertTrue("the zip must be generated when the embargo is lifted", zip.exists());
+
+        context.turnOffAuthorisationSystem();
+        datasetService.deleteDatasetForItem(context, item);
+        context.restoreAuthSystemState();
     }
 
     @Test

@@ -7,6 +7,7 @@
  */
 package uk.ac.ed.datashare.event;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -15,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
 import org.dspace.content.Item;
+import org.dspace.content.datashare.DatashareItemDataset;
 import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.ItemService;
@@ -38,6 +40,11 @@ import org.dspace.services.factory.DSpaceServicesFactory;
  *       bundles packaged into the zip, the existing zip becomes stale, so delete it (and its
  *       record) so that it is regenerated from the current files by the {@code ds-datasets} job.
  *       The zip is deliberately not regenerated here because the fileset is mid-edit.</li>
+ *   <li><b>Reconcile on availability change</b> - the dataset zip is a static file served with no
+ *       per-request authorization, so it must only exist on disk while the item's files may be
+ *       downloaded (item not under embargo and not withdrawn). When the item is withdrawn,
+ *       reinstated or its embargo changes, reconcile the zip's existence with that rule: delete it
+ *       when the files become unavailable, (re)generate it when they become available again.</li>
  * </ul>
  */
 public class DatashareConsumer implements Consumer {
@@ -67,6 +74,12 @@ public class DatashareConsumer implements Consumer {
     /** Items whose stale dataset zip must be deleted at the end of the current event batch. */
     private Set<UUID> itemsToDelete;
 
+    /**
+     * Items whose availability may have changed (withdraw/reinstate/embargo) and whose zip must
+     * therefore be reconciled - created or deleted - against the current availability.
+     */
+    private Set<UUID> itemsToReconcile;
+
     @Override
     public void initialize() throws Exception {
         // nothing to initialise
@@ -80,6 +93,9 @@ public class DatashareConsumer implements Consumer {
         if (itemsToDelete == null) {
             itemsToDelete = new HashSet<>();
         }
+        if (itemsToReconcile == null) {
+            itemsToReconcile = new HashSet<>();
+        }
         try {
             // A new item was installed (archived): generate its zip immediately.
             if (event.getEventType() == Event.INSTALL && event.getSubjectType() == Constants.ITEM) {
@@ -92,6 +108,12 @@ public class DatashareConsumer implements Consumer {
                 itemsToDelete.add(removed.getID());
                 return;
             }
+            // The item's availability may have flipped (withdraw/reinstate fire MODIFY with a
+            // WITHDRAW/REINSTATE detail; an embargo change fires MODIFY_METADATA): reconcile later.
+            if (isAvailabilityChange(event)) {
+                itemsToReconcile.add(event.getSubjectID());
+                return;
+            }
             // A bitstream/bundle that is part of the zip changed: delete the stale zip.
             Item changed = resolveItemWhoseFilesetChanged(ctx, event);
             if (changed != null && changed.isArchived()) {
@@ -101,6 +123,25 @@ public class DatashareConsumer implements Consumer {
             // Never let a problem resolving the event break the operation that produced it.
             log.warn("DatashareConsumer: could not process event " + event, ex);
         }
+    }
+
+    /**
+     * Whether the event is one that can change an item's availability (and therefore whether its
+     * dataset zip should exist): a withdraw/reinstate (Item MODIFY with a WITHDRAW/REINSTATE
+     * detail) or an embargo metadata change (Item MODIFY_METADATA).
+     *
+     * @param event the event being consumed
+     * @return {@code true} if the zip's existence may need reconciling
+     */
+    private boolean isAvailabilityChange(Event event) {
+        if (event.getSubjectType() != Constants.ITEM) {
+            return false;
+        }
+        if (event.getEventType() == Event.MODIFY_METADATA) {
+            return true;
+        }
+        return event.getEventType() == Event.MODIFY
+                && ("WITHDRAW".equals(event.getDetail()) || "REINSTATE".equals(event.getDetail()));
     }
 
     /**
@@ -173,12 +214,15 @@ public class DatashareConsumer implements Consumer {
     public void end(Context ctx) throws Exception {
         Set<UUID> toDelete = itemsToDelete;
         Set<UUID> toCreate = itemsToCreate;
+        Set<UUID> toReconcile = itemsToReconcile;
         itemsToDelete = null;
         itemsToCreate = null;
+        itemsToReconcile = null;
 
         boolean nothingToDelete = toDelete == null || toDelete.isEmpty();
         boolean nothingToCreate = toCreate == null || toCreate.isEmpty();
-        if (nothingToDelete && nothingToCreate) {
+        boolean nothingToReconcile = toReconcile == null || toReconcile.isEmpty();
+        if (nothingToDelete && nothingToCreate && nothingToReconcile) {
             return;
         }
         // Only do anything when the DataShare zip feature is configured.
@@ -205,8 +249,49 @@ public class DatashareConsumer implements Consumer {
                     }
                 }
             }
+            if (!nothingToReconcile) {
+                for (UUID itemId : toReconcile) {
+                    reconcileDatasetZip(ctx, itemService.find(ctx, itemId));
+                }
+            }
         } catch (Exception ex) {
             log.warn("DatashareConsumer: failed to refresh dataset zip(s)", ex);
+        }
+    }
+
+    /**
+     * Reconcile the existence of an item's dataset zip with whether its files may currently be
+     * downloaded. The zip must exist only while the item is archived and its files are available
+     * (not embargoed, not withdrawn): generate it when it should exist but does not, delete it when
+     * it exists but should not. A no-op when it already matches.
+     *
+     * @param ctx  DSpace context
+     * @param item the item to reconcile; ignored when {@code null}, not archived or without a handle
+     */
+    private void reconcileDatasetZip(Context ctx, Item item) {
+        if (item == null || !item.isArchived() || item.getHandle() == null) {
+            return;
+        }
+        boolean shouldExist = DatashareItemDataset.areAllItemBitstreamsAvailable(ctx, item);
+        boolean exists = datasetZipExists(item);
+        if (shouldExist && !exists) {
+            datasetService.createDatasetForItem(ctx, item);
+        } else if (!shouldExist && exists) {
+            datasetService.deleteDatasetForItem(ctx, item);
+        }
+    }
+
+    /**
+     * Whether the physical dataset zip file currently exists on disk for the given item.
+     *
+     * @param item the item whose zip file is checked
+     * @return {@code true} if the zip file exists, {@code false} otherwise (including on error)
+     */
+    private boolean datasetZipExists(Item item) {
+        try {
+            return new File(DatashareItemDataset.getFullFilePath(item.getHandle())).exists();
+        } catch (Exception e) {
+            return false;
         }
     }
 
