@@ -252,16 +252,20 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
                         startDates.get(0).getValue(), endDates.get(0).getValue());
                 log.info("encodedTimePeriod: " + encodedTimePeriod);
 
-                // Use itemService to ensure the item's in-memory metadata list stays in sync
+                // Encode the canonical dc.coverage.temporal value (used by the QDC/MODS/OAI
+                // crosswalks for export). Use itemService to keep the item's in-memory
+                // metadata list in sync.
                 itemService.clearMetadata(context, source.getItem(),
                         "dc", "coverage", "temporal", Item.ANY);
                 itemService.addMetadata(context, source.getItem(),
                         "dc", "coverage", "temporal", null, encodedTimePeriod);
 
-                itemService.clearMetadata(context, source.getItem(),
-                        "dc", "coverage", "startDate", Item.ANY);
-                itemService.clearMetadata(context, source.getItem(),
-                        "dc", "coverage", "endDate", Item.ANY);
+                // NOTE: dc.coverage.startDate / dc.coverage.endDate are intentionally NOT cleared.
+                // The Angular submission form is populated from the item's stored metadata, so the
+                // individual date fields must remain on the item for the values to be shown when the
+                // submission is reopened/refreshed. Clearing them here caused the entered temporal
+                // dates to disappear on reload (they only survived inside the encoded temporal value,
+                // which the form does not decode). See uoe/temporal-metadata-issue.
             } else {
                 // Incomplete date pair — remove any stale temporal encoding
                 itemService.clearMetadata(context, source.getItem(),
