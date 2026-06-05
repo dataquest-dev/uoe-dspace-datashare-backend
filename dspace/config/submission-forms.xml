@@ -215,7 +215,7 @@
                     <hint> Search for a subject and from the dropdown menu select the classification
                         which most closely matches your research. </hint>
                     <required></required>
-                    <vocabulary>jacs</vocabulary>
+                    <vocabulary closed="true">jacs</vocabulary>
                 </field>
             </row>
             <row>
