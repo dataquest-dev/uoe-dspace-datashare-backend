@@ -66,7 +66,6 @@ public class CreateMissingIdentifiersIT
             throws IOException {
         // Must remove any cached named plugins before creating a new one
         CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
-        // (The existing curation task configuration is preserved in @Before and restored in @After.)
         // Define a new task dynamically
         configurationService.setProperty(P_TASK_DEF,
                 CreateMissingIdentifiers.class.getCanonicalName() + " = " + TASK_NAME);
