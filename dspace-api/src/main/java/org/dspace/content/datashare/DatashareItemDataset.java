@@ -309,19 +309,22 @@ public class DatashareItemDataset {
     /**
      * Determine whether all of an item's bitstreams may be exposed in a dataset zip. Because the
      * generated zip is served as a static file with no per-request authorization, it may only be
-     * exposed when the files are public: the item must not be under embargo, not be withdrawn, and
-     * the whole access path packaged into the zip (the item, each zip bundle and each bitstream)
-     * must be readable by the Anonymous user. Otherwise a guessed zip URL would leak restricted
-     * content.
+     * exposed when the item is publicly available: it must be archived, not under embargo, not
+     * withdrawn, and the whole access path packaged into the zip (the item, each zip bundle and each
+     * bitstream) must be readable by the Anonymous user. Otherwise a guessed zip URL would leak
+     * restricted content. This is the single existence rule for the zip; all call sites (generation,
+     * lookup and the event consumer) rely on it.
      *
      * @param context DSpace context.
      * @param item    DSpace item.
      * @return true if the item's bitstreams can be made available.
      */
     public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
+        log.info("isArchived: " + item.isArchived());
         log.info("hasEmbargo: " + hasEmbargo(context, item));
         log.info("isWithdrawn: " + item.isWithdrawn());
-        return !hasEmbargo(context, item)
+        return item.isArchived()
+                && !hasEmbargo(context, item)
                 && !item.isWithdrawn()
                 && isZipContentAnonymouslyReadable(context, item);
     }

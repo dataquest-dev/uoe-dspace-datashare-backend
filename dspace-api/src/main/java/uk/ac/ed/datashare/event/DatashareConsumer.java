@@ -326,11 +326,10 @@ public class DatashareConsumer implements Consumer {
         if (item == null || item.getHandle() == null) {
             return;
         }
-        // A withdrawn item is no longer archived, so it must NOT keep a zip: fold the archived
-        // check into "should exist" (rather than guarding on it) so withdrawal triggers deletion,
-        // while a non-archived workspace item is never given a zip.
-        boolean shouldExist = item.isArchived()
-                && DatashareItemDataset.areAllItemBitstreamsAvailable(ctx, item);
+        // areAllItemBitstreamsAvailable is the single existence rule (archived, not embargoed, not
+        // withdrawn, whole access path readable by Anonymous), so a withdrawn/restricted item or a
+        // non-archived workspace item is correctly treated as "should not exist".
+        boolean shouldExist = DatashareItemDataset.areAllItemBitstreamsAvailable(ctx, item);
         boolean exists = datasetZipExists(item);
         if (shouldExist && !exists) {
             datasetService.createDatasetForItem(ctx, item);
