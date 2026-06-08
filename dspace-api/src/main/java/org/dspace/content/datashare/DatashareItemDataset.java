@@ -25,6 +25,8 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.Logger;
+import org.dspace.authorize.factory.AuthorizeServiceFactory;
+import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
@@ -34,7 +36,9 @@ import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.ItemService;
+import org.dspace.core.Constants;
 import org.dspace.core.Context;
+import org.dspace.eperson.EPerson;
 import org.dspace.services.factory.DSpaceServicesFactory;
 import org.dspace.storage.bitstore.factory.StorageServiceFactory;
 import org.dspace.storage.bitstore.service.BitstreamStorageService;
@@ -303,18 +307,98 @@ public class DatashareItemDataset {
     }
 
     /**
-     * Determine whether all of an item's bitstreams may be exposed in a dataset
-     * zip. An item is considered available when it is not under embargo and not
-     * withdrawn.
+     * Determine whether all of an item's bitstreams may be exposed in a dataset zip. Because the
+     * generated zip is served as a static file with no per-request authorization, it may only be
+     * exposed when the item is publicly available: it must be archived, not under embargo, not
+     * withdrawn, and the whole access path packaged into the zip (the item, each zip bundle and each
+     * bitstream) must be readable by the Anonymous user. Otherwise a guessed zip URL would leak
+     * restricted content. This is the single existence rule for the zip; all call sites (generation,
+     * lookup and the event consumer) rely on it.
      *
      * @param context DSpace context.
      * @param item    DSpace item.
      * @return true if the item's bitstreams can be made available.
      */
     public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
+        log.info("isArchived: " + item.isArchived());
         log.info("hasEmbargo: " + hasEmbargo(context, item));
         log.info("isWithdrawn: " + item.isWithdrawn());
-        return !hasEmbargo(context, item) && !item.isWithdrawn();
+        return item.isArchived()
+                && !hasEmbargo(context, item)
+                && !item.isWithdrawn()
+                && isZipContentAnonymouslyReadable(context, item);
+    }
+
+    /**
+     * Whether the whole access path packaged into the dataset zip is readable by the Anonymous user:
+     * the item itself, each of the zip bundles (ORIGINAL, CC-LICENSE, LICENSE) and every bitstream
+     * within them. A restrictive policy at <em>any</em> level (item, bundle or bitstream) makes the
+     * content non-public, so the static zip must not exist. The check is evaluated as the Anonymous
+     * user (eperson == null) against a context with authorization enabled and no special groups, so
+     * it is unaffected by an "ignore authorization" context or by IP-based special groups (either of
+     * which would otherwise report access as allowed for content that is not truly public).
+     *
+     * @param context DSpace context (used directly only when it enforces authorization and carries
+     *                no special groups).
+     * @param item    DSpace item.
+     * @return true if the item, its zip bundles and their bitstreams are all anonymously readable.
+     */
+    public static boolean isZipContentAnonymouslyReadable(Context context, Item item) {
+        AuthorizeService authorizeService = AuthorizeServiceFactory.getInstance().getAuthorizeService();
+        ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+        Context evalContext = context;
+        Context tempContext = null;
+        try {
+            // authorize(...) short-circuits to "allowed" for a context that ignores authorization,
+            // and a request context may carry IP-based "special groups" that would make an anonymous
+            // (null eperson) check pass for IP-restricted content. In either case fall back to a
+            // fresh authorization-enforcing context with no special groups, so the check reflects
+            // what a truly anonymous user (the audience of the unauthenticated static zip) can read.
+            if (context == null || context.ignoreAuthorization() || !context.getSpecialGroups().isEmpty()) {
+                tempContext = new Context(Context.Mode.READ_ONLY);
+                evalContext = tempContext;
+                item = itemService.find(evalContext, item.getID());
+                if (item == null) {
+                    return false;
+                }
+            }
+            // The item must be anonymously readable...
+            if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, item, Constants.READ, true)) {
+                return false;
+            }
+            String[] zipBundles = { ORIGINAL_BUNDLE, CC_LICENSE_BUNDLE, LICENSE_BUNDLE };
+            for (String bundleName : zipBundles) {
+                for (Bundle bundle : itemService.getBundles(item, bundleName)) {
+                    // ...as must each bundle that goes into the zip (a restricted bundle hides its
+                    // files), even though DSpace itself only gates direct bitstream download on the
+                    // bitstream policy...
+                    if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, bundle,
+                            Constants.READ, true)) {
+                        return false;
+                    }
+                    for (Bitstream bitstream : bundle.getBitstreams()) {
+                        // ...and so must every bitstream.
+                        if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, bitstream,
+                                Constants.READ, true)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        } catch (SQLException e) {
+            log.error("Error checking anonymous readability of zip content for item "
+                    + (item != null ? item.getID() : null), e);
+            return false;
+        } finally {
+            if (tempContext != null) {
+                try {
+                    tempContext.abort();
+                } catch (Exception e) {
+                    // ignore - read-only context
+                }
+            }
+        }
     }
 
     /**

@@ -502,8 +502,11 @@ public class BundleServiceImpl extends DSpaceObjectServiceImpl<Bundle> implement
     }
 
     @Override
-    public void updateLastModified(Context context, Bundle dso) {
-        //No implemented for bundle
+    public void updateLastModified(Context context, Bundle bundle) {
+        // A bundle has no last-modified column, but a change to it (e.g. one of its resource
+        // policies) must still be observable by event consumers, so fire a MODIFY event.
+        context.addEvent(new Event(Event.MODIFY, Constants.BUNDLE, bundle.getID(),
+                null, getIdentifiers(context, bundle)));
     }
 
     @Override

@@ -18,11 +18,14 @@ import java.nio.file.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.dspace.AbstractIntegrationTestWithDatabase;
+import org.dspace.authorize.factory.AuthorizeServiceFactory;
+import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.builder.BitstreamBuilder;
 import org.dspace.builder.BundleBuilder;
 import org.dspace.builder.CollectionBuilder;
 import org.dspace.builder.CommunityBuilder;
 import org.dspace.builder.ItemBuilder;
+import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.Collection;
 import org.dspace.content.Item;
@@ -30,6 +33,9 @@ import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.ItemService;
 import org.dspace.core.Constants;
+import org.dspace.eperson.Group;
+import org.dspace.eperson.factory.EPersonServiceFactory;
+import org.dspace.eperson.service.GroupService;
 import org.dspace.event.Event;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
@@ -46,7 +52,9 @@ import uk.ac.ed.datashare.event.DatashareConsumer;
  *   <li>the zip is deleted when the item is removed from its collection,</li>
  *   <li>the stale zip is deleted when the item's fileset changes (a bitstream is added to / removed
  *       from one of the bundles packaged into the zip) so it is regenerated from the current files
- *       by the {@code ds-datasets} job.</li>
+ *       by the {@code ds-datasets} job,</li>
+ *   <li>the zip is deleted when a file's resource policy is restricted (no longer readable by
+ *       Anonymous) and regenerated when the file is made public again.</li>
  * </ul>
  * See https://github.com/dataquest-dev/dspace-customers/issues/647.
  */
@@ -55,6 +63,8 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
     private final DatashareDatasetService datasetService =
             ContentServiceFactory.getInstance().getDatashareDatasetService();
     private final ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+    private final AuthorizeService authorizeService = AuthorizeServiceFactory.getInstance().getAuthorizeService();
+    private final GroupService groupService = EPersonServiceFactory.getInstance().getGroupService();
     private final ConfigurationService configurationService =
             DSpaceServicesFactory.getInstance().getConfigurationService();
 
@@ -152,6 +162,39 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         Event event = new Event(Event.MODIFY_METADATA, Constants.ITEM, item.getID(), null);
         consumer.consume(context, event);
         consumer.end(context);
+    }
+
+    /** Fire the Bitstream MODIFY event raised when a bitstream's resource policy changes. */
+    private void fireBitstreamModifyEvent(Bitstream bitstream) throws Exception {
+        DatashareConsumer consumer = new DatashareConsumer();
+        consumer.initialize();
+        Event event = new Event(Event.MODIFY, Constants.BITSTREAM, bitstream.getID(), null);
+        consumer.consume(context, event);
+        consumer.end(context);
+    }
+
+    /** Fire the Bundle MODIFY event raised when a bundle's resource policy changes. */
+    private void fireBundleModifyEvent(Bundle bundle) throws Exception {
+        DatashareConsumer consumer = new DatashareConsumer();
+        consumer.initialize();
+        Event event = new Event(Event.MODIFY, Constants.BUNDLE, bundle.getID(), null);
+        consumer.consume(context, event);
+        consumer.end(context);
+    }
+
+    private Bitstream firstOriginalBitstream(Item item) throws Exception {
+        return itemService.getBundles(item, "ORIGINAL").get(0).getBitstreams().get(0);
+    }
+
+    /** Remove the bitstream's READ policies so it is no longer readable by Anonymous (restricted). */
+    private void restrictBitstream(Bitstream bitstream) throws Exception {
+        authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
+    }
+
+    /** Grant the Anonymous group READ on the bitstream so it is public again. */
+    private void makeBitstreamPublic(Bitstream bitstream) throws Exception {
+        Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+        authorizeService.addPolicy(context, bitstream, Constants.READ, anonymous);
     }
 
     private void setEmbargo(Item item, String date) throws Exception {
@@ -270,6 +313,79 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         context.turnOffAuthorisationSystem();
         datasetService.deleteDatasetForItem(context, item);
         context.restoreAuthSystemState();
+    }
+
+    @Test
+    public void datasetZipDeletedWhenBitstreamRestricted() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        File zip = placeDatasetZipFile(item);
+        registerDatasetRecord(item);
+        Bitstream bitstream = firstOriginalBitstream(item);
+        // Restrict the file: it is no longer readable by Anonymous, so the public zip must go.
+        restrictBitstream(bitstream);
+        context.restoreAuthSystemState();
+
+        assertTrue("precondition: the generated zip exists", zip.exists());
+
+        fireBitstreamModifyEvent(bitstream);
+
+        assertFalse("the zip must be deleted when a file's policy is restricted", zip.exists());
+    }
+
+    @Test
+    public void datasetZipDeletedWhenBundleRestricted() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        File zip = placeDatasetZipFile(item);
+        registerDatasetRecord(item);
+        Bundle original = itemService.getBundles(item, "ORIGINAL").get(0);
+        // Restrict the bundle itself (the bitstreams stay anonymously readable). The whole access
+        // path must be public, so a restricted bundle must still drop the zip.
+        authorizeService.removePoliciesActionFilter(context, original, Constants.READ);
+        context.restoreAuthSystemState();
+
+        assertTrue("precondition: the generated zip exists", zip.exists());
+
+        fireBundleModifyEvent(original);
+
+        assertFalse("the zip must be deleted when the bundle is restricted", zip.exists());
+    }
+
+    @Test
+    public void datasetZipRegeneratedWhenBitstreamMadePublicAgain() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        Bitstream bitstream = firstOriginalBitstream(item);
+        restrictBitstream(bitstream);
+        File zip = new File(datasetsDir, DatashareItemDataset.getFileName(item.getHandle()));
+        // Now release the file back to the public.
+        makeBitstreamPublic(bitstream);
+        context.restoreAuthSystemState();
+
+        assertFalse("precondition: a restricted item has no zip", zip.exists());
+
+        fireBitstreamModifyEvent(bitstream);
+
+        assertTrue("the zip must be regenerated when the file is made public again", zip.exists());
+
+        context.turnOffAuthorisationSystem();
+        datasetService.deleteDatasetForItem(context, item);
+        context.restoreAuthSystemState();
+    }
+
+    @Test
+    public void datasetZipNotGeneratedForRestrictedItemOnInstall() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        Bitstream bitstream = firstOriginalBitstream(item);
+        restrictBitstream(bitstream);
+        File zip = new File(datasetsDir, DatashareItemDataset.getFileName(item.getHandle()));
+        context.restoreAuthSystemState();
+
+        fireItemInstallEvent(item);
+
+        assertFalse("no zip may be generated for an item whose files are not public", zip.exists());
     }
 
     @Test
