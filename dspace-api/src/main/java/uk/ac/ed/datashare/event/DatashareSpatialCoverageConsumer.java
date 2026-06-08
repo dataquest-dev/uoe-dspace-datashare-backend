@@ -7,8 +7,8 @@
  */
 package uk.ac.ed.datashare.event;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.apache.logging.log4j.Logger;
@@ -40,7 +40,7 @@ public class DatashareSpatialCoverageConsumer implements Consumer {
     private ItemService itemService;
 
     /** Items installed during this event cycle, processed in {@link #end(Context)}. */
-    private List<UUID> itemsToProcess;
+    private Set<UUID> itemsToProcess;
 
     @Override
     public void initialize() throws Exception {
@@ -53,11 +53,10 @@ public class DatashareSpatialCoverageConsumer implements Consumer {
             return;
         }
         if (itemsToProcess == null) {
-            itemsToProcess = new ArrayList<>();
+            // LinkedHashSet: O(1) de-duplication of repeated installs while preserving order
+            itemsToProcess = new LinkedHashSet<>();
         }
-        if (!itemsToProcess.contains(event.getSubjectID())) {
-            itemsToProcess.add(event.getSubjectID());
-        }
+        itemsToProcess.add(event.getSubjectID());
     }
 
     @Override
@@ -75,7 +74,7 @@ public class DatashareSpatialCoverageConsumer implements Consumer {
                 try {
                     DatashareSpatialCoverage.mergeCountryIntoSpatial(ctx, item, itemService);
                 } catch (Exception e) {
-                    log.error("Datashare spatial-coverage merge failed for item " + id, e);
+                    log.error("Datashare spatial-coverage merge failed for item {}", id, e);
                 }
             }
         } finally {
