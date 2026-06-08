@@ -30,7 +30,6 @@ import org.dspace.app.util.DCInputsReader;
 import org.dspace.app.util.DCInputsReaderException;
 import org.dspace.app.util.SubmissionStepConfig;
 import org.dspace.content.InProgressSubmission;
-import org.dspace.content.Item;
 import org.dspace.content.MetadataValue;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.ItemService;
@@ -85,51 +84,10 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
         try {
             DCInputSet inputConfig = inputReader.getInputsByFormName(config.getId());
             readField(obj, config, data, inputConfig);
-            populateTimePeriodFromTemporal(obj, data);
         } catch (DCInputsReaderException e) {
             log.error(e.getMessage(), e);
         }
         return data;
-    }
-
-    /**
-     * If dc.coverage.temporal exists but dc.coverage.startDate / dc.coverage.endDate are absent,
-     * decode the temporal value and populate the form data so that the Angular form shows the dates.
-     */
-    private void populateTimePeriodFromTemporal(InProgressSubmission obj, DataDescribe data) {
-        boolean hasStartDate = data.getMetadata().containsKey("dc.coverage.startDate");
-        boolean hasEndDate = data.getMetadata().containsKey("dc.coverage.endDate");
-
-        if (hasStartDate && hasEndDate) {
-            return;
-        }
-
-        List<MetadataValue> temporalValues = itemService.getMetadataByMetadataString(
-                obj.getItem(), "dc.coverage.temporal");
-        if (temporalValues == null || temporalValues.isEmpty()) {
-            return;
-        }
-
-        String[] decoded = decodeTimePeriod(temporalValues.get(0).getValue());
-        if (decoded == null) {
-            return;
-        }
-
-        if (!hasStartDate && decoded[0] != null && !decoded[0].isEmpty()) {
-            MetadataValueRest startDto = new MetadataValueRest();
-            startDto.setValue(decoded[0]);
-            List<MetadataValueRest> startList = new ArrayList<>();
-            startList.add(startDto);
-            data.getMetadata().put("dc.coverage.startDate", startList);
-        }
-
-        if (!hasEndDate && decoded[1] != null && !decoded[1].isEmpty()) {
-            MetadataValueRest endDto = new MetadataValueRest();
-            endDto.setValue(decoded[1]);
-            List<MetadataValueRest> endList = new ArrayList<>();
-            endList.add(endDto);
-            data.getMetadata().put("dc.coverage.endDate", endList);
-        }
     }
 
     private void readField(InProgressSubmission obj, SubmissionStepConfig config, DataDescribe data,
@@ -210,11 +168,6 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
     public void doPatchProcessing(Context context, HttpServletRequest currentRequest, InProgressSubmission source,
             Operation op, SubmissionStepConfig stepConf) throws Exception {
 
-        // Hydrate: if dc.coverage.temporal is stored but the individual date fields are absent,
-        // decode temporal back into dc.coverage.startDate / dc.coverage.endDate so that
-        // PATCH replace/remove operations can find the metadata values on the item.
-        hydrateTimePeriodFields(context, source);
-
         String[] pathParts = op.getPath().substring(1).split("/");
         DCInputSet inputConfig = inputReader.getInputsByFormName(stepConf.getId());
 
@@ -241,131 +194,6 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
                         + inputConfig.getFormName());
             }
         }
-
-        if ("remove".equals(op.getOp()) || "add".equals(op.getOp()) || "replace".equals(op.getOp())) {
-            List<MetadataValue> startDates = itemService.getMetadataByMetadataString(
-                    source.getItem(), "dc.coverage.startDate");
-            List<MetadataValue> endDates = itemService.getMetadataByMetadataString(
-                    source.getItem(), "dc.coverage.endDate");
-
-            if (!startDates.isEmpty() && !endDates.isEmpty()) {
-                String encodedTimePeriod = encodeTimePeriod(
-                        startDates.get(0).getValue(), endDates.get(0).getValue());
-                log.info("encodedTimePeriod: " + encodedTimePeriod);
-
-                // Use itemService to ensure the item's in-memory metadata list stays in sync
-                itemService.clearMetadata(context, source.getItem(),
-                        "dc", "coverage", "temporal", Item.ANY);
-                itemService.addMetadata(context, source.getItem(),
-                        "dc", "coverage", "temporal", null, encodedTimePeriod);
-
-                itemService.clearMetadata(context, source.getItem(),
-                        "dc", "coverage", "startDate", Item.ANY);
-                itemService.clearMetadata(context, source.getItem(),
-                        "dc", "coverage", "endDate", Item.ANY);
-            } else {
-                // Incomplete date pair — remove any stale temporal encoding
-                itemService.clearMetadata(context, source.getItem(),
-                        "dc", "coverage", "temporal", Item.ANY);
-            }
-        }
-    }
-
-    /**
-     * If dc.coverage.temporal is stored but dc.coverage.startDate / dc.coverage.endDate are absent,
-     * decode the temporal value and recreate the individual date fields on the item.
-     * This allows subsequent PATCH replace/remove operations to find the metadata values.
-     */
-    private void hydrateTimePeriodFields(Context context, InProgressSubmission source) throws Exception {
-        List<MetadataValue> startDates = itemService.getMetadataByMetadataString(
-                source.getItem(), "dc.coverage.startDate");
-        List<MetadataValue> endDates = itemService.getMetadataByMetadataString(
-                source.getItem(), "dc.coverage.endDate");
-
-        if (!startDates.isEmpty() && !endDates.isEmpty()) {
-            return; // Both date fields already exist — nothing to hydrate
-        }
-
-        List<MetadataValue> temporalValues = itemService.getMetadataByMetadataString(
-                source.getItem(), "dc.coverage.temporal");
-        if (temporalValues.isEmpty()) {
-            return; // No temporal to decode
-        }
-
-        String[] decoded = decodeTimePeriod(temporalValues.get(0).getValue());
-        if (decoded == null) {
-            return;
-        }
-
-        // Remove temporal, recreate individual date fields
-        itemService.clearMetadata(context, source.getItem(), "dc", "coverage", "temporal", Item.ANY);
-
-        if (decoded[0] != null && !decoded[0].isEmpty()) {
-            itemService.addMetadata(context, source.getItem(),
-                    "dc", "coverage", "startDate", null, decoded[0]);
-        }
-        if (decoded[1] != null && !decoded[1].isEmpty()) {
-            itemService.addMetadata(context, source.getItem(),
-                    "dc", "coverage", "endDate", null, decoded[1]);
-        }
-    }
-
-    /**
-     * Encode a start and end date into W3CDTF profile of ISO 8601.
-     *
-     * @param start Start date.
-     * @param end   End date.
-     * @return W3CDTF profile of ISO 8601.
-     */
-    static String encodeTimePeriod(String start, String end) {
-        String ENCODING_SCHEME = "W3C-DTF";
-        String startStr = "";
-        String endString = "";
-
-        if (start != null) {
-            startStr = start;
-        }
-
-        if (end != null) {
-            endString = end;
-        }
-
-        StringBuffer buf = new StringBuffer("start=");
-        buf.append(startStr);
-        buf.append("; end=");
-        buf.append(endString);
-        buf.append("; ");
-        buf.append("scheme=");
-        buf.append(ENCODING_SCHEME);
-
-        return buf.toString();
-    }
-
-    /**
-     * Decode a W3CDTF encoded time period string into start and end date components.
-     *
-     * @param temporal Encoded string, e.g. "start=2021; end=2025; scheme=W3C-DTF".
-     * @return String array [startDate, endDate], or null if input is null/empty.
-     */
-    static String[] decodeTimePeriod(String temporal) {
-        if (temporal == null || temporal.isEmpty()) {
-            return null;
-        }
-
-        String startDate = null;
-        String endDate = null;
-
-        String[] tokens = temporal.split(";");
-        for (String token : tokens) {
-            String trimmed = token.trim();
-            if (trimmed.startsWith("start=")) {
-                startDate = trimmed.substring("start=".length());
-            } else if (trimmed.startsWith("end=")) {
-                endDate = trimmed.substring("end=".length());
-            }
-        }
-
-        return new String[]{startDate, endDate};
     }
 
     private void setCCLicense(Context context, InProgressSubmission source) {

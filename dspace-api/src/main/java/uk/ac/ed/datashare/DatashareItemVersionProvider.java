@@ -18,11 +18,14 @@ import org.dspace.versioning.DefaultItemVersionProvider;
 
 /**
  * When a new version of an archived item is created, its metadata is copied from the (archived)
- * previous version, where the country lives in {@code dc.coverage.spatial} (see
- * {@link DatashareSpatialCoverage}). The new version re-enters submission/workflow editing, so we
- * split the country values back out of {@code dc.coverage.spatial} into the {@code dc.subject.ddc}
- * dropdown field, ensuring the "Spatial Coverage: Country" dropdown re-populates while editing the
- * new version.
+ * previous version, where the spatial country lives in {@code dc.coverage.spatial} (see
+ * {@link DatashareSpatialCoverage}) and the temporal coverage is encoded into
+ * {@code dc.coverage.temporal} (see {@link DatashareTemporalCoverage}). The new version re-enters
+ * submission/workflow editing, so we reverse both archive transforms: the country values are split
+ * back out of {@code dc.coverage.spatial} into the {@code dc.subject.ddc} dropdown, and
+ * {@code dc.coverage.temporal} is decoded back into the {@code dc.coverage.startDate} /
+ * {@code dc.coverage.endDate} date fields, ensuring both the "Spatial Coverage: Country" dropdown and
+ * the temporal date pickers re-populate while editing the new version.
  */
 public class DatashareItemVersionProvider extends DefaultItemVersionProvider {
 
@@ -47,6 +50,12 @@ public class DatashareItemVersionProvider extends DefaultItemVersionProvider {
             DatashareSpatialCoverage.splitSpatialIntoCountry(c, result, itemService, countryCodes);
         } catch (Exception e) {
             log.error("Datashare: failed to split spatial coverage into country for new version "
+                    + (result != null ? result.getID() : null), e);
+        }
+        try {
+            DatashareTemporalCoverage.splitTemporalIntoDates(c, result, itemService);
+        } catch (Exception e) {
+            log.error("Datashare: failed to split temporal coverage into start/end dates for new version "
                     + (result != null ? result.getID() : null), e);
         }
         return result;
