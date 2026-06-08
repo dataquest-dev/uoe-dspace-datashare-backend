@@ -277,6 +277,61 @@ public class InstallItemTest extends AbstractUnitTest {
     }
 
     /**
+     * Test that installItem sets dc.date.available for a freshly created (non-embargoed) item.
+     *
+     * DataShare (UoE) keeps the DSpace 6 behaviour: when a record is archived, dc.date.available
+     * must be populated with the accession date. See InstallItemServiceImpl#populateMetadata.
+     */
+    @Test
+    public void testInstallItem_setsDateAvailable() throws Exception {
+        context.turnOffAuthorisationSystem();
+        WorkspaceItem is = workspaceItemService.create(context, collection, false);
+
+        Item result = installItemService.installItem(context, is);
+        context.restoreAuthSystemState();
+
+        // dc.date.available must be set exactly once on install
+        List<MetadataValue> available = itemService.getMetadata(result, "dc", "date", "available", Item.ANY);
+        assertThat("testInstallItem_setsDateAvailable size", available.size(), equalTo(1));
+
+        // and it must match the accession date (both come from the same DCDate.getCurrent() call)
+        List<MetadataValue> accessioned = itemService.getMetadata(result, "dc", "date", "accessioned", Item.ANY);
+        assertThat("testInstallItem_setsDateAvailable accessioned size", accessioned.size(), equalTo(1));
+        assertThat("testInstallItem_setsDateAvailable matches accessioned",
+                   available.get(0).getValue(), equalTo(accessioned.get(0).getValue()));
+    }
+
+    /**
+     * Test that installItem does NOT stamp dc.date.available with "today" when the item is under
+     * embargo. In that case dc.date.available is the embargo lift field and must hold the lift
+     * date (set by EmbargoService#setEmbargo), not the install date. It is later updated to the
+     * real availability date when the embargo is lifted.
+     */
+    @Test
+    public void testInstallItem_underEmbargo_dateAvailableIsLiftDate() throws Exception {
+        context.turnOffAuthorisationSystem();
+        WorkspaceItem is = workspaceItemService.create(context, collection, false);
+
+        // embargo.field.terms = dc.date.embargo : asking for an embargo until this date
+        String embargoTerms = "2050-01-01";
+        itemService.addMetadata(context, is.getItem(), "dc", "date", "embargo", Item.ANY, embargoTerms);
+
+        Item result = installItemService.installItem(context, is);
+        context.restoreAuthSystemState();
+
+        // dc.date.available (embargo.field.lift) holds the lift date, set once
+        List<MetadataValue> available = itemService.getMetadata(result, "dc", "date", "available", Item.ANY);
+        assertThat("testInstallItem_underEmbargo size", available.size(), equalTo(1));
+        assertThat("testInstallItem_underEmbargo holds lift date",
+                   available.get(0).getValue(), equalTo(new DCDate(embargoTerms).toString()));
+
+        // It must NOT have been stamped with the (today) accession date by populateMetadata
+        List<MetadataValue> accessioned = itemService.getMetadata(result, "dc", "date", "accessioned", Item.ANY);
+        assertFalse("testInstallItem_underEmbargo available must differ from accession date",
+                    available.get(0).getValue().equals(accessioned.get(0).getValue()));
+    }
+
+    /**
      * Test passing in "today" as an issued date to restoreItem.
      */
     @Test

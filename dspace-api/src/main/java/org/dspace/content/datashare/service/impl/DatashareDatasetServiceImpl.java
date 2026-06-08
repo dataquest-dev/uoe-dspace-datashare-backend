@@ -16,6 +16,9 @@ import java.util.UUID;
 
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.AuthorizeException;
+import org.dspace.authorize.service.AuthorizeService;
+import org.dspace.content.Bitstream;
+import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
 import org.dspace.content.Item;
 import org.dspace.content.MetadataField;
@@ -25,6 +28,7 @@ import org.dspace.content.datashare.DatashareDataset;
 import org.dspace.content.datashare.DatashareItemDataset;
 import org.dspace.content.datashare.dao.DatashareDatasetDAO;
 import org.dspace.content.datashare.service.DatashareDatasetService;
+import org.dspace.content.service.ItemService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.core.LogHelper;
@@ -37,8 +41,21 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(DatashareDatasetServiceImpl.class);
 
+    /**
+     * Bundles whose bitstreams are bundled into the dataset zip file (see
+     * {@link DatashareItemDataset}). A user must be able to READ every bitstream in these bundles
+     * to be authorized to download the zip.
+     */
+    private static final String[] ZIP_BUNDLE_NAMES = { "ORIGINAL", "CC-LICENSE", "LICENSE" };
+
     @Autowired(required = true)
     private DatashareDatasetDAO datashareDatasetDAO;
+
+    @Autowired
+    private AuthorizeService authorizeService;
+
+    @Autowired
+    private ItemService itemService;
 
     @Override
     public DatashareDataset insertDatashareDataset(Context context, Item item, String fileName, String cksum) {
@@ -68,6 +85,56 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     }
 
     @Override
+    public void deleteDatasetForItem(Context context, Item item) {
+        if (item == null || item.getHandle() == null) {
+            return;
+        }
+        String fileName = DatashareItemDataset.getFileName(item.getHandle());
+        // Drop the database record so the zip is no longer advertised as available...
+        deleteDatashareDataset(context, fileName);
+        // ...and remove the physical zip so the ds-datasets job regenerates it from the current
+        // fileset. This is best-effort: a missing file or unconfigured datasets.path must not
+        // break the operation that triggered this (e.g. a bitstream upload/delete).
+        deleteDatasetZipFile(item);
+    }
+
+    @Override
+    public void createDatasetForItem(Context context, Item item) {
+        if (item == null || item.getHandle() == null) {
+            return;
+        }
+        try {
+            // Generate the zip synchronously using the current context so that, like DataShare 6.x,
+            // a freshly archived item immediately has a downloadable "download all files" zip. The
+            // DatashareItemDataset guards creation on the item being available (not embargoed/
+            // withdrawn) and registers the dataset record.
+            new DatashareItemDataset(context, item).createDatasetSync(context);
+        } catch (Exception e) {
+            // Best-effort: a problem generating the zip (e.g. datasets.path not configured) must not
+            // break the operation that triggered this (the item install).
+            log.warn("Error creating dataset zip for item " + item.getID(), e);
+        }
+    }
+
+    /**
+     * Best-effort deletion of the physical dataset zip file for the given item. Any problem
+     * (datasets.path not configured, file already gone, IO error) is logged and swallowed.
+     *
+     * @param item the item whose zip file should be deleted
+     */
+    private void deleteDatasetZipFile(Item item) {
+        try {
+            String fullPath = DatashareItemDataset.getFullFilePath(item.getHandle());
+            File zip = new File(fullPath);
+            if (zip.exists() && !zip.delete()) {
+                log.warn("Could not delete dataset zip file {} for item {}", fullPath, item.getID());
+            }
+        } catch (Exception e) {
+            log.error("Error deleting dataset zip file for item " + item.getID(), e);
+        }
+    }
+
+    @Override
     public String fetchDatashareDatasetChecksum(Context context, Item item) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'fetchDatashareDatasetChecksum'");
@@ -75,7 +142,39 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Override
     public boolean isDatashareDatasetZipFileDownloadable(Context context, Item item) {
+        try {
+            // The zip exposes every file of the item, so it must never be offered to a user who
+            // is not authorized to read all of those files.
+            if (!isUserAuthorizedToDownloadZip(context, item)) {
+                return false;
+            }
+        } catch (SQLException e) {
+            log.error("Error checking download authorization for item: "
+                    + (item != null ? item.getID() : null), e);
+            return false;
+        }
         return findDatashareDatasetByItem(context, item) != null;
+    }
+
+    @Override
+    public boolean isUserAuthorizedToDownloadZip(Context context, Item item) throws SQLException {
+        if (item == null) {
+            return false;
+        }
+        // The dataset zip bundles all of the item's files. A user may only download it when they
+        // are authorized to READ every bitstream that would be included in the zip.
+        for (String bundleName : ZIP_BUNDLE_NAMES) {
+            for (Bundle bundle : itemService.getBundles(item, bundleName)) {
+                for (Bitstream bitstream : bundle.getBitstreams()) {
+                    if (!authorizeService.authorizeActionBoolean(context, bitstream, Constants.READ)) {
+                        log.debug("User not authorized to read bitstream {} of item {}; "
+                                + "zip download is forbidden.", bitstream.getID(), item.getID());
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     @Override

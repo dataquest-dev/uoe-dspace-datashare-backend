@@ -56,9 +56,6 @@ public class DatashareItemDataset {
     private static final String DIR_PROP = "datasets.path";
 
     // Metadata constants
-    private static final String DATASHARE_SCHEMA = "ds";
-    private static final String TOMBSTONE_ELEMENT = "withdrawn";
-    private static final String TOMBSTONE_SHOW_QUALIFIER = "showtombstone";
     private static final String DC_DATE_EMBARGO = "dc.date.embargo";
 
     // Static variables
@@ -152,12 +149,11 @@ public class DatashareItemDataset {
     // 3. PUBLIC INSTANCE METHODS (alphabetically)
 
     /**
-     * Check if item has been put under embargo or tombstoned. If so, delete
-     * dataset.
+     * Check if item has been put under embargo. If so, delete dataset.
      */
     public void checkDataset() {
         if (this.exists()) {
-            if (hasEmbargo(this.context, this.item) || isTombstoned(this.context, item)) {
+            if (hasEmbargo(this.context, this.item)) {
                 log.info("Delete dataset for " + item.getHandle());
                 this.delete();
             }
@@ -175,6 +171,18 @@ public class DatashareItemDataset {
         Thread th = new Thread(new DatasetZip());
         th.start();
         return th;
+    }
+
+    /**
+     * Synchronously create the dataset zip and register its database record using the supplied
+     * context (no new thread, no separate context). Used by the event consumer when a new item is
+     * archived so the zip is available immediately, mirroring DataShare 6.x. The batch
+     * {@link #createDataset()} path runs exactly the same logic on its own thread/context.
+     *
+     * @param context DSpace context used to read bitstreams and persist the dataset record.
+     */
+    public void createDatasetSync(Context context) {
+        new DatasetZip().generate(context);
     }
 
     /**
@@ -295,54 +303,18 @@ public class DatashareItemDataset {
     }
 
     /**
-     * Get unique metadata value from DSpace item.
+     * Determine whether all of an item's bitstreams may be exposed in a dataset
+     * zip. An item is considered available when it is not under embargo and not
+     * withdrawn.
      *
-     * @param item      DSpace item.
-     * @param element   Metadata element.
-     * @param qualifier Metadata qualifier.
-     * @param lang      Metadata language.
-     * @param schema    Metadata schema.
-     * @return Metadata value.
+     * @param context DSpace context.
+     * @param item    DSpace item.
+     * @return true if the item's bitstreams can be made available.
      */
-    public static String getUnique(Item item, String element, String qualifier, String lang, String schema) {
-        log.info("getUnique() for item: {} with schema: {}, element: {}, qualifier: {}, lang: {}",
-                item.getID(), schema, element, qualifier, lang);
-        String value = null;
-        ItemService itemService = ContentServiceFactory.getInstance().getItemService();
-
-        log.info("itemService: {}", itemService);
-        log.info("item: {}", item);
-
-        List<MetadataValue> values = itemService.getMetadata(item, schema, element, qualifier, lang, false);
-
-        log.info("getUnique() found {} values for item: {}", values.size(), item.getID());
-
-        if (values != null && values.size() > 0) {
-            value = values.get(0).getValue();
-            log.info("getUnique() returning value: {}", value);
-        } else {
-            log.info("getUnique() no values found, returning null");
-        }
-
-        return value;
-    }
-
-    /**
-     * @param item DSpace item.
-     * @return Get show tombsomstone metadata value.
-     */
-
     public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
         log.info("hasEmbargo: " + hasEmbargo(context, item));
         log.info("isWithdrawn: " + item.isWithdrawn());
-        log.info("isTombstoned: " + isTombstoned(context, item));
-        return !hasEmbargo(context, item) && !item.isWithdrawn()
-                && !isTombstoned(context, item);
-    }
-
-    public static String getShowTombstone(Item item) {
-        log.info("getShowTombstone() for item: " + item.getID());
-        return getUnique(item, TOMBSTONE_ELEMENT, TOMBSTONE_SHOW_QUALIFIER, Item.ANY, DATASHARE_SCHEMA);
+        return !hasEmbargo(context, item) && !item.isWithdrawn();
     }
 
     /**
@@ -398,22 +370,6 @@ public class DatashareItemDataset {
         return url;
     }
 
-    private static boolean isTombstoned(Context context, Item item) {
-        boolean show = false;
-        try {
-            String tomb = getShowTombstone(item);
-            if (tomb != null) {
-                show = Boolean.parseBoolean(tomb);
-            }
-
-        } catch (Exception ex) {
-            throw new RuntimeException("Problem determining access right", ex);
-        }
-
-        log.info("isTombstoned(): " + show);
-        return show;
-    }
-
     /**
      * Parse a date string in ISO format yyyy-MM-dd and return a Date
      * representing the start of that day in the system default timezone.
@@ -449,7 +405,30 @@ public class DatashareItemDataset {
             Context context = null;
             try {
                 context = new Context();
+                generate(context);
+            } catch (Exception ex) {
+                log.error("Failed to create DatashareDataset: ", ex);
+                // throw new RuntimeException(ex);
+            } finally {
+                try {
+                    if (context != null) {
+                        context.complete();
+                    }
+                } catch (SQLException ex) {
+                    log.warn(ex);
+                }
+            }
+        }
 
+        /**
+         * Generate the zip and register the dataset record using the supplied context. Shared by
+         * the threaded {@link #run()} (batch) path and the synchronous
+         * {@link DatashareItemDataset#createDatasetSync(Context)} (event consumer) path.
+         *
+         * @param context DSpace context used to read bitstreams and persist the dataset record.
+         */
+        private void generate(Context context) {
+            try {
                 if (areAllItemBitstreamsAvailable(context, item)) {
                     log.info("create zip for " + item.getHandle());
                     createZip(context);
@@ -464,13 +443,6 @@ public class DatashareItemDataset {
                 }
             } catch (Exception ex) {
                 log.error("Failed to create DatashareDataset: ", ex);
-                // throw new RuntimeException(ex);
-            } finally {
-                try {
-                    context.complete();
-                } catch (SQLException ex) {
-                    log.warn(ex);
-                }
             }
         }
 
@@ -655,12 +627,7 @@ public class DatashareItemDataset {
                     itemHandles.add(item.getHandle());
                     DatashareItemDataset ds = new DatashareItemDataset(context, item);
                     if (ds.exists()) {
-                        if (isTombstoned(context, item)) {
-                            log.info("Delete tombstoned dataset: " + item.getHandle());
-                            ds.delete();
-                        } else {
-                            log.info("Dataset already exists " + item.getHandle());
-                        }
+                        log.info("Dataset already exists " + item.getHandle());
                     } else {
                         if (areAllItemBitstreamsAvailable(context, item)) {
                             log.info("Create dataset for " + ds.getFullPath() + " for " + item.getHandle()
