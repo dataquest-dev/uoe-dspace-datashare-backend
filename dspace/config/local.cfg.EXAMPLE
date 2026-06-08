@@ -270,6 +270,11 @@ spring.servlet.multipart.max-request-size = 20GB
 event.consumer.datashare.class = uk.ac.ed.datashare.event.DatashareConsumer
 event.consumer.datashare.filters = Item|Bundle+Add|Remove|Install:Item+Modify|Modify_Metadata:Bitstream|Bundle+Modify:Collection+Remove
 
+# datashare spatial coverage: on archive, move country (dc.subject.ddc) into dc.coverage.spatial.
+# NOTE: also add 'spatialcoverage' to event.dispatcher.default.consumers if you override that list here.
+event.consumer.spatialcoverage.class = uk.ac.ed.datashare.event.DatashareSpatialCoverageConsumer
+event.consumer.spatialcoverage.filters = Item+Install
+
 # the location of dataset zip file
 datasets.path = /tmp
 

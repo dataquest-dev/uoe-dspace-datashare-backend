@@ -15,9 +15,9 @@
           autowire="byType"
           scope="singleton">
        <property name="provider">
-           <!-- Default Item Versioning Provider, defines behavior for replicating
-                Item, Metadata, Budles and Bitstreams. Autowired at this time. -->
-           <bean class="org.dspace.versioning.DefaultItemVersionProvider">
+           <!-- Datashare Item Versioning Provider: as DefaultItemVersionProvider, but also splits
+                dc.coverage.spatial back into the dc.subject.ddc country dropdown for the new version. -->
+           <bean class="uk.ac.ed.datashare.DatashareItemVersionProvider">
                <property name="ignoredMetadataFields">
                    <set>
                        <value>dc.date.accessioned</value>

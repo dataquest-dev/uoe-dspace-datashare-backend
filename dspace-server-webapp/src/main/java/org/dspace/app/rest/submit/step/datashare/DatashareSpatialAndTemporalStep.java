@@ -217,6 +217,7 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
 
         String[] pathParts = op.getPath().substring(1).split("/");
         DCInputSet inputConfig = inputReader.getInputsByFormName(stepConf.getId());
+
         if ("remove".equals(op.getOp()) && pathParts.length < 3) {
             // manage delete all step fields
             String[] path = op.getPath().substring(1).split("/", 3);
