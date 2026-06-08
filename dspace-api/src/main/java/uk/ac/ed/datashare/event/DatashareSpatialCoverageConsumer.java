@@ -19,23 +19,22 @@ import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.event.Consumer;
 import org.dspace.event.Event;
-import uk.ac.ed.datashare.DatashareTemporalCoverage;
+import uk.ac.ed.datashare.DatashareSpatialCoverage;
 
 /**
- * On item install (archival), encode the transient "Temporal Coverage" dates from
- * {@code dc.coverage.startDate} / {@code dc.coverage.endDate} into the canonical
- * {@code dc.coverage.temporal} value and clear the individual date fields, so the archived record
- * matches production (a single encoded temporal value, no individual date fields). See
- * {@link DatashareTemporalCoverage}.
+ * On item install (archival), move the transient "Spatial Coverage: Country" values from
+ * {@code dc.subject.ddc} into {@code dc.coverage.spatial} and clear {@code dc.subject.ddc}, so the
+ * archived record matches production (country and place together in {@code dc.coverage.spatial}, no
+ * {@code dc.subject.ddc}). See {@link DatashareSpatialCoverage}.
  *
  * <p>Registered for {@code Item+Install}. DataCite/DOI registration is deferred (the {@code doi}
  * consumer is not on the default dispatcher; DOIs are minted by the doi-organiser job), so this
  * transform always runs before the DataCite metadata is generated.</p>
  */
-public class DatashareTemporalCoverageConsumer implements Consumer {
+public class DatashareSpatialCoverageConsumer implements Consumer {
 
     private static final Logger log =
-            org.apache.logging.log4j.LogManager.getLogger(DatashareTemporalCoverageConsumer.class);
+            org.apache.logging.log4j.LogManager.getLogger(DatashareSpatialCoverageConsumer.class);
 
     private ItemService itemService;
 
@@ -72,9 +71,9 @@ public class DatashareTemporalCoverageConsumer implements Consumer {
                     continue;
                 }
                 try {
-                    DatashareTemporalCoverage.mergeDatesIntoTemporal(ctx, item, itemService);
+                    DatashareSpatialCoverage.mergeCountryIntoSpatial(ctx, item, itemService);
                 } catch (Exception e) {
-                    log.error("Datashare temporal-coverage merge failed for item {}", id, e);
+                    log.error("Datashare spatial-coverage merge failed for item {}", id, e);
                 }
             }
         } finally {

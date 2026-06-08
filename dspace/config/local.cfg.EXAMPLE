@@ -262,9 +262,18 @@ spring.servlet.multipart.max-file-size = 20GB
 # spring.servlet.multipart.max-request-size = 512MB
 spring.servlet.multipart.max-request-size = 20GB
 
-# datashare event listener
+# datashare event listener. The "datashare" consumer is already enabled in dspace.cfg's default
+# event.dispatcher.default.consumers list, so it does not need to be re-declared here. Only override
+# the list below if your site customises it - and if you do, keep all the other default consumers
+# and simply append "datashare" (otherwise copying this example would disable them):
+# event.dispatcher.default.consumers = versioning, discovery, eperson, qaeventsdelete, ldnmessage, datashare
 event.consumer.datashare.class = uk.ac.ed.datashare.event.DatashareConsumer
-event.consumer.datashare.filters = Collection|Item+Add|Remove
+event.consumer.datashare.filters = Item|Bundle+Add|Remove|Install:Item+Modify|Modify_Metadata:Bitstream|Bundle+Modify:Collection+Remove
+
+# datashare spatial coverage: on archive, move country (dc.subject.ddc) into dc.coverage.spatial.
+# NOTE: also add 'spatialcoverage' to event.dispatcher.default.consumers if you override that list here.
+event.consumer.spatialcoverage.class = uk.ac.ed.datashare.event.DatashareSpatialCoverageConsumer
+event.consumer.spatialcoverage.filters = Item+Install
 
 # the location of dataset zip file
 datasets.path = /tmp

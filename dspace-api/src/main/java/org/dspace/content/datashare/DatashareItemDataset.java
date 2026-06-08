@@ -25,6 +25,8 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.Logger;
+import org.dspace.authorize.factory.AuthorizeServiceFactory;
+import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
@@ -34,7 +36,9 @@ import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.ItemService;
+import org.dspace.core.Constants;
 import org.dspace.core.Context;
+import org.dspace.eperson.EPerson;
 import org.dspace.services.factory.DSpaceServicesFactory;
 import org.dspace.storage.bitstore.factory.StorageServiceFactory;
 import org.dspace.storage.bitstore.service.BitstreamStorageService;
@@ -56,9 +60,6 @@ public class DatashareItemDataset {
     private static final String DIR_PROP = "datasets.path";
 
     // Metadata constants
-    private static final String DATASHARE_SCHEMA = "ds";
-    private static final String TOMBSTONE_ELEMENT = "withdrawn";
-    private static final String TOMBSTONE_SHOW_QUALIFIER = "showtombstone";
     private static final String DC_DATE_EMBARGO = "dc.date.embargo";
 
     // Static variables
@@ -152,12 +153,11 @@ public class DatashareItemDataset {
     // 3. PUBLIC INSTANCE METHODS (alphabetically)
 
     /**
-     * Check if item has been put under embargo or tombstoned. If so, delete
-     * dataset.
+     * Check if item has been put under embargo. If so, delete dataset.
      */
     public void checkDataset() {
         if (this.exists()) {
-            if (hasEmbargo(this.context, this.item) || isTombstoned(this.context, item)) {
+            if (hasEmbargo(this.context, this.item)) {
                 log.info("Delete dataset for " + item.getHandle());
                 this.delete();
             }
@@ -175,6 +175,18 @@ public class DatashareItemDataset {
         Thread th = new Thread(new DatasetZip());
         th.start();
         return th;
+    }
+
+    /**
+     * Synchronously create the dataset zip and register its database record using the supplied
+     * context (no new thread, no separate context). Used by the event consumer when a new item is
+     * archived so the zip is available immediately, mirroring DataShare 6.x. The batch
+     * {@link #createDataset()} path runs exactly the same logic on its own thread/context.
+     *
+     * @param context DSpace context used to read bitstreams and persist the dataset record.
+     */
+    public void createDatasetSync(Context context) {
+        new DatasetZip().generate(context);
     }
 
     /**
@@ -295,54 +307,98 @@ public class DatashareItemDataset {
     }
 
     /**
-     * Get unique metadata value from DSpace item.
+     * Determine whether all of an item's bitstreams may be exposed in a dataset zip. Because the
+     * generated zip is served as a static file with no per-request authorization, it may only be
+     * exposed when the item is publicly available: it must be archived, not under embargo, not
+     * withdrawn, and the whole access path packaged into the zip (the item, each zip bundle and each
+     * bitstream) must be readable by the Anonymous user. Otherwise a guessed zip URL would leak
+     * restricted content. This is the single existence rule for the zip; all call sites (generation,
+     * lookup and the event consumer) rely on it.
      *
-     * @param item      DSpace item.
-     * @param element   Metadata element.
-     * @param qualifier Metadata qualifier.
-     * @param lang      Metadata language.
-     * @param schema    Metadata schema.
-     * @return Metadata value.
+     * @param context DSpace context.
+     * @param item    DSpace item.
+     * @return true if the item's bitstreams can be made available.
      */
-    public static String getUnique(Item item, String element, String qualifier, String lang, String schema) {
-        log.info("getUnique() for item: {} with schema: {}, element: {}, qualifier: {}, lang: {}",
-                item.getID(), schema, element, qualifier, lang);
-        String value = null;
-        ItemService itemService = ContentServiceFactory.getInstance().getItemService();
-
-        log.info("itemService: {}", itemService);
-        log.info("item: {}", item);
-
-        List<MetadataValue> values = itemService.getMetadata(item, schema, element, qualifier, lang, false);
-
-        log.info("getUnique() found {} values for item: {}", values.size(), item.getID());
-
-        if (values != null && values.size() > 0) {
-            value = values.get(0).getValue();
-            log.info("getUnique() returning value: {}", value);
-        } else {
-            log.info("getUnique() no values found, returning null");
-        }
-
-        return value;
+    public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
+        log.info("isArchived: " + item.isArchived());
+        log.info("hasEmbargo: " + hasEmbargo(context, item));
+        log.info("isWithdrawn: " + item.isWithdrawn());
+        return item.isArchived()
+                && !hasEmbargo(context, item)
+                && !item.isWithdrawn()
+                && isZipContentAnonymouslyReadable(context, item);
     }
 
     /**
-     * @param item DSpace item.
-     * @return Get show tombsomstone metadata value.
+     * Whether the whole access path packaged into the dataset zip is readable by the Anonymous user:
+     * the item itself, each of the zip bundles (ORIGINAL, CC-LICENSE, LICENSE) and every bitstream
+     * within them. A restrictive policy at <em>any</em> level (item, bundle or bitstream) makes the
+     * content non-public, so the static zip must not exist. The check is evaluated as the Anonymous
+     * user (eperson == null) against a context with authorization enabled and no special groups, so
+     * it is unaffected by an "ignore authorization" context or by IP-based special groups (either of
+     * which would otherwise report access as allowed for content that is not truly public).
+     *
+     * @param context DSpace context (used directly only when it enforces authorization and carries
+     *                no special groups).
+     * @param item    DSpace item.
+     * @return true if the item, its zip bundles and their bitstreams are all anonymously readable.
      */
-
-    public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
-        log.info("hasEmbargo: " + hasEmbargo(context, item));
-        log.info("isWithdrawn: " + item.isWithdrawn());
-        log.info("isTombstoned: " + isTombstoned(context, item));
-        return !hasEmbargo(context, item) && !item.isWithdrawn()
-                && !isTombstoned(context, item);
-    }
-
-    public static String getShowTombstone(Item item) {
-        log.info("getShowTombstone() for item: " + item.getID());
-        return getUnique(item, TOMBSTONE_ELEMENT, TOMBSTONE_SHOW_QUALIFIER, Item.ANY, DATASHARE_SCHEMA);
+    public static boolean isZipContentAnonymouslyReadable(Context context, Item item) {
+        AuthorizeService authorizeService = AuthorizeServiceFactory.getInstance().getAuthorizeService();
+        ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+        Context evalContext = context;
+        Context tempContext = null;
+        try {
+            // authorize(...) short-circuits to "allowed" for a context that ignores authorization,
+            // and a request context may carry IP-based "special groups" that would make an anonymous
+            // (null eperson) check pass for IP-restricted content. In either case fall back to a
+            // fresh authorization-enforcing context with no special groups, so the check reflects
+            // what a truly anonymous user (the audience of the unauthenticated static zip) can read.
+            if (context == null || context.ignoreAuthorization() || !context.getSpecialGroups().isEmpty()) {
+                tempContext = new Context(Context.Mode.READ_ONLY);
+                evalContext = tempContext;
+                item = itemService.find(evalContext, item.getID());
+                if (item == null) {
+                    return false;
+                }
+            }
+            // The item must be anonymously readable...
+            if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, item, Constants.READ, true)) {
+                return false;
+            }
+            String[] zipBundles = { ORIGINAL_BUNDLE, CC_LICENSE_BUNDLE, LICENSE_BUNDLE };
+            for (String bundleName : zipBundles) {
+                for (Bundle bundle : itemService.getBundles(item, bundleName)) {
+                    // ...as must each bundle that goes into the zip (a restricted bundle hides its
+                    // files), even though DSpace itself only gates direct bitstream download on the
+                    // bitstream policy...
+                    if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, bundle,
+                            Constants.READ, true)) {
+                        return false;
+                    }
+                    for (Bitstream bitstream : bundle.getBitstreams()) {
+                        // ...and so must every bitstream.
+                        if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, bitstream,
+                                Constants.READ, true)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        } catch (SQLException e) {
+            log.error("Error checking anonymous readability of zip content for item "
+                    + (item != null ? item.getID() : null), e);
+            return false;
+        } finally {
+            if (tempContext != null) {
+                try {
+                    tempContext.abort();
+                } catch (Exception e) {
+                    // ignore - read-only context
+                }
+            }
+        }
     }
 
     /**
@@ -398,22 +454,6 @@ public class DatashareItemDataset {
         return url;
     }
 
-    private static boolean isTombstoned(Context context, Item item) {
-        boolean show = false;
-        try {
-            String tomb = getShowTombstone(item);
-            if (tomb != null) {
-                show = Boolean.parseBoolean(tomb);
-            }
-
-        } catch (Exception ex) {
-            throw new RuntimeException("Problem determining access right", ex);
-        }
-
-        log.info("isTombstoned(): " + show);
-        return show;
-    }
-
     /**
      * Parse a date string in ISO format yyyy-MM-dd and return a Date
      * representing the start of that day in the system default timezone.
@@ -449,7 +489,30 @@ public class DatashareItemDataset {
             Context context = null;
             try {
                 context = new Context();
+                generate(context);
+            } catch (Exception ex) {
+                log.error("Failed to create DatashareDataset: ", ex);
+                // throw new RuntimeException(ex);
+            } finally {
+                try {
+                    if (context != null) {
+                        context.complete();
+                    }
+                } catch (SQLException ex) {
+                    log.warn(ex);
+                }
+            }
+        }
 
+        /**
+         * Generate the zip and register the dataset record using the supplied context. Shared by
+         * the threaded {@link #run()} (batch) path and the synchronous
+         * {@link DatashareItemDataset#createDatasetSync(Context)} (event consumer) path.
+         *
+         * @param context DSpace context used to read bitstreams and persist the dataset record.
+         */
+        private void generate(Context context) {
+            try {
                 if (areAllItemBitstreamsAvailable(context, item)) {
                     log.info("create zip for " + item.getHandle());
                     createZip(context);
@@ -464,13 +527,6 @@ public class DatashareItemDataset {
                 }
             } catch (Exception ex) {
                 log.error("Failed to create DatashareDataset: ", ex);
-                // throw new RuntimeException(ex);
-            } finally {
-                try {
-                    context.complete();
-                } catch (SQLException ex) {
-                    log.warn(ex);
-                }
             }
         }
 
@@ -655,12 +711,7 @@ public class DatashareItemDataset {
                     itemHandles.add(item.getHandle());
                     DatashareItemDataset ds = new DatashareItemDataset(context, item);
                     if (ds.exists()) {
-                        if (isTombstoned(context, item)) {
-                            log.info("Delete tombstoned dataset: " + item.getHandle());
-                            ds.delete();
-                        } else {
-                            log.info("Dataset already exists " + item.getHandle());
-                        }
+                        log.info("Dataset already exists " + item.getHandle());
                     } else {
                         if (areAllItemBitstreamsAvailable(context, item)) {
                             log.info("Create dataset for " + ds.getFullPath() + " for " + item.getHandle()
