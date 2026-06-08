@@ -348,19 +348,31 @@ public class DatashareItemDataset {
         ItemService itemService = ContentServiceFactory.getInstance().getItemService();
         Context evalContext = context;
         Context tempContext = null;
+        boolean switchedUser = false;
         try {
-            // authorize(...) short-circuits to "allowed" for a context that ignores authorization,
-            // and a request context may carry IP-based "special groups" that would make an anonymous
-            // (null eperson) check pass for IP-restricted content. In either case fall back to a
-            // fresh authorization-enforcing context with no special groups, so the check reflects
-            // what a truly anonymous user (the audience of the unauthenticated static zip) can read.
-            if (context == null || context.ignoreAuthorization() || !context.getSpecialGroups().isEmpty()) {
+            // Evaluate readability as a truly anonymous user: authorize(...) short-circuits to
+            // "allowed" for a context that ignores authorization, and a request context may carry
+            // "special groups" (e.g. DATASHARE_USERS / IP-based) that would make an anonymous
+            // (null eperson) check pass for restricted content.
+            if (context == null) {
+                // No caller context (batch path): a fresh context is safe here - there is no shared
+                // session/transaction to disturb.
                 tempContext = new Context(Context.Mode.READ_ONLY);
                 evalContext = tempContext;
                 item = itemService.find(evalContext, item.getID());
                 if (item == null) {
                     return false;
                 }
+            } else if (context.ignoreAuthorization() || !context.getSpecialGroupUuids().isEmpty()) {
+                // IMPORTANT: do NOT create and abort a second Context here. DSpace binds a single
+                // Hibernate session per thread (HibernateDBConnection#getSession ->
+                // sessionFactory.getCurrentSession()), so a new Context(...).abort() would close the
+                // session shared with the caller's transaction (e.g. the in-progress item archival),
+                // detaching its entities -> LazyInitializationException ("no Session") and a full
+                // rollback of the archive. switchContextUser(null) clears the special groups and sets
+                // an anonymous user on the SAME context (no session change); it is restored in finally.
+                context.switchContextUser(null);
+                switchedUser = true;
             }
             // The item must be anonymously readable...
             if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, item, Constants.READ, true)) {
@@ -391,6 +403,10 @@ public class DatashareItemDataset {
                     + (item != null ? item.getID() : null), e);
             return false;
         } finally {
+            if (switchedUser) {
+                // Restore the caller's user and special groups on the shared context.
+                context.restoreContextUser();
+            }
             if (tempContext != null) {
                 try {
                     tempContext.abort();
