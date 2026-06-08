@@ -362,21 +362,21 @@ public class DatashareItemDataset {
                     return false;
                 }
             }
-            // Decide readability from the objects' own READ resource policies (a currently-valid
-            // policy granted to the Anonymous group), NOT via the caller context's authorization
-            // state. This keeps the result correct regardless of the caller's special groups (e.g.
-            // DATASHARE_USERS / IP-based) or an "ignore authorization" context - either of which would
-            // otherwise report restricted content as readable - while NOT creating a second Context.
-            // DSpace binds one Hibernate session per thread (HibernateDBConnection#getSession ->
-            // sessionFactory.getCurrentSession()), so a second Context.abort() would close the session
-            // shared with the caller's transaction (e.g. the in-progress archival), detach its entities
-            // and roll the whole operation back (LazyInitializationException during zip generation).
+            // Decide readability from the objects' own READ resource policies, NOT via the caller
+            // context's authorization state. This keeps the result correct regardless of the caller's
+            // special groups (e.g. DATASHARE_USERS / IP-based) or an "ignore authorization" context -
+            // either of which would otherwise report restricted content as readable - while NOT
+            // creating a second Context. DSpace binds one Hibernate session per thread
+            // (HibernateDBConnection#getSession -> sessionFactory.getCurrentSession()), so a second
+            // Context.abort() would close the session shared with the caller's transaction (e.g. the
+            // in-progress archival), detach its entities and roll the whole operation back
+            // (LazyInitializationException during zip generation).
             Group anonymous = groupService.findByName(evalContext, Group.ANONYMOUS);
             if (anonymous == null) {
                 return false;
             }
             // The item must be anonymously readable...
-            if (!authorizeService.getAuthorizedGroups(evalContext, item, Constants.READ).contains(anonymous)) {
+            if (!isReadableByAnonymous(authorizeService, groupService, evalContext, item, anonymous)) {
                 return false;
             }
             String[] zipBundles = { ORIGINAL_BUNDLE, CC_LICENSE_BUNDLE, LICENSE_BUNDLE };
@@ -385,14 +385,13 @@ public class DatashareItemDataset {
                     // ...as must each bundle that goes into the zip (a restricted bundle hides its
                     // files), even though DSpace itself only gates direct bitstream download on the
                     // bitstream policy...
-                    if (!authorizeService.getAuthorizedGroups(evalContext, bundle, Constants.READ)
-                            .contains(anonymous)) {
+                    if (!isReadableByAnonymous(authorizeService, groupService, evalContext, bundle, anonymous)) {
                         return false;
                     }
                     for (Bitstream bitstream : bundle.getBitstreams()) {
                         // ...and so must every bitstream.
-                        if (!authorizeService.getAuthorizedGroups(evalContext, bitstream, Constants.READ)
-                                .contains(anonymous)) {
+                        if (!isReadableByAnonymous(authorizeService, groupService, evalContext, bitstream,
+                                anonymous)) {
                             return false;
                         }
                     }
@@ -412,6 +411,32 @@ public class DatashareItemDataset {
                 }
             }
         }
+    }
+
+    /**
+     * Whether the given object is readable by the Anonymous user, evaluated from the object's own
+     * currently-valid READ resource policies. An object is anonymously readable if any group holding a
+     * valid READ policy is the Anonymous group itself or has Anonymous as a (transitive) subgroup -
+     * mirroring {@link org.dspace.eperson.service.GroupService#isMember}, which DSpace authorization
+     * uses to grant Anonymous access through such parent groups. This is independent of the caller
+     * context's special groups or ignore-authorization state and creates no second Context.
+     *
+     * @param authorizeService authorize service
+     * @param groupService     group service
+     * @param context          DSpace context
+     * @param dso              the object (item, bundle or bitstream) to check
+     * @param anonymous        the Anonymous group
+     * @return true if {@code dso} is readable by Anonymous
+     * @throws SQLException if a database error occurs
+     */
+    private static boolean isReadableByAnonymous(AuthorizeService authorizeService, GroupService groupService,
+            Context context, DSpaceObject dso, Group anonymous) throws SQLException {
+        for (Group group : authorizeService.getAuthorizedGroups(context, dso, Constants.READ)) {
+            if (anonymous.equals(group) || groupService.isParentOf(context, group, anonymous)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
