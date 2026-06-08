@@ -173,6 +173,15 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         consumer.end(context);
     }
 
+    /** Fire the Bundle MODIFY event raised when a bundle's resource policy changes. */
+    private void fireBundleModifyEvent(Bundle bundle) throws Exception {
+        DatashareConsumer consumer = new DatashareConsumer();
+        consumer.initialize();
+        Event event = new Event(Event.MODIFY, Constants.BUNDLE, bundle.getID(), null);
+        consumer.consume(context, event);
+        consumer.end(context);
+    }
+
     private Bitstream firstOriginalBitstream(Item item) throws Exception {
         return itemService.getBundles(item, "ORIGINAL").get(0).getBitstreams().get(0);
     }
@@ -322,6 +331,25 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         fireBitstreamModifyEvent(bitstream);
 
         assertFalse("the zip must be deleted when a file's policy is restricted", zip.exists());
+    }
+
+    @Test
+    public void datasetZipDeletedWhenBundleRestricted() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItemWithFile();
+        File zip = placeDatasetZipFile(item);
+        registerDatasetRecord(item);
+        Bundle original = itemService.getBundles(item, "ORIGINAL").get(0);
+        // Restrict the bundle itself (the bitstreams stay anonymously readable). The whole access
+        // path must be public, so a restricted bundle must still drop the zip.
+        authorizeService.removePoliciesActionFilter(context, original, Constants.READ);
+        context.restoreAuthSystemState();
+
+        assertTrue("precondition: the generated zip exists", zip.exists());
+
+        fireBundleModifyEvent(original);
+
+        assertFalse("the zip must be deleted when the bundle is restricted", zip.exists());
     }
 
     @Test

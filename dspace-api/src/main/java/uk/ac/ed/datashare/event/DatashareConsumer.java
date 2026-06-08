@@ -44,11 +44,12 @@ import org.dspace.services.factory.DSpaceServicesFactory;
  *       The zip is deliberately not regenerated here because the fileset is mid-edit.</li>
  *   <li><b>Reconcile on availability change</b> - the dataset zip is a static file served with no
  *       per-request authorization, so it must only exist on disk while the item's files may be
- *       downloaded: the item is archived, not under embargo, not withdrawn, and every zip bitstream
- *       is readable by Anonymous. When the item is withdrawn, reinstated, its embargo changes, or a
- *       <b>resource policy of one of its files changes</b> (a bitstream is restricted to / released
- *       from a group), reconcile the zip's existence with that rule: delete it when the files
- *       become non-public, (re)generate it when they become public again.</li>
+ *       downloaded: the item is archived, not under embargo, not withdrawn, and the whole access
+ *       path (the item, each zip bundle and every bitstream) is readable by Anonymous. When the item
+ *       is withdrawn, reinstated, its embargo changes, or a <b>resource policy of one of its files
+ *       or zip bundles changes</b> (restricted to / released from a group), reconcile the zip's
+ *       existence with that rule: delete it when the content becomes non-public, (re)generate it
+ *       when it becomes public again.</li>
  * </ul>
  */
 public class DatashareConsumer implements Consumer {
@@ -166,10 +167,10 @@ public class DatashareConsumer implements Consumer {
 
     /**
      * Work out, for a resource-policy change, the item whose files were affected, or {@code null}
-     * when the event is not a relevant policy change. Changing a bitstream's resource policy fires a
-     * MODIFY on that bitstream (from {@code ResourcePolicyService#update}/{@code #delete}); the
-     * owning item's zip then needs reconciling because the file may have become non-public
-     * (restricted) or public again.
+     * when the event is not a relevant policy change. Changing the resource policy of a bitstream or
+     * of a zip bundle fires a MODIFY on that bitstream/bundle (from
+     * {@code ResourcePolicyService#update}/{@code #delete}); the owning item's zip then needs
+     * reconciling because the content may have become non-public (restricted) or public again.
      *
      * @param ctx   DSpace context
      * @param event the event being consumed
@@ -177,14 +178,21 @@ public class DatashareConsumer implements Consumer {
      * @throws Exception if the subject of the event cannot be resolved
      */
     private Item resolveItemWhosePolicyChanged(Context ctx, Event event) throws Exception {
-        if (event.getEventType() != Event.MODIFY || event.getSubjectType() != Constants.BITSTREAM) {
+        if (event.getEventType() != Event.MODIFY) {
             return null;
         }
-        DSpaceObject subject = event.getSubject(ctx);
-        if (subject instanceof Bitstream) {
-            DSpaceObject parent = bitstreamService.getParentObject(ctx, (Bitstream) subject);
-            if (parent instanceof Item) {
-                return (Item) parent;
+        if (event.getSubjectType() == Constants.BITSTREAM) {
+            DSpaceObject subject = event.getSubject(ctx);
+            if (subject instanceof Bitstream) {
+                DSpaceObject parent = bitstreamService.getParentObject(ctx, (Bitstream) subject);
+                if (parent instanceof Item) {
+                    return (Item) parent;
+                }
+            }
+        } else if (event.getSubjectType() == Constants.BUNDLE) {
+            DSpaceObject subject = event.getSubject(ctx);
+            if (subject instanceof Bundle) {
+                return firstItem((Bundle) subject);
             }
         }
         return null;
