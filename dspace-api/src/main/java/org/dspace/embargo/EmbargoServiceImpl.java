@@ -158,6 +158,12 @@ public class EmbargoServiceImpl implements EmbargoService {
         // lifter.liftEmbargo(context, item);
         itemService.clearMetadata(context, item, lift_schema, lift_element, lift_qualifier, Item.ANY);
 
+        // DATASHARE (UoE): once the embargo is lifted, remove the embargo terms field
+        // (embargo.field.terms, e.g. dc.date.embargo) so it no longer lingers on the item.
+        // Done before re-setting dc.date.available below so the new availability date always wins,
+        // even in the (unusual) case where the terms and lift fields are configured the same.
+        itemService.clearMetadata(context, item, terms_schema, terms_element, terms_qualifier, Item.ANY);
+
         // set the dc.date.available value to right now
         itemService.clearMetadata(context, item, MetadataSchemaEnum.DC.getName(), "date", "available", Item.ANY);
         itemService.addMetadata(context, item, MetadataSchemaEnum.DC.getName(), "date", "available", null,

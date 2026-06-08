@@ -449,7 +449,16 @@
         <form name="datashareSpatialAndTemporalForm">
 
             <!--*****
-            Spatial Coverage - country (note: the hijacking of subject.dcc) *****-->
+            Spatial Coverage - country.
+            The dropdown binds to dc.subject.ddc, which is a TRANSIENT working field while the record is
+            being edited (submission + workflow). The DSpace 8 submission form is rendered from the item's
+            STORED metadata, so the country must physically live in its own field for the dropdown to
+            re-populate on reload / in the workflow editor (and keeping it separate from the Place field,
+            dc.coverage.spatial, avoids two inputs duplicating values on one metadata field).
+            When the item is ARCHIVED, DatashareSpatialCoverageConsumer (Item+Install) moves these values
+            into dc.coverage.spatial and clears dc.subject.ddc, so archived records / OAI / DataCite match
+            PRODUCTION (datashare.ed.ac.uk: country and place together in dc.coverage.spatial, no
+            dc.subject.ddc). On versioning, DatashareItemVersionProvider splits them back out. *****-->
             <row>
                 <field>
                     <dc-schema>dc</dc-schema>
