@@ -9,30 +9,15 @@
 -----------------------------------------------------------------------------------------------------------------------------------
 
 -- Datashare specific metadata fields for the new license functionality.
---
--- These ds.* fields are legacy: the Datashare submission now writes to dc.* directly and the 'ds' schema is removed
--- by V8.0_2025.07.20__drop-datashare-ds-schema.sql. This migration must therefore be a no-op when the 'ds' schema
--- does not exist (e.g. on a clean install): selecting the schema id with a correlated FROM ... WHERE short_id='ds'
--- yields zero rows so nothing is inserted, instead of the previous "SELECT (SELECT metadata_schema_id ...)" form
--- which returned NULL and failed the metadata_schema_id NOT-NULL constraint, aborting the whole Flyway migration.
--- Same safe pattern as V8.0_2025.04.11__metadata-inserts_for_datshare-funder.sql. The 'ds' schema is never created.
 
 -----------------------------------------------------------------------------------------------------------------------------------
 
--- Insert into ds.license.dropdown-value (only if the 'ds' schema exists)
+-- Insert into ds.license.dropdown-value 
 INSERT INTO metadatafieldregistry (metadata_schema_id, element, qualifier)
-  SELECT ms.metadata_schema_id, 'license', 'dropdown-value'
-  FROM metadataschemaregistry ms
-  WHERE ms.short_id = 'ds'
-    AND NOT EXISTS (SELECT 1 FROM metadatafieldregistry
-                    WHERE element = 'license' AND qualifier = 'dropdown-value'
-                    AND metadata_schema_id = ms.metadata_schema_id);
+  SELECT (SELECT metadata_schema_id FROM metadataschemaregistry WHERE short_id='ds'), 'license', 'dropdown-value'
+    WHERE NOT EXISTS (SELECT metadata_field_id,element,qualifier FROM metadatafieldregistry WHERE element = 'license' AND qualifier='dropdown-value' AND metadata_schema_id = (SELECT metadata_schema_id FROM metadataschemaregistry WHERE short_id='ds'));
 
--- Insert into ds.license.rights-text (only if the 'ds' schema exists)
+-- Insert into ds.license.dropdown-value 
 INSERT INTO metadatafieldregistry (metadata_schema_id, element, qualifier)
-  SELECT ms.metadata_schema_id, 'license', 'rights-text'
-  FROM metadataschemaregistry ms
-  WHERE ms.short_id = 'ds'
-    AND NOT EXISTS (SELECT 1 FROM metadatafieldregistry
-                    WHERE element = 'license' AND qualifier = 'rights-text'
-                    AND metadata_schema_id = ms.metadata_schema_id);
+  SELECT (SELECT metadata_schema_id FROM metadataschemaregistry WHERE short_id='ds'), 'license', 'rights-text'
+    WHERE NOT EXISTS (SELECT metadata_field_id,element,qualifier FROM metadatafieldregistry WHERE element = 'license' AND qualifier='rights-text' AND metadata_schema_id = (SELECT metadata_schema_id FROM metadataschemaregistry WHERE short_id='ds'));
