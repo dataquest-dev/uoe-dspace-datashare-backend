@@ -32,7 +32,6 @@ import org.dspace.authorize.AuthorizeException;
 import org.dspace.authorize.ResourcePolicy;
 import org.dspace.authorize.service.ResourcePolicyService;
 import org.dspace.content.DSpaceObject;
-import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.eperson.EPerson;
@@ -301,7 +300,6 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
             resourcePolicy.setStartDate(resourcePolicyRest.getStartDate());
             resourcePolicy.setEndDate(resourcePolicyRest.getEndDate());
             resourcePolicyService.update(context, resourcePolicy);
-            notifyPolicyTargetModified(context, dspaceObject);
             return converter.toRest(resourcePolicy, utils.obtainProjection());
         } else {
             throw new UnprocessableEntityException("A resource policy must contain a valid eperson or group");
@@ -336,28 +334,6 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
         }
         resourcePatch.patch(obtainContext(), resourcePolicy, patch.getOperations());
         resourcePolicyService.update(context, resourcePolicy);
-        notifyPolicyTargetModified(context, resourcePolicy.getdSpaceObject());
-    }
-
-    /**
-     * After a resource policy on a content object (item, bundle or bitstream) is created or
-     * modified, touch that object's last-modified timestamp so a MODIFY event is fired. Consumers
-     * that derive artifacts from access policies - e.g. the DataShare "download all" dataset zip,
-     * which must only exist while the files are public - can then keep those artifacts in sync. A
-     * policy deletion already fires this event via {@code ResourcePolicyService#delete}.
-     *
-     * @param context the DSpace context
-     * @param dso     the object the policy applies to (ignored when null or not a content object)
-     */
-    private void notifyPolicyTargetModified(Context context, DSpaceObject dso)
-            throws SQLException, AuthorizeException {
-        if (dso == null) {
-            return;
-        }
-        int type = dso.getType();
-        if (type == Constants.ITEM || type == Constants.BUNDLE || type == Constants.BITSTREAM) {
-            ContentServiceFactory.getInstance().getDSpaceObjectService(dso).updateLastModified(context, dso);
-        }
     }
 
     @Override

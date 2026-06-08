@@ -166,9 +166,10 @@ public class DatashareConsumer implements Consumer {
 
     /**
      * Work out, for a resource-policy change, the item whose files were affected, or {@code null}
-     * when the event is not a relevant policy change. Changing a resource policy fires a MODIFY on
-     * the bitstream (or bundle) the policy applies to; the owning item's zip then needs reconciling
-     * because the files may have become non-public (restricted) or public again.
+     * when the event is not a relevant policy change. Changing a bitstream's resource policy fires a
+     * MODIFY on that bitstream (from {@code ResourcePolicyService#update}/{@code #delete}); the
+     * owning item's zip then needs reconciling because the file may have become non-public
+     * (restricted) or public again.
      *
      * @param ctx   DSpace context
      * @param event the event being consumed
@@ -176,21 +177,14 @@ public class DatashareConsumer implements Consumer {
      * @throws Exception if the subject of the event cannot be resolved
      */
     private Item resolveItemWhosePolicyChanged(Context ctx, Event event) throws Exception {
-        if (event.getEventType() != Event.MODIFY) {
+        if (event.getEventType() != Event.MODIFY || event.getSubjectType() != Constants.BITSTREAM) {
             return null;
         }
-        if (event.getSubjectType() == Constants.BITSTREAM) {
-            DSpaceObject subject = event.getSubject(ctx);
-            if (subject instanceof Bitstream) {
-                DSpaceObject parent = bitstreamService.getParentObject(ctx, (Bitstream) subject);
-                if (parent instanceof Item) {
-                    return (Item) parent;
-                }
-            }
-        } else if (event.getSubjectType() == Constants.BUNDLE) {
-            DSpaceObject subject = event.getSubject(ctx);
-            if (subject instanceof Bundle) {
-                return firstItem((Bundle) subject);
+        DSpaceObject subject = event.getSubject(ctx);
+        if (subject instanceof Bitstream) {
+            DSpaceObject parent = bitstreamService.getParentObject(ctx, (Bitstream) subject);
+            if (parent instanceof Item) {
+                return (Item) parent;
             }
         }
         return null;

@@ -342,8 +342,11 @@ public class DatashareItemDataset {
         Context tempContext = null;
         try {
             // authorize(...) short-circuits to "allowed" for a context that ignores authorization,
-            // so fall back to a fresh authorization-enforcing context to get a truthful answer.
-            if (context == null || context.ignoreAuthorization()) {
+            // and a request context may carry IP-based "special groups" that would make an anonymous
+            // (null eperson) check pass for IP-restricted content. In either case fall back to a
+            // fresh authorization-enforcing context with no special groups, so the check reflects
+            // what a truly anonymous user (the audience of the unauthenticated static zip) can read.
+            if (context == null || context.ignoreAuthorization() || !context.getSpecialGroups().isEmpty()) {
                 tempContext = new Context(Context.Mode.READ_ONLY);
                 evalContext = tempContext;
                 item = itemService.find(evalContext, item.getID());
