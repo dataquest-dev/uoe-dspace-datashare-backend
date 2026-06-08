@@ -109,14 +109,18 @@ public class DatashareZipOnArchiveIT extends AbstractIntegrationTestWithDatabase
         // carries a special group. The readability check must evaluate anonymous access without
         // creating/aborting a second Context (which would close the shared archival session).
         context.setSpecialGroup(special.getID());
-        fireItemInstallEvent(item);
+        try {
+            fireItemInstallEvent(item);
 
-        assertTrue("the zip must be generated even when the context carries special groups", zip.exists());
-
-        // The create path registers a dataset DB record (item_id FK); drop it before the builder
-        // teardown deletes the item, so we do not hit a foreign-key violation during cleanup.
-        context.turnOffAuthorisationSystem();
-        datasetService.deleteDatasetForItem(context, item);
-        context.restoreAuthSystemState();
+            assertTrue("the zip must be generated even when the context carries special groups",
+                    zip.exists());
+        } finally {
+            // The create path registers a dataset DB record (item_id FK). Always drop it - even if
+            // the assertion above fails - so the builder teardown can delete the item; otherwise a
+            // foreign-key violation during cleanup would mask the real test failure.
+            context.turnOffAuthorisationSystem();
+            datasetService.deleteDatasetForItem(context, item);
+            context.restoreAuthSystemState();
+        }
     }
 }
