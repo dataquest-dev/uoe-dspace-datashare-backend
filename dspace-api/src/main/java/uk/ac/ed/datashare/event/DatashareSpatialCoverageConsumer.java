@@ -19,7 +19,6 @@ import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.event.Consumer;
 import org.dspace.event.Event;
-
 import uk.ac.ed.datashare.DatashareSpatialCoverage;
 
 /**
