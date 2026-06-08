@@ -13,12 +13,14 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.logging.log4j.Logger;
+import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
 import org.dspace.content.Item;
 import org.dspace.content.datashare.DatashareItemDataset;
 import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.factory.ContentServiceFactory;
+import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.ItemService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
@@ -42,9 +44,11 @@ import org.dspace.services.factory.DSpaceServicesFactory;
  *       The zip is deliberately not regenerated here because the fileset is mid-edit.</li>
  *   <li><b>Reconcile on availability change</b> - the dataset zip is a static file served with no
  *       per-request authorization, so it must only exist on disk while the item's files may be
- *       downloaded (item not under embargo and not withdrawn). When the item is withdrawn,
- *       reinstated or its embargo changes, reconcile the zip's existence with that rule: delete it
- *       when the files become unavailable, (re)generate it when they become available again.</li>
+ *       downloaded: the item is archived, not under embargo, not withdrawn, and every zip bitstream
+ *       is readable by Anonymous. When the item is withdrawn, reinstated, its embargo changes, or a
+ *       <b>resource policy of one of its files changes</b> (a bitstream is restricted to / released
+ *       from a group), reconcile the zip's existence with that rule: delete it when the files
+ *       become non-public, (re)generate it when they become public again.</li>
  * </ul>
  */
 public class DatashareConsumer implements Consumer {
@@ -61,6 +65,8 @@ public class DatashareConsumer implements Consumer {
     private static final Set<String> ZIP_BUNDLES = Set.of("ORIGINAL", "CC-LICENSE", "LICENSE");
 
     private ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+
+    private BitstreamService bitstreamService = ContentServiceFactory.getInstance().getBitstreamService();
 
     private DatashareDatasetService datasetService =
             ContentServiceFactory.getInstance().getDatashareDatasetService();
@@ -121,6 +127,13 @@ public class DatashareConsumer implements Consumer {
                 itemsToReconcile.add(event.getSubjectID());
                 return;
             }
+            // A resource policy of one of the item's files changed (fires MODIFY on the
+            // bitstream/bundle): the files may have become non-public or public again - reconcile.
+            Item policyChanged = resolveItemWhosePolicyChanged(ctx, event);
+            if (policyChanged != null) {
+                itemsToReconcile.add(policyChanged.getID());
+                return;
+            }
             // A bitstream/bundle that is part of the zip changed: delete the stale zip.
             Item changed = resolveItemWhoseFilesetChanged(ctx, event);
             if (changed != null && changed.isArchived()) {
@@ -149,6 +162,38 @@ public class DatashareConsumer implements Consumer {
         }
         return event.getEventType() == Event.MODIFY
                 && ("WITHDRAW".equals(event.getDetail()) || "REINSTATE".equals(event.getDetail()));
+    }
+
+    /**
+     * Work out, for a resource-policy change, the item whose files were affected, or {@code null}
+     * when the event is not a relevant policy change. Changing a resource policy fires a MODIFY on
+     * the bitstream (or bundle) the policy applies to; the owning item's zip then needs reconciling
+     * because the files may have become non-public (restricted) or public again.
+     *
+     * @param ctx   DSpace context
+     * @param event the event being consumed
+     * @return the owning item, or {@code null}
+     * @throws Exception if the subject of the event cannot be resolved
+     */
+    private Item resolveItemWhosePolicyChanged(Context ctx, Event event) throws Exception {
+        if (event.getEventType() != Event.MODIFY) {
+            return null;
+        }
+        if (event.getSubjectType() == Constants.BITSTREAM) {
+            DSpaceObject subject = event.getSubject(ctx);
+            if (subject instanceof Bitstream) {
+                DSpaceObject parent = bitstreamService.getParentObject(ctx, (Bitstream) subject);
+                if (parent instanceof Item) {
+                    return (Item) parent;
+                }
+            }
+        } else if (event.getSubjectType() == Constants.BUNDLE) {
+            DSpaceObject subject = event.getSubject(ctx);
+            if (subject instanceof Bundle) {
+                return firstItem((Bundle) subject);
+            }
+        }
+        return null;
     }
 
     /**
@@ -269,8 +314,8 @@ public class DatashareConsumer implements Consumer {
     /**
      * Reconcile the existence of an item's dataset zip with whether its files may currently be
      * downloaded. The zip must exist only while the item is archived and its files are available
-     * (not embargoed, not withdrawn): generate it when it should exist but does not, delete it when
-     * it exists but should not. A no-op when it already matches.
+     * (not embargoed, not withdrawn, and all zip bitstreams readable by Anonymous): generate it when
+     * it should exist but does not, delete it when it exists but should not. A no-op when it matches.
      *
      * @param ctx  DSpace context
      * @param item the item to reconcile; ignored when {@code null}, not archived or without a handle

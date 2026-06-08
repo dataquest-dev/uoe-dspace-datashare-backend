@@ -25,6 +25,8 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.Logger;
+import org.dspace.authorize.factory.AuthorizeServiceFactory;
+import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
@@ -34,7 +36,9 @@ import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.ItemService;
+import org.dspace.core.Constants;
 import org.dspace.core.Context;
+import org.dspace.eperson.EPerson;
 import org.dspace.services.factory.DSpaceServicesFactory;
 import org.dspace.storage.bitstore.factory.StorageServiceFactory;
 import org.dspace.storage.bitstore.service.BitstreamStorageService;
@@ -303,9 +307,11 @@ public class DatashareItemDataset {
     }
 
     /**
-     * Determine whether all of an item's bitstreams may be exposed in a dataset
-     * zip. An item is considered available when it is not under embargo and not
-     * withdrawn.
+     * Determine whether all of an item's bitstreams may be exposed in a dataset zip. Because the
+     * generated zip is served as a static file with no per-request authorization, it may only be
+     * exposed when the files are public: the item must not be under embargo, not be withdrawn, and
+     * every bitstream packaged into the zip must be readable by the Anonymous user. Otherwise a
+     * guessed zip URL would leak restricted content.
      *
      * @param context DSpace context.
      * @param item    DSpace item.
@@ -314,7 +320,62 @@ public class DatashareItemDataset {
     public static boolean areAllItemBitstreamsAvailable(Context context, Item item) {
         log.info("hasEmbargo: " + hasEmbargo(context, item));
         log.info("isWithdrawn: " + item.isWithdrawn());
-        return !hasEmbargo(context, item) && !item.isWithdrawn();
+        return !hasEmbargo(context, item)
+                && !item.isWithdrawn()
+                && areAllZipBitstreamsAnonymouslyReadable(context, item);
+    }
+
+    /**
+     * Whether every bitstream packaged into the dataset zip (the ORIGINAL, CC-LICENSE and LICENSE
+     * bundles) is readable by the Anonymous user. The check is evaluated as the Anonymous user
+     * (eperson == null) against a context with authorization enabled, so it is unaffected by an
+     * "ignore authorization" context (which would otherwise always report access as allowed).
+     *
+     * @param context DSpace context (used directly only when it enforces authorization).
+     * @param item    DSpace item.
+     * @return true if all zip bitstreams are anonymously readable.
+     */
+    public static boolean areAllZipBitstreamsAnonymouslyReadable(Context context, Item item) {
+        AuthorizeService authorizeService = AuthorizeServiceFactory.getInstance().getAuthorizeService();
+        ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+        Context evalContext = context;
+        Context tempContext = null;
+        try {
+            // authorize(...) short-circuits to "allowed" for a context that ignores authorization,
+            // so fall back to a fresh authorization-enforcing context to get a truthful answer.
+            if (context == null || context.ignoreAuthorization()) {
+                tempContext = new Context(Context.Mode.READ_ONLY);
+                evalContext = tempContext;
+                item = itemService.find(evalContext, item.getID());
+                if (item == null) {
+                    return false;
+                }
+            }
+            String[] zipBundles = { ORIGINAL_BUNDLE, CC_LICENSE_BUNDLE, LICENSE_BUNDLE };
+            for (String bundleName : zipBundles) {
+                for (Bundle bundle : itemService.getBundles(item, bundleName)) {
+                    for (Bitstream bitstream : bundle.getBitstreams()) {
+                        if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, bitstream,
+                                Constants.READ, true)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        } catch (SQLException e) {
+            log.error("Error checking anonymous readability of zip bitstreams for item "
+                    + (item != null ? item.getID() : null), e);
+            return false;
+        } finally {
+            if (tempContext != null) {
+                try {
+                    tempContext.abort();
+                } catch (Exception e) {
+                    // ignore - read-only context
+                }
+            }
+        }
     }
 
     /**
