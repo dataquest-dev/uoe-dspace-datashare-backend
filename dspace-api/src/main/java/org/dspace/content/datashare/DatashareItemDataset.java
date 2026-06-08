@@ -38,7 +38,9 @@ import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.ItemService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
-import org.dspace.eperson.EPerson;
+import org.dspace.eperson.Group;
+import org.dspace.eperson.factory.EPersonServiceFactory;
+import org.dspace.eperson.service.GroupService;
 import org.dspace.services.factory.DSpaceServicesFactory;
 import org.dspace.storage.bitstore.factory.StorageServiceFactory;
 import org.dspace.storage.bitstore.service.BitstreamStorageService;
@@ -346,14 +348,10 @@ public class DatashareItemDataset {
     public static boolean isZipContentAnonymouslyReadable(Context context, Item item) {
         AuthorizeService authorizeService = AuthorizeServiceFactory.getInstance().getAuthorizeService();
         ItemService itemService = ContentServiceFactory.getInstance().getItemService();
+        GroupService groupService = EPersonServiceFactory.getInstance().getGroupService();
         Context evalContext = context;
         Context tempContext = null;
-        boolean switchedUser = false;
         try {
-            // Evaluate readability as a truly anonymous user: authorize(...) short-circuits to
-            // "allowed" for a context that ignores authorization, and a request context may carry
-            // "special groups" (e.g. DATASHARE_USERS / IP-based) that would make an anonymous
-            // (null eperson) check pass for restricted content.
             if (context == null) {
                 // No caller context (batch path): a fresh context is safe here - there is no shared
                 // session/transaction to disturb.
@@ -363,19 +361,22 @@ public class DatashareItemDataset {
                 if (item == null) {
                     return false;
                 }
-            } else if (context.ignoreAuthorization() || !context.getSpecialGroupUuids().isEmpty()) {
-                // IMPORTANT: do NOT create and abort a second Context here. DSpace binds a single
-                // Hibernate session per thread (HibernateDBConnection#getSession ->
-                // sessionFactory.getCurrentSession()), so a new Context(...).abort() would close the
-                // session shared with the caller's transaction (e.g. the in-progress item archival),
-                // detaching its entities -> LazyInitializationException ("no Session") and a full
-                // rollback of the archive. switchContextUser(null) clears the special groups and sets
-                // an anonymous user on the SAME context (no session change); it is restored in finally.
-                context.switchContextUser(null);
-                switchedUser = true;
+            }
+            // Decide readability from the objects' own READ resource policies (a currently-valid
+            // policy granted to the Anonymous group), NOT via the caller context's authorization
+            // state. This keeps the result correct regardless of the caller's special groups (e.g.
+            // DATASHARE_USERS / IP-based) or an "ignore authorization" context - either of which would
+            // otherwise report restricted content as readable - while NOT creating a second Context.
+            // DSpace binds one Hibernate session per thread (HibernateDBConnection#getSession ->
+            // sessionFactory.getCurrentSession()), so a second Context.abort() would close the session
+            // shared with the caller's transaction (e.g. the in-progress archival), detach its entities
+            // and roll the whole operation back (LazyInitializationException during zip generation).
+            Group anonymous = groupService.findByName(evalContext, Group.ANONYMOUS);
+            if (anonymous == null) {
+                return false;
             }
             // The item must be anonymously readable...
-            if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, item, Constants.READ, true)) {
+            if (!authorizeService.getAuthorizedGroups(evalContext, item, Constants.READ).contains(anonymous)) {
                 return false;
             }
             String[] zipBundles = { ORIGINAL_BUNDLE, CC_LICENSE_BUNDLE, LICENSE_BUNDLE };
@@ -384,14 +385,14 @@ public class DatashareItemDataset {
                     // ...as must each bundle that goes into the zip (a restricted bundle hides its
                     // files), even though DSpace itself only gates direct bitstream download on the
                     // bitstream policy...
-                    if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, bundle,
-                            Constants.READ, true)) {
+                    if (!authorizeService.getAuthorizedGroups(evalContext, bundle, Constants.READ)
+                            .contains(anonymous)) {
                         return false;
                     }
                     for (Bitstream bitstream : bundle.getBitstreams()) {
                         // ...and so must every bitstream.
-                        if (!authorizeService.authorizeActionBoolean(evalContext, (EPerson) null, bitstream,
-                                Constants.READ, true)) {
+                        if (!authorizeService.getAuthorizedGroups(evalContext, bitstream, Constants.READ)
+                                .contains(anonymous)) {
                             return false;
                         }
                     }
@@ -403,10 +404,6 @@ public class DatashareItemDataset {
                     + (item != null ? item.getID() : null), e);
             return false;
         } finally {
-            if (switchedUser) {
-                // Restore the caller's user and special groups on the shared context.
-                context.restoreContextUser();
-            }
             if (tempContext != null) {
                 try {
                     tempContext.abort();
