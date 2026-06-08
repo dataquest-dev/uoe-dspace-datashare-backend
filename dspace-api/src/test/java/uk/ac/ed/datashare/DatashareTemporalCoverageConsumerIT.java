@@ -111,6 +111,23 @@ public class DatashareTemporalCoverageConsumerIT extends AbstractIntegrationTest
     }
 
     @Test
+    public void installWithBlankDatesDoesNotCreateEmptyTemporal() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedItem();
+        itemService.addMetadata(context, item, "dc", "coverage", "startDate", null, "");
+        itemService.addMetadata(context, item, "dc", "coverage", "endDate", null, "");
+        itemService.update(context, item);
+
+        fireInstall(item);
+        context.restoreAuthSystemState();
+
+        assertTrue("blank dates must not produce a temporal value",
+                values(item, "dc.coverage.temporal").isEmpty());
+        assertTrue(values(item, "dc.coverage.startDate").isEmpty());
+        assertTrue(values(item, "dc.coverage.endDate").isEmpty());
+    }
+
+    @Test
     public void splitDecodesTemporalBackIntoDates() throws Exception {
         context.turnOffAuthorisationSystem();
         Item item = createArchivedItem();

@@ -65,6 +65,12 @@ public class DatashareTemporalCoverageTest {
     }
 
     @Test
+    public void testDecodeYearMonth() {
+        assertArrayEquals(new String[]{"2021-03", "2022-11"},
+                DatashareTemporalCoverage.decodeTimePeriod("start=2021-03; end=2022-11; scheme=W3C-DTF"));
+    }
+
+    @Test
     public void testDecodeNull() {
         assertNull(DatashareTemporalCoverage.decodeTimePeriod(null));
     }

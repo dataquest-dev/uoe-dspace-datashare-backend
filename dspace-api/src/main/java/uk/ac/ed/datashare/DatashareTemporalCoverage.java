@@ -49,7 +49,8 @@ public final class DatashareTemporalCoverage {
     /**
      * Archive transform: encode {@code dc.coverage.startDate} / {@code dc.coverage.endDate} into the
      * canonical {@code dc.coverage.temporal} value and clear the individual date fields. No-op if
-     * neither individual date field is present.
+     * neither individual date field is present. Blank date values are treated as absent, so no
+     * meaningless temporal value is encoded when both dates are blank.
      */
     public static void mergeDatesIntoTemporal(Context context, Item item, ItemService itemService)
             throws SQLException, AuthorizeException {
@@ -60,14 +61,23 @@ public final class DatashareTemporalCoverage {
         }
         String startValue = startDates.isEmpty() ? null : startDates.get(0).getValue();
         String endValue = endDates.isEmpty() ? null : endDates.get(0).getValue();
-        String encoded = encodeTimePeriod(startValue, endValue);
+
+        // Treat blank values as absent: a cleared form field can leave an empty metadata value behind,
+        // which must not be encoded into a meaningless dc.coverage.temporal (it would reach OAI/DataCite).
+        boolean hasStart = StringUtils.isNotBlank(startValue);
+        boolean hasEnd = StringUtils.isNotBlank(endValue);
 
         itemService.clearMetadata(context, item, "dc", "coverage", "temporal", Item.ANY);
-        itemService.addMetadata(context, item, "dc", "coverage", "temporal", null, encoded);
+        if (hasStart || hasEnd) {
+            String encoded = encodeTimePeriod(hasStart ? startValue : null, hasEnd ? endValue : null);
+            itemService.addMetadata(context, item, "dc", "coverage", "temporal", null, encoded);
+            log.info("Datashare: encoded start/end into dc.coverage.temporal on archive for item {}", item.getID());
+        } else {
+            log.info("Datashare: blank start/end on archive for item {}; no temporal encoded", item.getID());
+        }
         itemService.clearMetadata(context, item, "dc", "coverage", "startDate", Item.ANY);
         itemService.clearMetadata(context, item, "dc", "coverage", "endDate", Item.ANY);
         itemService.update(context, item);
-        log.info("Datashare: encoded start/end into dc.coverage.temporal on archive for item {}", item.getID());
     }
 
     /**
