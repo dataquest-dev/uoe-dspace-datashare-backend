@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.dspace.app.util.DCInput;
 import org.dspace.app.util.DCInputSet;
@@ -66,10 +67,12 @@ public final class DatashareSpatialCoverage {
             existingSpatial.add(mv.getValue());
         }
         for (MetadataValue country : countries) {
-            if (!existingSpatial.contains(country.getValue())) {
-                itemService.addMetadata(context, item, "dc", "coverage", "spatial", null, country.getValue());
-                existingSpatial.add(country.getValue());
+            String value = country.getValue();
+            if (StringUtils.isBlank(value) || existingSpatial.contains(value)) {
+                continue;
             }
+            itemService.addMetadata(context, item, "dc", "coverage", "spatial", null, value);
+            existingSpatial.add(value);
         }
         itemService.clearMetadata(context, item, "dc", "subject", "ddc", Item.ANY);
         itemService.update(context, item);
@@ -123,7 +126,10 @@ public final class DatashareSpatialCoverage {
         List<String> places = new ArrayList<>();
         if (spatialValues != null) {
             for (String v : spatialValues) {
-                if (v != null && countryCodes != null && countryCodes.contains(v)) {
+                if (StringUtils.isBlank(v)) {
+                    continue;
+                }
+                if (countryCodes != null && countryCodes.contains(v)) {
                     countries.add(v);
                 } else {
                     places.add(v);

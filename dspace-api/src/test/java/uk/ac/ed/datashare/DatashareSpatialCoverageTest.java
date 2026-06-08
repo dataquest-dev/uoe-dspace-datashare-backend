@@ -70,4 +70,12 @@ public class DatashareSpatialCoverageTest {
         assertEquals(Collections.emptyList(), result.get(0));
         assertEquals(Arrays.asList("UK", "Edinburgh"), result.get(1));
     }
+
+    @Test
+    public void testSplitSkipsNullAndBlankValues() {
+        List<List<String>> result = DatashareSpatialCoverage.splitCountryAndPlace(
+                Arrays.asList("Edinburgh", "  ", null, "UK", ""), COUNTRY_CODES);
+        assertEquals(Arrays.asList("UK"), result.get(0));
+        assertEquals(Arrays.asList("Edinburgh"), result.get(1));
+    }
 }

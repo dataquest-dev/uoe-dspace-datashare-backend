@@ -11,6 +11,7 @@ import java.util.Set;
 
 import org.apache.logging.log4j.Logger;
 import org.dspace.app.util.DCInputsReader;
+import org.dspace.app.util.DCInputsReaderException;
 import org.dspace.content.Item;
 import org.dspace.core.Context;
 import org.dspace.versioning.DefaultItemVersionProvider;
@@ -28,11 +29,21 @@ public class DatashareItemVersionProvider extends DefaultItemVersionProvider {
     private static final Logger log =
             org.apache.logging.log4j.LogManager.getLogger(DatashareItemVersionProvider.class);
 
+    /** Cached: DCInputsReader re-parses submission-forms.xml in its constructor, so reuse one instance. */
+    private DCInputsReader inputsReader;
+
+    private DCInputsReader getInputsReader() throws DCInputsReaderException {
+        if (inputsReader == null) {
+            inputsReader = new DCInputsReader();
+        }
+        return inputsReader;
+    }
+
     @Override
     public Item updateItemState(Context c, Item itemNew, Item previousItem) {
         Item result = super.updateItemState(c, itemNew, previousItem);
         try {
-            Set<String> countryCodes = DatashareSpatialCoverage.getCountryCodes(new DCInputsReader());
+            Set<String> countryCodes = DatashareSpatialCoverage.getCountryCodes(getInputsReader());
             DatashareSpatialCoverage.splitSpatialIntoCountry(c, result, itemService, countryCodes);
         } catch (Exception e) {
             log.error("Datashare: failed to split spatial coverage into country for new version "
