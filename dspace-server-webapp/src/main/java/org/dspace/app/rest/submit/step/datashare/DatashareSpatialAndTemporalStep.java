@@ -10,9 +10,7 @@ package org.dspace.app.rest.submit.step.datashare;
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
@@ -88,7 +86,6 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
             DCInputSet inputConfig = inputReader.getInputsByFormName(config.getId());
             readField(obj, config, data, inputConfig);
             populateTimePeriodFromTemporal(obj, data);
-            populateCountryFromSpatial(data, inputConfig);
         } catch (DCInputsReaderException e) {
             log.error(e.getMessage(), e);
         }
@@ -133,108 +130,6 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
             endList.add(endDto);
             data.getMetadata().put("dc.coverage.endDate", endList);
         }
-    }
-
-    /**
-     * On edit, dc.coverage.spatial holds both country codes and free-text places (see the country
-     * handling in {@link #doPatchProcessing}). Split it so the country values repopulate the
-     * dc.subject.ddc dropdown and only the places stay in dc.coverage.spatial.
-     */
-    private void populateCountryFromSpatial(DataDescribe data, DCInputSet inputConfig) {
-        Set<String> countryCodes = getCountryCodes(inputConfig);
-        if (countryCodes.isEmpty()) {
-            return;
-        }
-        List<MetadataValueRest> spatial = data.getMetadata().get("dc.coverage.spatial");
-        if (spatial == null || spatial.isEmpty()) {
-            return;
-        }
-
-        List<MetadataValueRest> countries = new ArrayList<>();
-        List<MetadataValueRest> places = new ArrayList<>();
-        for (MetadataValueRest mv : spatial) {
-            if (mv.getValue() != null && countryCodes.contains(mv.getValue())) {
-                countries.add(mv);
-            } else {
-                places.add(mv);
-            }
-        }
-
-        if (countries.isEmpty()) {
-            return; // nothing to move
-        }
-
-        if (places.isEmpty()) {
-            data.getMetadata().remove("dc.coverage.spatial");
-        } else {
-            data.getMetadata().put("dc.coverage.spatial", places);
-        }
-
-        List<MetadataValueRest> ddc = data.getMetadata().get("dc.subject.ddc");
-        if (ddc == null) {
-            ddc = new ArrayList<>();
-        }
-        // Avoid duplicating dropdown entries if a country value is already present in dc.subject.ddc
-        // (e.g. legacy items where country was persisted in that field).
-        Set<String> existingDdc = new HashSet<>();
-        for (MetadataValueRest mv : ddc) {
-            existingDdc.add(mv.getValue());
-        }
-        for (MetadataValueRest country : countries) {
-            if (!existingDdc.contains(country.getValue())) {
-                ddc.add(country);
-                existingDdc.add(country.getValue());
-            }
-        }
-        data.getMetadata().put("dc.subject.ddc", ddc);
-    }
-
-    /**
-     * Collect the stored values (country codes) of the dc.subject.ddc dropdown's value-pairs.
-     * Used to tell country values apart from free-text place values inside dc.coverage.spatial.
-     */
-    private Set<String> getCountryCodes(DCInputSet inputConfig) {
-        Set<String> codes = new HashSet<>();
-        for (DCInput[] row : inputConfig.getFields()) {
-            for (DCInput input : row) {
-                if ("dc.subject.ddc".equals(input.getFieldName())) {
-                    List pairs = input.getPairs();
-                    if (pairs != null) {
-                        // value-pairs are stored as [displayed, stored, displayed, stored, ...]
-                        for (int i = 1; i < pairs.size(); i += 2) {
-                            Object stored = pairs.get(i);
-                            if (stored != null && !stored.toString().isEmpty()) {
-                                codes.add(stored.toString());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return codes;
-    }
-
-    /**
-     * Partition dc.coverage.spatial string values into [countries, places]: values matching a known
-     * country code go to countries, the rest to places (input order preserved). Used by the country
-     * hydrate/populate logic; package-private and static so it can be unit-tested directly.
-     */
-    static List<List<String>> splitCountryAndPlace(List<String> spatialValues, Set<String> countryCodes) {
-        List<String> countries = new ArrayList<>();
-        List<String> places = new ArrayList<>();
-        if (spatialValues != null) {
-            for (String v : spatialValues) {
-                if (v != null && countryCodes != null && countryCodes.contains(v)) {
-                    countries.add(v);
-                } else {
-                    places.add(v);
-                }
-            }
-        }
-        List<List<String>> result = new ArrayList<>();
-        result.add(countries);
-        result.add(places);
-        return result;
     }
 
     private void readField(InProgressSubmission obj, SubmissionStepConfig config, DataDescribe data,
@@ -323,10 +218,6 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
         String[] pathParts = op.getPath().substring(1).split("/");
         DCInputSet inputConfig = inputReader.getInputsByFormName(stepConf.getId());
 
-        // Hydrate: country values are stored merged into dc.coverage.spatial. Move them back into the
-        // transient dc.subject.ddc dropdown field so PATCH add/replace/remove operations can address them.
-        hydrateCountryField(context, source, inputConfig);
-
         if ("remove".equals(op.getOp()) && pathParts.length < 3) {
             // manage delete all step fields
             String[] path = op.getPath().substring(1).split("/", 3);
@@ -377,72 +268,6 @@ public class DatashareSpatialAndTemporalStep extends AbstractProcessingStep {
                 itemService.clearMetadata(context, source.getItem(),
                         "dc", "coverage", "temporal", Item.ANY);
             }
-        }
-
-        if ("remove".equals(op.getOp()) || "add".equals(op.getOp()) || "replace".equals(op.getOp())) {
-            // Merge the transient country dropdown (dc.subject.ddc) into dc.coverage.spatial so that
-            // stored items keep country and place together in dc.coverage.spatial (production behaviour),
-            // and dc.subject.ddc never persists.
-            List<MetadataValue> countryValues = itemService.getMetadataByMetadataString(
-                    source.getItem(), "dc.subject.ddc");
-            if (!countryValues.isEmpty()) {
-                // Only add country values that aren't already in dc.coverage.spatial, to avoid duplicates
-                // (e.g. legacy/manual items where the same code is already present in both fields).
-                Set<String> existingSpatial = new HashSet<>();
-                for (MetadataValue mv : itemService.getMetadataByMetadataString(
-                        source.getItem(), "dc.coverage.spatial")) {
-                    existingSpatial.add(mv.getValue());
-                }
-                for (MetadataValue country : countryValues) {
-                    if (!existingSpatial.contains(country.getValue())) {
-                        itemService.addMetadata(context, source.getItem(),
-                                "dc", "coverage", "spatial", null, country.getValue());
-                        existingSpatial.add(country.getValue());
-                    }
-                }
-                itemService.clearMetadata(context, source.getItem(),
-                        "dc", "subject", "ddc", Item.ANY);
-            }
-        }
-    }
-
-    /**
-     * Country codes are stored merged into dc.coverage.spatial. If the transient dc.subject.ddc field is
-     * empty but dc.coverage.spatial contains country codes, move those codes back into dc.subject.ddc so
-     * that subsequent PATCH operations on the country dropdown can find them. Places stay in dc.coverage.spatial.
-     */
-    private void hydrateCountryField(Context context, InProgressSubmission source, DCInputSet inputConfig)
-            throws Exception {
-        Set<String> countryCodes = getCountryCodes(inputConfig);
-        if (countryCodes.isEmpty()) {
-            return;
-        }
-        List<MetadataValue> existingDdc = itemService.getMetadataByMetadataString(
-                source.getItem(), "dc.subject.ddc");
-        if (!existingDdc.isEmpty()) {
-            return; // already hydrated
-        }
-        List<MetadataValue> spatial = itemService.getMetadataByMetadataString(
-                source.getItem(), "dc.coverage.spatial");
-
-        List<String> values = new ArrayList<>();
-        for (MetadataValue mv : spatial) {
-            values.add(mv.getValue());
-        }
-        List<List<String>> split = splitCountryAndPlace(values, countryCodes);
-        List<String> countries = split.get(0);
-        List<String> places = split.get(1);
-
-        if (countries.isEmpty()) {
-            return; // nothing to hydrate
-        }
-
-        itemService.clearMetadata(context, source.getItem(), "dc", "coverage", "spatial", Item.ANY);
-        for (String place : places) {
-            itemService.addMetadata(context, source.getItem(), "dc", "coverage", "spatial", null, place);
-        }
-        for (String country : countries) {
-            itemService.addMetadata(context, source.getItem(), "dc", "subject", "ddc", null, country);
         }
     }
 
