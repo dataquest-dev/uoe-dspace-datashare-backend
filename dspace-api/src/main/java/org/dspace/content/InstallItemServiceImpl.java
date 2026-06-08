@@ -161,6 +161,16 @@ public class InstallItemServiceImpl implements InstallItemService {
         itemService.addMetadata(c, item, MetadataSchemaEnum.DC.getName(),
                                 "date", "accessioned", null, now.toString());
 
+        // DataShare (UoE) customisation: keep the DSpace 6 behaviour of stamping dc.date.available
+        // on archival. Add date available if not under embargo, otherwise it will
+        // be set when the embargo is lifted (dc.date.available is the embargo.field.lift field,
+        // managed by EmbargoService). This will flush out fatal embargo metadata
+        // problems before we set inArchive.
+        if (embargoService.getEmbargoTermsAsDate(c, item) == null) {
+            itemService.addMetadata(c, item, MetadataSchemaEnum.DC.getName(),
+                                    "date", "available", null, now.toString());
+        }
+
         // If issue date is set as "today" (literal string), then set it to current date
         // In the below loop, we temporarily clear all issued dates and re-add, one-by-one,
         // replacing "today" with today's date.
