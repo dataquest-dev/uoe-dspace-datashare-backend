@@ -101,6 +101,15 @@ public class DatashareConsumer implements Consumer {
         if (datasetsPath == null || datasetsPath.isEmpty()) {
             return;
         }
+        // Only react to operations that run with authorization enforced. The "download all" zip
+        // mirrors what an Anonymous user may download, so it is (re)generated for real, access-checked
+        // operations (a workflow archive, a resource-policy change). A context that ignores
+        // authorization is an internal/system operation (e.g. test object builders, batch import,
+        // maintenance) whose item may not be in its final, access-controlled state yet; generating a
+        // zip there would be premature, so skip it (the ds-datasets job / a later real event covers it).
+        if (ctx.ignoreAuthorization()) {
+            return;
+        }
         if (itemsToCreate == null) {
             itemsToCreate = new HashSet<>();
         }

@@ -262,18 +262,23 @@ spring.servlet.multipart.max-file-size = 20GB
 # spring.servlet.multipart.max-request-size = 512MB
 spring.servlet.multipart.max-request-size = 20GB
 
-# datashare event listener. The "datashare" consumer is already enabled in dspace.cfg's default
-# event.dispatcher.default.consumers list, so it does not need to be re-declared here. Only override
-# the list below if your site customises it - and if you do, keep all the other default consumers
-# and simply append "datashare" (otherwise copying this example would disable them):
-# event.dispatcher.default.consumers = versioning, discovery, eperson, qaeventsdelete, ldnmessage, datashare
+# DataShare event listeners. The "datashare", "spatialcoverage" and "temporalcoverage" consumers are ALL
+# already enabled in dspace.cfg's default event.dispatcher.default.consumers list, so they do not need to be
+# re-declared here. Do NOT override event.dispatcher.default.consumers unless you really must - and if you do,
+# you MUST keep every DataShare consumer in the list, otherwise the archive-time metadata transforms silently
+# stop running (country stays in dc.subject.ddc, temporal dates stay in dc.coverage.startDate/endDate). The full
+# default list, with the DataShare consumers, is:
+# event.dispatcher.default.consumers = versioning, spatialcoverage, temporalcoverage, discovery, eperson, qaeventsdelete, ldnmessage, datashare
 event.consumer.datashare.class = uk.ac.ed.datashare.event.DatashareConsumer
 event.consumer.datashare.filters = Item|Bundle+Add|Remove|Install:Item+Modify|Modify_Metadata:Bitstream|Bundle+Modify:Collection+Remove
 
 # datashare spatial coverage: on archive, move country (dc.subject.ddc) into dc.coverage.spatial.
-# NOTE: also add 'spatialcoverage' to event.dispatcher.default.consumers if you override that list here.
 event.consumer.spatialcoverage.class = uk.ac.ed.datashare.event.DatashareSpatialCoverageConsumer
 event.consumer.spatialcoverage.filters = Item+Install
+
+# datashare temporal coverage: on archive, encode dc.coverage.startDate/endDate into dc.coverage.temporal.
+event.consumer.temporalcoverage.class = uk.ac.ed.datashare.event.DatashareTemporalCoverageConsumer
+event.consumer.temporalcoverage.filters = Item+Install
 
 # the location of dataset zip file
 datasets.path = /tmp
