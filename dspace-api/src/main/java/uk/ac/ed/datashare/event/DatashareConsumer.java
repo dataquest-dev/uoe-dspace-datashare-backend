@@ -250,15 +250,16 @@ public class DatashareConsumer implements Consumer {
         if (event.getEventType() != Event.MODIFY_METADATA || event.getSubjectType() != Constants.BITSTREAM) {
             return null;
         }
-        // The event detail lists the changed metadata fields, but only when they were added/removed
-        // (e.g. setName, or a whole-field PATCH replace, which go through addMetadata). An in-place
-        // value edit - the path the REST API uses for "replace /metadata/dc.title/0/value" - changes
-        // the existing value object directly, so it fires MODIFY_METADATA with a null detail. We
-        // therefore refresh the zip whenever the detail is absent (we cannot tell what changed, and a
-        // rename is the likely case) or explicitly names the title field; a detail that names only
-        // other fields (e.g. dc_description) cannot have changed a zip entry name and is ignored.
+        // The event detail is a comma-separated list of the changed metadata fields, but only when
+        // they were added/removed (e.g. setName, or a whole-field PATCH replace, which go through
+        // addMetadata). An in-place value edit - the path the REST API uses for
+        // "replace /metadata/dc.title/0/value" - changes the existing value object directly, so it
+        // fires MODIFY_METADATA with a null detail. We therefore refresh the zip whenever the detail
+        // is absent (we cannot tell what changed, and a rename is the likely case) or contains the
+        // title field; a detail that names only other fields (e.g. dc_description) cannot have changed
+        // a zip entry name and is ignored.
         String detail = event.getDetail();
-        if (detail != null && !detail.contains(BITSTREAM_NAME_FIELD)) {
+        if (detail != null && !changedTheTitleField(detail)) {
             return null;
         }
         DSpaceObject subject = event.getSubject(ctx);
@@ -275,6 +276,24 @@ public class DatashareConsumer implements Consumer {
             }
         }
         return null;
+    }
+
+    /**
+     * Whether a Bitstream {@link Event#MODIFY_METADATA} detail (a comma-separated list of the changed
+     * fields) names the title field. The token is matched exactly so that a different field which
+     * merely starts with the same text - e.g. {@code dc_title_alternative} - does not count, as it
+     * does not change a zip entry name.
+     *
+     * @param detail the non-null event detail
+     * @return true if {@code dc_title} is among the changed fields
+     */
+    private boolean changedTheTitleField(String detail) {
+        for (String field : detail.split(",")) {
+            if (BITSTREAM_NAME_FIELD.equals(field.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

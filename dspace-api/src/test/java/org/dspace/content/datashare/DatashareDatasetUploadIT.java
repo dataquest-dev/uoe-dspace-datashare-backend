@@ -88,13 +88,18 @@ public class DatashareDatasetUploadIT extends AbstractIntegrationTestWithDatabas
         // Drop every dataset DB record we registered BEFORE the builder teardown deletes the items;
         // a leftover record (item_id FK) would otherwise fail item deletion and mask the real result.
         // This @After runs before AbstractIntegrationTestWithDatabase#destroy (subclass @After first).
-        context.turnOffAuthorisationSystem();
-        for (Item item : datasetItems) {
-            datasetService.deleteDatasetForItem(context, item);
+        // The shared state (authorization + datasets.path) MUST be restored even if a delete throws,
+        // otherwise it leaks into later integration tests and causes order-dependent failures.
+        try {
+            context.turnOffAuthorisationSystem();
+            for (Item item : datasetItems) {
+                datasetService.deleteDatasetForItem(context, item);
+            }
+        } finally {
+            context.restoreAuthSystemState();
+            configurationService.setProperty("datasets.path", originalDatasetsPath);
+            FileUtils.deleteQuietly(datasetsDir);
         }
-        context.restoreAuthSystemState();
-        configurationService.setProperty("datasets.path", originalDatasetsPath);
-        FileUtils.deleteQuietly(datasetsDir);
     }
 
     private Item createArchivedPublicItemWithFile() throws Exception {
