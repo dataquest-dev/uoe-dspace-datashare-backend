@@ -234,12 +234,22 @@ public class DatashareConsumer implements Consumer {
      * of its files was renamed, or {@code null} when the change does not affect the zip. The zip
      * names each entry after its bitstream's {@code dc.title} (see {@link DatashareItemDataset}), so
      * renaming a file changes the zip's contents even though nothing about the item's availability
-     * changes. A rename fires a {@link Event#MODIFY_METADATA} on the bitstream; we react when the
-     * bitstream is in a bundle packaged into the zip and the change may have touched the title - i.e.
-     * the event detail is absent (an in-place value edit, as the REST API does, carries no detail) or
-     * names the title field. A change whose detail names only other fields (e.g. {@code dc_description})
-     * cannot have altered a zip entry name, and a change to a THUMBNAIL/TEXT file is not in the zip, so
-     * neither triggers a regeneration.
+     * changes. A rename fires a {@link Event#MODIFY_METADATA} on a bitstream in a bundle packaged into
+     * the zip; whether it touched the title is decided from the event detail:
+     * <ul>
+     *   <li>when the detail names the changed fields - an add/remove of metadata, e.g. {@code setName}
+     *       or a whole-field PATCH replace, both of which go through {@code addMetadata} - we react
+     *       only if {@code dc_title} is among them; a detail naming only other fields (e.g.
+     *       {@code dc_description}) is ignored;</li>
+     *   <li>when the detail is absent we cannot tell which field changed: the REST API's in-place
+     *       value replace ({@code DSpaceObjectMetadataReplaceOperation#replaceSingleMetadataValue})
+     *       flags the metadata as modified <em>without</em> recording a detail for any field. We then
+     *       conservatively treat it as a possible rename and regenerate, so a real rename is never
+     *       missed. The cost is that an in-place edit of a non-title field on a zip-bundle file also
+     *       regenerates; such edits are rare and, when no name actually changed, the regenerated zip
+     *       is identical, so this is an acceptable trade-off.</li>
+     * </ul>
+     * A change to a THUMBNAIL/TEXT file is not in the zip and never triggers a regeneration.
      *
      * @param ctx   DSpace context
      * @param event the event being consumed
