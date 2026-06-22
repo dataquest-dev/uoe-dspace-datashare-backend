@@ -83,9 +83,11 @@ public class EmbargoServiceImplTest extends AbstractUnitTest {
             log.error("Error in destroy", ex);
             fail("Error in destroy: " + ex.getMessage());
         } finally {
+            // Always restore auth state and run the superclass teardown, even if the delete
+            // above throws (fail() raises an AssertionError), so the Context is never leaked.
             context.restoreAuthSystemState();
+            super.destroy();
         }
-        super.destroy();
     }
 
     private Item createItem() throws SQLException, AuthorizeException {
