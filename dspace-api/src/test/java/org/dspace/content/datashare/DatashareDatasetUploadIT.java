@@ -186,26 +186,42 @@ public class DatashareDatasetUploadIT extends AbstractIntegrationTestWithDatabas
     }
 
     /**
-     * Removing a bitstream from an archived item must likewise invalidate the stale zip.
+     * Removing a bitstream from an archived item must <em>regenerate</em> the "download all" zip so
+     * the removed file disappears from it - just like adding one regenerates it. The REST API deletes
+     * a bitstream by removing it from its bundle via {@code bundleService.removeBitstream} (see
+     * {@code BitstreamRestRepository#delete}), which fires the Bundle REMOVE event this relies on.
      */
     @Test
-    public void datasetZipInvalidatedWhenBitstreamRemoved() throws Exception {
+    public void datasetZipRegeneratedWhenBitstreamRemoved() throws Exception {
         context.turnOffAuthorisationSystem();
-        Item item = createArchivedPublicItemWithFile();
+        Item item = createArchivedPublicItemWithFile(); // dataset-file.txt
         Bundle original = itemService.getBundles(item, "ORIGINAL").get(0);
-        Bitstream existing = original.getBitstreams().get(0);
+        // Add a second file so something remains after the removal.
+        try (InputStream is = IOUtils.toInputStream("second file content", StandardCharsets.UTF_8)) {
+            BitstreamBuilder.createBitstream(context, item, is)
+                    .withName("second-file.txt").withMimeType("text/plain").build();
+        }
+        Bitstream toRemove = original.getBitstreams().stream()
+                .filter(b -> "dataset-file.txt".equals(b.getName())).findFirst().orElseThrow();
         File zip = placeStaleDatasetZip(item);
         context.restoreAuthSystemState();
 
         assertTrue("precondition: a (stale) generated zip exists", staleZipStillPresent(zip));
 
         context.setCurrentUser(admin);
-        bundleService.removeBitstream(context, original, existing);
+        bundleService.removeBitstream(context, original, toRemove);
         itemService.update(context, item);
         context.commit();
 
         assertFalse("removing a bitstream must invalidate the stale download-all zip",
                 staleZipStillPresent(zip));
+        // It must be regenerated (not merely deleted) so the zip reflects the current fileset.
+        assertTrue("the download-all zip must be regenerated after a removal", zip.exists());
+        List<String> names = zipEntryNames(zip);
+        assertTrue("the regenerated zip must keep the remaining file: " + names,
+                names.contains("second-file.txt"));
+        assertFalse("the regenerated zip must not contain the removed file: " + names,
+                names.contains("dataset-file.txt"));
     }
 
     /**

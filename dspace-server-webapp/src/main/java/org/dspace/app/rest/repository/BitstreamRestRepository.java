@@ -148,7 +148,20 @@ public class BitstreamRestRepository extends DSpaceObjectRestRepository<Bitstrea
             throw new RuntimeException(e.getMessage(), e);
         }
         try {
-            bs.delete(context, bit);
+            // Remove the bitstream from each owning bundle via the bundle service so that a Bundle
+            // REMOVE event is fired. bitstreamService.delete() removes the bitstream from its bundles
+            // silently (no event), which leaves consumers that track an item's fileset unaware of the
+            // change - e.g. the DataShare consumer would not regenerate the item's "download all" zip.
+            // bundleService.removeBitstream() deletes the bitstream once it is removed from its last
+            // bundle; a bitstream with no bundle (e.g. a community/collection logo) is deleted directly.
+            List<Bundle> bundles = new LinkedList<>(bit.getBundles());
+            if (bundles.isEmpty()) {
+                bs.delete(context, bit);
+            } else {
+                for (Bundle bundle : bundles) {
+                    bundleService.removeBitstream(context, bundle, bit);
+                }
+            }
         } catch (SQLException | IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }

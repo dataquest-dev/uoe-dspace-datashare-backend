@@ -38,10 +38,11 @@ import org.dspace.services.factory.DSpaceServicesFactory;
  *       {@code ds-datasets} batch run).</li>
  *   <li><b>Delete on removal</b> - when an item is removed from its collection, delete its dataset
  *       zip (and database record).</li>
- *   <li><b>Delete on fileset change</b> - when a bitstream is added to or removed from one of the
- *       bundles packaged into the zip, the existing zip becomes stale, so delete it (and its
- *       record) so that it is regenerated from the current files by the {@code ds-datasets} job.
- *       The zip is deliberately not regenerated here because the fileset is mid-edit.</li>
+ *   <li><b>Regenerate on fileset change</b> - when a bitstream is added to or removed from one of
+ *       the bundles packaged into the zip, the existing zip becomes stale, so drop it and regenerate
+ *       it from the current files. Regenerating (rather than only deleting and waiting for the
+ *       {@code ds-datasets} batch job) keeps the "download all" zip consistent for both additions and
+ *       removals - matching what a user sees immediately after editing an item's files.</li>
  *   <li><b>Regenerate on file rename</b> - the zip names each entry after its bitstream's
  *       {@code dc.title}, so renaming a file in a zip bundle makes the existing zip stale even
  *       though the item's availability is unchanged. Such a rename (a Bitstream
@@ -166,10 +167,14 @@ public class DatashareConsumer implements Consumer {
                 itemsToReconcile.add(renamed.getID());
                 return;
             }
-            // A bitstream/bundle that is part of the zip changed: delete the stale zip.
+            // A bitstream/bundle that is part of the zip was added or removed: the existing zip is
+            // stale, so drop it and regenerate it from the current files (deleted here, recreated by
+            // the reconcile step). Regenerating keeps the zip consistent whether a file is added or
+            // removed, instead of leaving it deleted until the next ds-datasets batch run.
             Item changed = resolveItemWhoseFilesetChanged(ctx, event);
             if (changed != null && changed.isArchived()) {
                 itemsToDelete.add(changed.getID());
+                itemsToReconcile.add(changed.getID());
             }
         } catch (Exception ex) {
             // Never let a problem resolving the event break the operation that produced it.
