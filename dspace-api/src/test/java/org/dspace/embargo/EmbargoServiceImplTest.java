@@ -63,10 +63,13 @@ public class EmbargoServiceImplTest extends AbstractUnitTest {
             context.turnOffAuthorisationSystem();
             this.owningCommunity = communityService.create(null, context);
             this.collection = collectionService.create(context, owningCommunity);
-            context.restoreAuthSystemState();
         } catch (SQLException | AuthorizeException ex) {
             log.error("Error in init", ex);
             fail("Error in init: " + ex.getMessage());
+        } finally {
+            // Always restore the auth system, even if creation throws, so we don't leak
+            // auth-disabled state into other tests.
+            context.restoreAuthSystemState();
         }
     }
 
@@ -76,12 +79,15 @@ public class EmbargoServiceImplTest extends AbstractUnitTest {
         try {
             context.turnOffAuthorisationSystem();
             communityService.delete(context, owningCommunity);
-            context.restoreAuthSystemState();
         } catch (Exception ex) {
             log.error("Error in destroy", ex);
             fail("Error in destroy: " + ex.getMessage());
+        } finally {
+            // Always restore auth state and run the superclass teardown, even if the delete
+            // above throws (fail() raises an AssertionError), so the Context is never leaked.
+            context.restoreAuthSystemState();
+            super.destroy();
         }
-        super.destroy();
     }
 
     private Item createItem() throws SQLException, AuthorizeException {
@@ -100,20 +106,29 @@ public class EmbargoServiceImplTest extends AbstractUnitTest {
      */
     @Test
     public void testLiftEmbargo_removesEmbargoTermsAndUpdatesAvailable() throws Exception {
+        Item item;
+        String expectedToday;
+
         context.turnOffAuthorisationSystem();
-        Item item = createItem();
+        try {
+            item = createItem();
 
-        // Simulate an embargoed item: the user-supplied terms (dc.date.embargo) and the
-        // computed lift date (dc.date.available) both hold the embargo date.
-        itemService.addMetadata(context, item, "dc", "date", "embargo", null, EMBARGO_DATE);
-        itemService.addMetadata(context, item, "dc", "date", "available", null, EMBARGO_DATE);
-        itemService.update(context, item);
+            // Simulate an embargoed item: the user-supplied terms (dc.date.embargo) and the
+            // computed lift date (dc.date.available) both hold the embargo date.
+            itemService.addMetadata(context, item, "dc", "date", "embargo", null, EMBARGO_DATE);
+            itemService.addMetadata(context, item, "dc", "date", "available", null, EMBARGO_DATE);
+            itemService.update(context, item);
 
-        // Sanity check: terms present before lifting.
-        assertEquals(1, itemService.getMetadata(item, "dc", "date", "embargo", Item.ANY).size());
+            // Sanity check: terms present before lifting.
+            assertEquals(1, itemService.getMetadata(item, "dc", "date", "embargo", Item.ANY).size());
 
-        embargoService.liftEmbargo(context, item);
-        context.restoreAuthSystemState();
+            // Capture the expected "today" immediately before lifting so the assertion can't flake
+            // across a midnight boundary between the lift call and the assertion.
+            expectedToday = today();
+            embargoService.liftEmbargo(context, item);
+        } finally {
+            context.restoreAuthSystemState();
+        }
 
         // Requirement: dc.date.embargo must be removed when the embargo is lifted.
         assertEquals("dc.date.embargo must be removed when the embargo is lifted",
@@ -123,7 +138,7 @@ public class EmbargoServiceImplTest extends AbstractUnitTest {
         List<MetadataValue> available = itemService.getMetadata(item, "dc", "date", "available", Item.ANY);
         assertEquals("dc.date.available must be set exactly once on lift", 1, available.size());
         assertEquals("dc.date.available must be updated to today on lift",
-                     today(), available.get(0).getValue().substring(0, 10));
+                     expectedToday, available.get(0).getValue().substring(0, 10));
     }
 
     /**
@@ -132,29 +147,36 @@ public class EmbargoServiceImplTest extends AbstractUnitTest {
      */
     @Test
     public void testSetThenLiftEmbargo_removesEmbargoTerms() throws Exception {
+        Item item;
+        String expectedToday;
+
         context.turnOffAuthorisationSystem();
-        Item item = createItem();
+        try {
+            item = createItem();
 
-        // user-supplied embargo terms
-        itemService.addMetadata(context, item, "dc", "date", "embargo", null, EMBARGO_DATE);
-        itemService.update(context, item);
+            // user-supplied embargo terms
+            itemService.addMetadata(context, item, "dc", "date", "embargo", null, EMBARGO_DATE);
+            itemService.update(context, item);
 
-        // setEmbargo computes the lift date (dc.date.available) from the terms
-        embargoService.setEmbargo(context, item);
-        List<MetadataValue> availableUnderEmbargo =
-            itemService.getMetadata(item, "dc", "date", "available", Item.ANY);
-        assertEquals("setEmbargo should populate dc.date.available", 1, availableUnderEmbargo.size());
-        assertEquals(new DCDate(EMBARGO_DATE).toString(), availableUnderEmbargo.get(0).getValue());
+            // setEmbargo computes the lift date (dc.date.available) from the terms
+            embargoService.setEmbargo(context, item);
+            List<MetadataValue> availableUnderEmbargo =
+                itemService.getMetadata(item, "dc", "date", "available", Item.ANY);
+            assertEquals("setEmbargo should populate dc.date.available", 1, availableUnderEmbargo.size());
+            assertEquals(new DCDate(EMBARGO_DATE).toString(), availableUnderEmbargo.get(0).getValue());
 
-        // Now lift the embargo
-        embargoService.liftEmbargo(context, item);
-        context.restoreAuthSystemState();
+            // Capture the expected "today" immediately before lifting to avoid a midnight-boundary flake.
+            expectedToday = today();
+            embargoService.liftEmbargo(context, item);
+        } finally {
+            context.restoreAuthSystemState();
+        }
 
         assertEquals("dc.date.embargo must be removed when the embargo is lifted",
                      0, itemService.getMetadata(item, "dc", "date", "embargo", Item.ANY).size());
         List<MetadataValue> available = itemService.getMetadata(item, "dc", "date", "available", Item.ANY);
         assertEquals("dc.date.available must be set exactly once on lift", 1, available.size());
         assertEquals("dc.date.available must be updated to today on lift",
-                     today(), available.get(0).getValue().substring(0, 10));
+                     expectedToday, available.get(0).getValue().substring(0, 10));
     }
 }
