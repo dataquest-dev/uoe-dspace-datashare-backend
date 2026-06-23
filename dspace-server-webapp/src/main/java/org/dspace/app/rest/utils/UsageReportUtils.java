@@ -140,10 +140,11 @@ public class UsageReportUtils {
     private UsageReportRest resolveGlobalUsageReport(Context context)
         throws SQLException, IOException, ParseException, SolrServerException {
         int topItemsLimit = configurationService.getIntProperty("usage-statistics.topItemsLimit", -1);
-        // A value of 0 or lower means "no limit": return the statistics for every item so that the UI can
-        // paginate through all datasets instead of only ever showing the first page. We translate this to
-        // Integer.MAX_VALUE because the underlying SolrLogger only applies a Solr facet limit for positive
-        // values; a literal -1 would silently fall back to Solr's default facet limit of 100.
+        // A value of 0 or lower means "no limit": return statistics for every item so the UI can paginate
+        // through all datasets instead of only ever showing the first page. We translate this to
+        // Integer.MAX_VALUE rather than -1: SolrLogger only skips applying a Solr facet limit when the value
+        // is exactly -1, which falls back to Solr's default limit of 100 (not "unlimited"). A large facet
+        // limit is safe here because Solr only returns the facet values that actually exist, not empty buckets.
         if (topItemsLimit <= 0) {
             topItemsLimit = Integer.MAX_VALUE;
         }
