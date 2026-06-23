@@ -9,6 +9,8 @@ package org.dspace.app.rest.repository.patch.operation;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 import org.dspace.app.rest.exception.RESTBitstreamNotFoundException;
@@ -16,7 +18,9 @@ import org.dspace.app.rest.model.patch.Operation;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.content.Bitstream;
+import org.dspace.content.Bundle;
 import org.dspace.content.service.BitstreamService;
+import org.dspace.content.service.BundleService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +46,8 @@ public class BitstreamRemoveOperation extends PatchOperation<Bitstream> {
     @Autowired
     BitstreamService bitstreamService;
     @Autowired
+    BundleService bundleService;
+    @Autowired
     AuthorizeService authorizeService;
     public static final String OPERATION_PATH_BITSTREAM_REMOVE = "/bitstreams/";
 
@@ -55,7 +61,21 @@ public class BitstreamRemoveOperation extends PatchOperation<Bitstream> {
         authorizeBitstreamRemoveAction(context, bitstreamToDelete, Constants.DELETE);
 
         try {
-            bitstreamService.delete(context, bitstreamToDelete);
+            // Remove the bitstream from each owning bundle via the bundle service so that a Bundle
+            // REMOVE event is fired. bitstreamService.delete() removes the bitstream from its bundles
+            // silently (no event), which would leave consumers that track an item's fileset unaware -
+            // e.g. the DataShare consumer would not regenerate the item's "download all" zip. This is
+            // the path the Angular UI uses (bulk PATCH /api/core/bitstreams). bundleService
+            // .removeBitstream() deletes the bitstream once it is removed from its last bundle; a
+            // bitstream with no bundle (e.g. a community/collection logo) is deleted directly.
+            List<Bundle> bundles = new LinkedList<>(bitstreamToDelete.getBundles());
+            if (bundles.isEmpty()) {
+                bitstreamService.delete(context, bitstreamToDelete);
+            } else {
+                for (Bundle bundle : bundles) {
+                    bundleService.removeBitstream(context, bundle, bitstreamToDelete);
+                }
+            }
         } catch (AuthorizeException | IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
