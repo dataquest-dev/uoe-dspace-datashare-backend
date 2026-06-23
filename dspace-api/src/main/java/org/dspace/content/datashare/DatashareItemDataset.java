@@ -16,8 +16,10 @@ import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -597,13 +599,16 @@ public class DatashareItemDataset {
                         .getBitstreamStorageService();
 
                 // Add files in items named bundles "ORIGINAL", "CC-LICENSE", and "LICENSE" to
-                // zip.
+                // zip. Track the entry names already written so that two bitstreams that share a name
+                // (e.g. the same file uploaded twice) do not produce a "duplicate entry" ZipException
+                // - the later one is disambiguated as "name (1).ext", "name (2).ext", ...
+                Set<String> usedEntryNames = new HashSet<>();
                 addFilesInItemsNamedBundleToZipOutputStream(ORIGINAL_BUNDLE, context, zos, BUFFER, itemService,
-                        bitstreamStorageService);
+                        bitstreamStorageService, usedEntryNames);
                 addFilesInItemsNamedBundleToZipOutputStream(CC_LICENSE_BUNDLE, context, zos, BUFFER, itemService,
-                        bitstreamStorageService);
+                        bitstreamStorageService, usedEntryNames);
                 addFilesInItemsNamedBundleToZipOutputStream(LICENSE_BUNDLE, context, zos, BUFFER, itemService,
-                        bitstreamStorageService);
+                        bitstreamStorageService, usedEntryNames);
 
                 zos.close();
                 fos.close();
@@ -657,12 +662,14 @@ public class DatashareItemDataset {
          * @param BUFFER
          * @param itemService
          * @param bitstreamStorageService
+         * @param usedEntryNames names already used as zip entries, to keep entry names unique
          * @throws SQLException
          * @throws IOException
          */
         private void addFilesInItemsNamedBundleToZipOutputStream(String bundleName, Context context,
                 ZipOutputStream zos, final byte[] BUFFER, ItemService itemService,
-                BitstreamStorageService bitstreamStorageService) throws SQLException, IOException {
+                BitstreamStorageService bitstreamStorageService, Set<String> usedEntryNames)
+                throws SQLException, IOException {
             List<Bundle> bundle = itemService.getBundles(item, bundleName);
 
             log.info(bundleName + " bundle.size(): " + bundle.size());
@@ -672,8 +679,9 @@ public class DatashareItemDataset {
                 List<Bitstream> bitstreams = bundle.get(i).getBitstreams();
 
                 for (int j = 0; j < bitstreams.size(); j++) {
-                    log.info("do " + bitstreams.get(j).getName());
-                    ZipEntry entry = new ZipEntry(bitstreams.get(j).getName());
+                    String entryName = uniqueEntryName(bitstreams.get(j).getName(), usedEntryNames);
+                    log.info("do " + entryName);
+                    ZipEntry entry = new ZipEntry(entryName);
                     log.info("ZipEntry entry " + entry);
                     zos.putNextEntry(entry);
                     InputStream in = bitstreamStorageService.retrieve(context, bitstreams.get(j));
@@ -685,6 +693,35 @@ public class DatashareItemDataset {
 
                     zos.closeEntry();
                     in.close();
+                }
+            }
+        }
+
+        /**
+         * Produce a zip entry name that is unique within this archive. A bitstream's name
+         * ({@code dc.title}) is used as the entry name, but several bitstreams can share a name (e.g.
+         * the same file uploaded twice); a {@link ZipOutputStream} rejects a duplicate entry name with
+         * a {@code ZipException}, which previously aborted the whole zip. Duplicates are therefore
+         * disambiguated as "name (1).ext", "name (2).ext", ... (mirroring how browsers name repeated
+         * downloads); a {@code null}/blank name falls back to "bitstream". The chosen name is recorded
+         * in {@code used} so subsequent entries stay unique.
+         *
+         * @param name the bitstream name (may be {@code null})
+         * @param used the set of entry names already written; the returned name is added to it
+         * @return a name not present in {@code used}
+         */
+        private String uniqueEntryName(String name, Set<String> used) {
+            String base = (name == null || name.isBlank()) ? "bitstream" : name;
+            if (used.add(base)) {
+                return base;
+            }
+            int dot = base.lastIndexOf('.');
+            String stem = dot > 0 ? base.substring(0, dot) : base;
+            String ext = dot > 0 ? base.substring(dot) : "";
+            for (int n = 1; ; n++) {
+                String candidate = stem + " (" + n + ")" + ext;
+                if (used.add(candidate)) {
+                    return candidate;
                 }
             }
         }

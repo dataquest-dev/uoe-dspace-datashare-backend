@@ -7,6 +7,7 @@
  */
 package org.dspace.content.datashare;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -317,5 +318,34 @@ public class DatashareDatasetUploadIT extends AbstractIntegrationTestWithDatabas
                 zip.exists());
         assertFalse("the zip kept after a move must be a fresh one, not the stale pre-move file",
                 staleZipStillPresent(zip));
+    }
+
+    /**
+     * Two bitstreams in an item can share a name (e.g. the same file uploaded twice). The zip names
+     * each entry after the bitstream's dc.title, and a {@link java.util.zip.ZipOutputStream} rejects a
+     * duplicate entry name with a ZipException - which previously aborted the whole zip, leaving the
+     * item with no "download all" zip at all. The zip must still be generated, with the duplicate
+     * name disambiguated.
+     */
+    @Test
+    public void datasetZipGeneratedDespiteDuplicateFileNames() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = createArchivedPublicItemWithFile(); // dataset-file.txt
+        // A second file with the SAME name as the first.
+        try (InputStream is = IOUtils.toInputStream("duplicate content", StandardCharsets.UTF_8)) {
+            BitstreamBuilder.createBitstream(context, item, is)
+                    .withName("dataset-file.txt").withMimeType("text/plain").build();
+        }
+        File zip = new File(datasetsDir, DatashareItemDataset.getFileName(item.getHandle()));
+        datasetItems.add(item);
+        datasetService.createDatasetForItem(context, item);
+        context.restoreAuthSystemState();
+
+        assertTrue("the zip must be generated even when two files share a name", zip.exists());
+        List<String> names = zipEntryNames(zip);
+        assertEquals("both same-named files must be in the zip (one disambiguated): " + names,
+                2, names.stream().filter(n -> n.startsWith("dataset-file")).count());
+        assertTrue("the zip keeps the original name: " + names, names.contains("dataset-file.txt"));
+        assertTrue("the duplicate is disambiguated: " + names, names.contains("dataset-file (1).txt"));
     }
 }
