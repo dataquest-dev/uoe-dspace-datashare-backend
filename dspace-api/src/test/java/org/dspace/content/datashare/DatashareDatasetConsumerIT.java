@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Arrays;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -111,6 +112,12 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         File zip = new File(datasetsDir, fileName);
         Files.write(zip.toPath(), "fake-zip".getBytes(StandardCharsets.UTF_8));
         return zip;
+    }
+
+    /** Whether the file on disk is still the stale placeholder written by {@link #placeDatasetZipFile}. */
+    private boolean isStalePlaceholder(File zip) throws Exception {
+        return zip.exists()
+                && Arrays.equals(Files.readAllBytes(zip.toPath()), "fake-zip".getBytes(StandardCharsets.UTF_8));
     }
 
     /** Register the dataset DB record for the item, as the ds-datasets job would after zipping. */
@@ -389,7 +396,7 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
     }
 
     @Test
-    public void datasetZipDeletedWhenBitstreamRemovedFromOriginalBundle() throws Exception {
+    public void datasetZipRegeneratedWhenBitstreamRemovedFromOriginalBundle() throws Exception {
         context.turnOffAuthorisationSystem();
         Item item = createArchivedItemWithFile();
         File zip = placeDatasetZipFile(item);
@@ -397,15 +404,22 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         Bundle original = itemService.getBundles(item, "ORIGINAL").get(0);
         context.restoreAuthSystemState();
 
-        assertTrue("precondition: the generated zip exists", zip.exists());
+        assertTrue("precondition: the (stale) generated zip exists", zip.exists());
 
         fireBundleEvent(Event.REMOVE, original);
 
-        assertFalse("the stale zip must be deleted when a file is removed", zip.exists());
+        // The fileset changed, so the stale zip is dropped and regenerated from the current files
+        // (the public item is still available), rather than left deleted until the next batch run.
+        assertTrue("the zip must be regenerated when a file is removed", zip.exists());
+        assertFalse("the regenerated zip must not be the stale placeholder", isStalePlaceholder(zip));
+
+        context.turnOffAuthorisationSystem();
+        datasetService.deleteDatasetForItem(context, item);
+        context.restoreAuthSystemState();
     }
 
     @Test
-    public void datasetZipDeletedWhenBitstreamAddedToOriginalBundle() throws Exception {
+    public void datasetZipRegeneratedWhenBitstreamAddedToOriginalBundle() throws Exception {
         context.turnOffAuthorisationSystem();
         Item item = createArchivedItemWithFile();
         File zip = placeDatasetZipFile(item);
@@ -413,11 +427,16 @@ public class DatashareDatasetConsumerIT extends AbstractIntegrationTestWithDatab
         Bundle original = itemService.getBundles(item, "ORIGINAL").get(0);
         context.restoreAuthSystemState();
 
-        assertTrue("precondition: the generated zip exists", zip.exists());
+        assertTrue("precondition: the (stale) generated zip exists", zip.exists());
 
         fireBundleEvent(Event.ADD, original);
 
-        assertFalse("the stale zip must be deleted when a file is added", zip.exists());
+        assertTrue("the zip must be regenerated when a file is added", zip.exists());
+        assertFalse("the regenerated zip must not be the stale placeholder", isStalePlaceholder(zip));
+
+        context.turnOffAuthorisationSystem();
+        datasetService.deleteDatasetForItem(context, item);
+        context.restoreAuthSystemState();
     }
 
     @Test

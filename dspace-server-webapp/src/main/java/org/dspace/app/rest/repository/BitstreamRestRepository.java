@@ -39,7 +39,9 @@ import org.dspace.content.service.BitstreamService;
 import org.dspace.content.service.BundleService;
 import org.dspace.content.service.CollectionService;
 import org.dspace.content.service.CommunityService;
+import org.dspace.core.Constants;
 import org.dspace.core.Context;
+import org.dspace.event.Event;
 import org.dspace.handle.service.HandleService;
 import org.dspace.services.ConfigurationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -147,10 +149,26 @@ public class BitstreamRestRepository extends DSpaceObjectRestRepository<Bitstrea
         } catch (SQLException | IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
+        List<Bundle> owningBundles;
+        UUID bitstreamId;
+        String sequenceId;
         try {
+            // Capture the bundles this bitstream belongs to BEFORE deleting it, so we can announce the
+            // fileset change afterwards (a deleted bitstream can no longer be resolved to its item).
+            owningBundles = new LinkedList<>(bit.getBundles());
+            bitstreamId = bit.getID();
+            sequenceId = String.valueOf(bit.getSequenceID());
             bs.delete(context, bit);
         } catch (SQLException | IOException e) {
             throw new RuntimeException(e.getMessage(), e);
+        }
+        // bitstreamService.delete() removes the bitstream from its bundles WITHOUT firing an event,
+        // so fire a Bundle REMOVE for each former bundle. This lets consumers that track an item's
+        // fileset react (e.g. the DataShare consumer regenerates the item's "download all" zip). It
+        // only signals the change - nothing else is deleted.
+        for (Bundle bundle : owningBundles) {
+            context.addEvent(new Event(Event.REMOVE, Constants.BUNDLE, bundle.getID(),
+                    Constants.BITSTREAM, bitstreamId, sequenceId));
         }
     }
 

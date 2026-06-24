@@ -9,6 +9,8 @@ package org.dspace.app.rest.repository.patch.operation;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.dspace.app.rest.exception.RESTBitstreamNotFoundException;
@@ -16,9 +18,11 @@ import org.dspace.app.rest.model.patch.Operation;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.content.Bitstream;
+import org.dspace.content.Bundle;
 import org.dspace.content.service.BitstreamService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
+import org.dspace.event.Event;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
@@ -54,10 +58,23 @@ public class BitstreamRemoveOperation extends PatchOperation<Bitstream> {
         }
         authorizeBitstreamRemoveAction(context, bitstreamToDelete, Constants.DELETE);
 
+        // Capture the bundles this bitstream belongs to BEFORE deleting it, so we can announce the
+        // fileset change afterwards (a deleted bitstream can no longer be resolved to its item).
+        List<Bundle> owningBundles = new ArrayList<>(bitstreamToDelete.getBundles());
+        UUID bitstreamId = bitstreamToDelete.getID();
+        String sequenceId = String.valueOf(bitstreamToDelete.getSequenceID());
         try {
             bitstreamService.delete(context, bitstreamToDelete);
         } catch (AuthorizeException | IOException e) {
             throw new RuntimeException(e.getMessage(), e);
+        }
+        // bitstreamService.delete() removes the bitstream from its bundles WITHOUT firing an event,
+        // so fire a Bundle REMOVE for each former bundle. This lets consumers that track an item's
+        // fileset react (e.g. the DataShare consumer regenerates the item's "download all" zip). It
+        // only signals the change - nothing else is deleted.
+        for (Bundle bundle : owningBundles) {
+            context.addEvent(new Event(Event.REMOVE, Constants.BUNDLE, bundle.getID(),
+                    Constants.BITSTREAM, bitstreamId, sequenceId));
         }
         return null;
     }
