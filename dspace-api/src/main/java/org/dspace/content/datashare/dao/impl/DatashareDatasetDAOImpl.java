@@ -77,11 +77,16 @@ public class DatashareDatasetDAOImpl extends AbstractHibernateDSODAO<DatashareDa
         // item), which nullsFirst handles safely.
         Query query = createQuery(context, "SELECT ddset FROM DatashareDataset ddset WHERE ddset.item = :item");
         query.setParameter("item", item);
-        // Highest numeric legacy id wins; the UUID is a deterministic tiebreaker for rows that share a
-        // legacyId (notably NULL on fresh installs) so the result never depends on the DB row order.
+        // In practice there is a single materializable dataset per item: every insert path first
+        // deletes the previous record for the item's (deterministic) file name. The comparator only
+        // matters in the unlikely event that more than one valid dataset survives. Highest numeric
+        // legacy id wins (the newest row on an upgraded DB, where the inherited DSpace 6 sequence
+        // populates "id"); legacyId is NULL on fresh installs, and nullsLast keeps such an
+        // app-created row ahead of any (older) legacy row that carries a numeric id. The UUID is a
+        // final deterministic tiebreaker so the result never depends on DB row order.
         return list(query).stream()
                 .max(Comparator.comparing(DatashareDataset::getLegacyId,
-                                Comparator.nullsFirst(Comparator.naturalOrder()))
+                                Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(DatashareDataset::getID))
                 .orElse(null);
     }
