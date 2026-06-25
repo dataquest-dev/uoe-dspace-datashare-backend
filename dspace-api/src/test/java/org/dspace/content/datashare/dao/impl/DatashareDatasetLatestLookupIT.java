@@ -122,18 +122,23 @@ public class DatashareDatasetLatestLookupIT extends AbstractIntegrationTestWithD
     private void insertDanglingLegacyDatasetRow(UUID uuid, Integer legacyId) throws Exception {
         HibernateDBConnection dbc = (HibernateDBConnection) CoreHelpers.getDBConnection(context);
         setReferentialIntegrity(false);
-        Query insert = dbc.getSession().createNativeQuery(
-                "INSERT INTO dataset (uuid, id, item_id, file_name, checksum, checksum_algorithm)"
-                        + " VALUES (:uuid, :id, :item, :file, :checksum, :algo)");
-        insert.setParameter("uuid", uuid);
-        insert.setParameter("id", legacyId);
-        insert.setParameter("item", item.getID());
-        insert.setParameter("file", "DS_current.zip");
-        insert.setParameter("checksum", "legacy-checksum");
-        insert.setParameter("algo", "MD5");
-        insert.executeUpdate();
-        // Re-enabling does not re-validate existing rows in H2, so the dangling row survives for the test.
-        setReferentialIntegrity(true);
+        try {
+            Query insert = dbc.getSession().createNativeQuery(
+                    "INSERT INTO dataset (uuid, id, item_id, file_name, checksum, checksum_algorithm)"
+                            + " VALUES (:uuid, :id, :item, :file, :checksum, :algo)");
+            insert.setParameter("uuid", uuid);
+            insert.setParameter("id", legacyId);
+            insert.setParameter("item", item.getID());
+            insert.setParameter("file", "DS_current.zip");
+            insert.setParameter("checksum", "legacy-checksum");
+            insert.setParameter("algo", "MD5");
+            insert.executeUpdate();
+        } finally {
+            // Always restore referential integrity, even if the insert fails, so the shared in-memory DB
+            // does not leak a non-default state into later tests. Re-enabling does not re-validate
+            // existing rows in H2, so the dangling row survives for the test.
+            setReferentialIntegrity(true);
+        }
     }
 
     private void deleteDatasetRow(UUID uuid) throws Exception {

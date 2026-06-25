@@ -77,9 +77,12 @@ public class DatashareDatasetDAOImpl extends AbstractHibernateDSODAO<DatashareDa
         // item), which nullsFirst handles safely.
         Query query = createQuery(context, "SELECT ddset FROM DatashareDataset ddset WHERE ddset.item = :item");
         query.setParameter("item", item);
+        // Highest numeric legacy id wins; the UUID is a deterministic tiebreaker for rows that share a
+        // legacyId (notably NULL on fresh installs) so the result never depends on the DB row order.
         return list(query).stream()
                 .max(Comparator.comparing(DatashareDataset::getLegacyId,
-                        Comparator.nullsFirst(Comparator.naturalOrder())))
+                                Comparator.nullsFirst(Comparator.naturalOrder()))
+                        .thenComparing(DatashareDataset::getID))
                 .orElse(null);
     }
 
