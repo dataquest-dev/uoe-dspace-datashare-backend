@@ -8,10 +8,10 @@
 package org.dspace.content.datashare.dao.impl;
 
 import java.sql.SQLException;
+import java.util.Comparator;
 import java.util.List;
 
 import jakarta.persistence.Query;
-import org.apache.logging.log4j.Logger;
 import org.dspace.content.Item;
 import org.dspace.content.datashare.DatashareDataset;
 import org.dspace.content.datashare.dao.DatashareDatasetDAO;
@@ -19,8 +19,6 @@ import org.dspace.core.AbstractHibernateDSODAO;
 import org.dspace.core.Context;
 
 public class DatashareDatasetDAOImpl extends AbstractHibernateDSODAO<DatashareDataset> implements DatashareDatasetDAO {
-
-    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(DatashareDatasetDAOImpl.class);
 
     protected DatashareDatasetDAOImpl() {
         super();
@@ -64,12 +62,33 @@ public class DatashareDatasetDAOImpl extends AbstractHibernateDSODAO<DatashareDa
 
     @Override
     public DatashareDataset findLatestDatashareDatasetByItem(Context context, Item item) throws SQLException {
-        String queryString = "SELECT ddset FROM DatashareDataset ddset WHERE ddset.item = :item"
-                    + " AND ddset.id = (SELECT MAX(d.id) FROM DatashareDataset d WHERE d.item = :item)";
-        Query query = createQuery(context, queryString);
+        // Return the most recently created dataset for the item.
+        //
+        // We must NOT rank by ddset.id: 'id' is the inherited DSpaceObject UUID, because the numeric
+        // auto-increment "id" column is mapped to the legacyId property. Ranking by MAX(ddset.id)
+        // therefore picks the highest UUID, not the latest row. On a DSpace 6 -> 8 upgrade the
+        // 'dataset' table also keeps legacy rows that have no matching 'dspaceobject' entry; when such
+        // a legacy UUID sorts highest, the JOINED-inheritance entity cannot be materialized and the
+        // query throws NoResultException. See https://github.com/dataquest-dev/dspace-customers/issues/741.
+        //
+        // Querying the entity already excludes those un-materializable legacy rows (JOINED inheritance
+        // joins 'dataset' to 'dspaceobject'), so we only rank valid datasets and prefer the highest
+        // numeric legacy id. That id is NULL on fresh installs (where there is a single dataset per
+        // item), which nullsFirst handles safely.
+        Query query = createQuery(context, "SELECT ddset FROM DatashareDataset ddset WHERE ddset.item = :item");
         query.setParameter("item", item);
-        log.info("queryString: " + queryString);
-        return (DatashareDataset) uniqueResult(query);
+        // In practice there is a single materializable dataset per item: every insert path first
+        // deletes the previous record for the item's (deterministic) file name. The comparator only
+        // matters in the unlikely event that more than one valid dataset survives. Highest numeric
+        // legacy id wins (the newest row on an upgraded DB, where the inherited DSpace 6 sequence
+        // populates "id"); legacyId is NULL on fresh installs, and nullsLast keeps such an
+        // app-created row ahead of any (older) legacy row that carries a numeric id. The UUID is a
+        // final deterministic tiebreaker so the result never depends on DB row order.
+        return list(query).stream()
+                .max(Comparator.comparing(DatashareDataset::getLegacyId,
+                                Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(DatashareDataset::getID))
+                .orElse(null);
     }
 
 }
