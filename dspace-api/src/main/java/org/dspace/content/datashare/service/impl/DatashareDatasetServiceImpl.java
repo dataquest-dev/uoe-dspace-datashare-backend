@@ -10,13 +10,20 @@ package org.dspace.content.datashare.service.impl;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.AuthorizeException;
+import org.dspace.authorize.ResourcePolicy;
 import org.dspace.authorize.service.AuthorizeService;
+import org.dspace.authorize.service.ResourcePolicyService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
@@ -32,6 +39,9 @@ import org.dspace.content.service.ItemService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.core.LogHelper;
+import org.dspace.eperson.EPerson;
+import org.dspace.eperson.Group;
+import org.dspace.eperson.service.GroupService;
 import org.dspace.event.Event;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -48,6 +58,21 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
      */
     private static final String[] ZIP_BUNDLE_NAMES = { "ORIGINAL", "CC-LICENSE", "LICENSE" };
 
+    /**
+     * Maximum number of (item, eperson) authorization decisions kept in memory at once. The cache is
+     * bounded so it can never grow without limit; least-recently-used entries are evicted past this
+     * size.
+     */
+    private static final long AUTHZ_CACHE_MAX_SIZE = 20_000L;
+
+    /**
+     * How long a cached zip-download authorization decision stays valid. The dataset zips are rebuilt
+     * by the {@code ds-datasets} cron and the underlying READ policies change rarely, so a short TTL
+     * keeps the decision fresh while collapsing the per-page-view recomputation that previously
+     * saturated the database.
+     */
+    private static final Duration AUTHZ_CACHE_TTL = Duration.ofSeconds(60);
+
     @Autowired(required = true)
     private DatashareDatasetDAO datashareDatasetDAO;
 
@@ -56,6 +81,25 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Autowired
     private ItemService itemService;
+
+    @Autowired
+    private ResourcePolicyService resourcePolicyService;
+
+    @Autowired
+    private GroupService groupService;
+
+    /**
+     * Per-(item, eperson) cache of "may this user download the dataset zip" decisions. The
+     * zip-file-link endpoint is hit on every dataset page view, often by many concurrent users
+     * looking at the same item, so without this every view re-authorized every bitstream of the item
+     * - an O(files) x several-queries storm that saturated the backend. Guava's {@code get(key,
+     * loader)} additionally guarantees a single concurrent computation per key, preventing a
+     * thundering herd while the cache is cold.
+     */
+    private final Cache<String, Boolean> downloadAuthorizationCache = CacheBuilder.newBuilder()
+            .maximumSize(AUTHZ_CACHE_MAX_SIZE)
+            .expireAfterWrite(AUTHZ_CACHE_TTL)
+            .build();
 
     @Override
     public DatashareDataset insertDatashareDataset(Context context, Item item, String fileName, String cksum) {
@@ -161,12 +205,68 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         if (item == null) {
             return false;
         }
-        // The dataset zip bundles all of the item's files. A user may only download it when they
-        // are authorized to READ every bitstream that would be included in the zip.
+        EPerson currentUser = context.getCurrentUser();
+
+        // The result is a pure function of (item, eperson) - EXCEPT when the request carries
+        // "special" groups (e.g. IP-based authentication), which make it session specific. In that
+        // (rare) case we bypass the shared cache and always compute a fresh decision so we never leak
+        // one session's access to another user under a coarse (item, eperson) key.
+        if (!context.getSpecialGroups().isEmpty()) {
+            return computeUserAuthorizedToDownloadZip(context, item, currentUser);
+        }
+
+        String cacheKey = item.getID() + "|" + (currentUser == null ? "anonymous" : currentUser.getID());
+        try {
+            return downloadAuthorizationCache.get(cacheKey,
+                    () -> computeUserAuthorizedToDownloadZip(context, item, currentUser));
+        } catch (ExecutionException e) {
+            // Unwrap the SQLException thrown by the loader so callers see the original cause.
+            if (e.getCause() instanceof SQLException) {
+                throw (SQLException) e.getCause();
+            }
+            throw new RuntimeException("Error authorizing dataset zip download for item " + item.getID(),
+                    e.getCause());
+        }
+    }
+
+    /**
+     * Decide whether {@code currentUser} may download the item's dataset zip, i.e. whether they are
+     * authorized to READ every bitstream the zip would expose.
+     * <p>
+     * This intentionally does <strong>not</strong> call
+     * {@link AuthorizeService#authorizeActionBoolean(Context, DSpaceObject, int)} per bitstream. For
+     * an installed (archived) item that path additionally probes the workflow and workspace tables
+     * ({@code isAnyItemInstalled}) and resolves each bitstream's parent on every call - pointless work
+     * that, multiplied by every file and recomputed on every page view, saturated the database. Here
+     * the user's full (recursive + special) group membership is resolved once and the per-bitstream
+     * READ policies are evaluated in memory, preserving the original behaviour (administrators are
+     * authorized, embargoed/restricted bitstreams are denied).
+     *
+     * @param context     DSpace context
+     * @param item        the item whose dataset zip is requested
+     * @param currentUser the context's current user ({@code null} for anonymous)
+     * @return {@code true} if the user may download the zip
+     * @throws SQLException if a database error occurs
+     */
+    private boolean computeUserAuthorizedToDownloadZip(Context context, Item item, EPerson currentUser)
+            throws SQLException {
+        // Administrators bypass resource policies entirely, so authorize once at the item level
+        // instead of re-checking every bitstream.
+        if (authorizeService.isAdmin(context, item)) {
+            return true;
+        }
+
+        // The user's group membership is identical for every bitstream of the item, so resolve it
+        // once. allMemberGroupsSet() includes the user's groups, their parents, the special groups
+        // bound to the context and the Anonymous group, and is itself cached on the Context - so
+        // membership can then be tested as an in-memory set lookup, equivalent to
+        // GroupService.isMember(context, currentUser, group).
+        Set<Group> userGroups = groupService.allMemberGroupsSet(context, currentUser);
+
         for (String bundleName : ZIP_BUNDLE_NAMES) {
             for (Bundle bundle : itemService.getBundles(item, bundleName)) {
                 for (Bitstream bitstream : bundle.getBitstreams()) {
-                    if (!authorizeService.authorizeActionBoolean(context, bitstream, Constants.READ)) {
+                    if (!hasReadAccess(context, bitstream, currentUser, userGroups)) {
                         log.debug("User not authorized to read bitstream {} of item {}; "
                                 + "zip download is forbidden.", bitstream.getID(), item.getID());
                         return false;
@@ -175,6 +275,37 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
             }
         }
         return true;
+    }
+
+    /**
+     * Evaluate, in memory, whether the user (with the given precomputed group membership) holds a
+     * valid READ policy on the bitstream. Mirrors the matching logic of
+     * {@link AuthorizeService} for an installed item: a single (date-valid) READ policy granted to the
+     * user directly or to one of their groups is sufficient.
+     *
+     * @param context    DSpace context
+     * @param bitstream  the bitstream to authorize
+     * @param currentUser the context's current user ({@code null} for anonymous)
+     * @param userGroups the user's full group membership, resolved once by the caller
+     * @return {@code true} if the user may READ the bitstream
+     * @throws SQLException if a database error occurs while loading the bitstream's policies
+     */
+    private boolean hasReadAccess(Context context, Bitstream bitstream, EPerson currentUser, Set<Group> userGroups)
+            throws SQLException {
+        // One indexed lookup (resource + action) per bitstream, no workflow/workspace/parent probing.
+        for (ResourcePolicy rp : resourcePolicyService.find(context, bitstream, Constants.READ)) {
+            if (!resourcePolicyService.isDateValid(rp)) {
+                // Honour embargo / expiry windows exactly as AuthorizeService does.
+                continue;
+            }
+            if (currentUser != null && currentUser.equals(rp.getEPerson())) {
+                return true;
+            }
+            if (rp.getGroup() != null && userGroups.contains(rp.getGroup())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
