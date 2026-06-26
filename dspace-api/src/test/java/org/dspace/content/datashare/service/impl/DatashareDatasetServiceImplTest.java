@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,8 @@ import org.dspace.authorize.service.ResourcePolicyService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.Item;
+import org.dspace.content.datashare.DatashareDataset;
+import org.dspace.content.datashare.DatashareItemDataset;
 import org.dspace.content.datashare.dao.DatashareDatasetDAO;
 import org.dspace.content.service.ItemService;
 import org.dspace.core.Constants;
@@ -42,6 +45,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnitRunner;
 
 /**
@@ -220,6 +224,29 @@ public class DatashareDatasetServiceImplTest {
         assertTrue(datashareDatasetService.isUserAuthorizedToDownloadZip(context, item));
 
         verify(groupService, times(1)).allMemberGroupsSet(context, null);
+    }
+
+    @Test
+    public void zipContentAvailabilityIsCachedPerItem() throws Exception {
+        // The downloadable check walks every bitstream's anonymous readability
+        // (areAllItemBitstreamsAvailable). That is reached on every page view and must be cached per
+        // item, otherwise the per-file storm simply moves from authorization to availability.
+        Item item = mock(Item.class);
+        when(item.getID()).thenReturn(UUID.randomUUID());
+        // Administrator -> authorized, so we reach the availability check.
+        when(authorizeService.isAdmin(context, item)).thenReturn(true);
+        when(datashareDatasetDAO.findLatestDatashareDatasetByItem(context, item))
+                .thenReturn(mock(DatashareDataset.class));
+
+        try (MockedStatic<DatashareItemDataset> mocked = mockStatic(DatashareItemDataset.class)) {
+            mocked.when(() -> DatashareItemDataset.areAllItemBitstreamsAvailable(context, item)).thenReturn(true);
+
+            assertTrue(datashareDatasetService.isDatashareDatasetZipFileDownloadable(context, item));
+            assertTrue(datashareDatasetService.isDatashareDatasetZipFileDownloadable(context, item));
+
+            // The expensive per-bitstream anonymous-readability walk ran only once.
+            mocked.verify(() -> DatashareItemDataset.areAllItemBitstreamsAvailable(context, item), times(1));
+        }
     }
 
     @Test

@@ -101,6 +101,20 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
             .expireAfterWrite(AUTHZ_CACHE_TTL)
             .build();
 
+    /**
+     * Per-item cache of "is the item's zip content currently available" (archived, not embargoed,
+     * not withdrawn and anonymously readable). Unlike the authorization decision this is
+     * user-independent, but it is just as expensive: {@code areAllItemBitstreamsAvailable} walks
+     * every bitstream's READ policies. It is reached on every page view (via the downloadable
+     * check), so without this cache it keeps the database saturated even after the per-user
+     * authorization storm is removed. Invalidated when the item's dataset is (re)generated or
+     * dropped (see {@link #createDatasetForItem} / {@link #deleteDatasetForItem}).
+     */
+    private final Cache<UUID, Boolean> datasetAvailabilityCache = CacheBuilder.newBuilder()
+            .maximumSize(AUTHZ_CACHE_MAX_SIZE)
+            .expireAfterWrite(AUTHZ_CACHE_TTL)
+            .build();
+
     @Override
     public DatashareDataset insertDatashareDataset(Context context, Item item, String fileName, String cksum) {
         DatashareDataset dataset = null;
@@ -140,6 +154,8 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         // fileset. This is best-effort: a missing file or unconfigured datasets.path must not
         // break the operation that triggered this (e.g. a bitstream upload/delete).
         deleteDatasetZipFile(item);
+        // The item's fileset/policies just changed - drop any cached download decisions for it.
+        invalidateZipCaches(item);
     }
 
     @Override
@@ -158,6 +174,26 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
             // break the operation that triggered this (the item install).
             log.warn("Error creating dataset zip for item " + item.getID(), e);
         }
+        // A freshly (re)generated zip changes the cached availability/authorization for this item.
+        invalidateZipCaches(item);
+    }
+
+    /**
+     * Drop any cached zip download decisions for the given item. Called when the item's dataset zip
+     * is (re)generated or removed, so a fileset/policy change is reflected immediately rather than
+     * only after the cache TTL elapses.
+     *
+     * @param item the item whose cached decisions should be invalidated; ignored when {@code null}
+     *             or without an id
+     */
+    private void invalidateZipCaches(Item item) {
+        if (item == null || item.getID() == null) {
+            return;
+        }
+        datasetAvailabilityCache.invalidate(item.getID());
+        // The authorization cache is keyed by "<itemId>|<eperson>"; remove every user's entry for it.
+        String prefix = item.getID() + "|";
+        downloadAuthorizationCache.asMap().keySet().removeIf(key -> key.startsWith(prefix));
     }
 
     /**
@@ -308,6 +344,29 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         return false;
     }
 
+    /**
+     * Cached wrapper around {@link DatashareItemDataset#areAllItemBitstreamsAvailable(Context, Item)}.
+     * That check walks every bitstream of the item to confirm the whole zip is anonymously readable;
+     * its result depends only on the item (not the requesting user), so it is cached per item to keep
+     * the zip-file-link endpoint O(1) on repeated page views.
+     *
+     * @param context DSpace context
+     * @param item    the item whose zip content availability is needed
+     * @return {@code true} if the item's whole fileset may currently be exposed in the zip
+     */
+    private boolean isZipContentAvailable(Context context, Item item) {
+        if (item == null || item.getID() == null) {
+            return false;
+        }
+        try {
+            return datasetAvailabilityCache.get(item.getID(),
+                    () -> DatashareItemDataset.areAllItemBitstreamsAvailable(context, item));
+        } catch (ExecutionException e) {
+            log.error("Error checking zip content availability for item " + item.getID(), e.getCause());
+            return false;
+        }
+    }
+
     @Override
     public String fetchDatashareDatasetZipFileLink(Context context, Item item) {
         String downloadLink = "";
@@ -363,7 +422,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     // Only return DatashareDataset for item if it exists in the file system
     private DatashareDataset findDatashareDatasetByItem(Context context, Item item) {
         try {
-            boolean allItemBitstreamsAvailable = DatashareItemDataset.areAllItemBitstreamsAvailable(context, item);
+            boolean allItemBitstreamsAvailable = isZipContentAvailable(context, item);
             // If all item bitstreams are not available then we don't want to return a
             // dataset.
             if (!allItemBitstreamsAvailable) {
