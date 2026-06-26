@@ -1235,6 +1235,54 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
     }
 
     @Test
+    public void usageReportsSearch_Site_ReturnsAllItemsWhenLimitNotPositive() throws Exception {
+        // ** GIVEN **
+        // The repository wide usage report is configured without a positive top-items limit, meaning every
+        // visited item should be returned so the UI can paginate through all datasets (see issue #726).
+        configurationService.setProperty("usage-statistics.topItemsLimit", 0);
+
+        int numberOfItems = 12;
+        context.turnOffAuthorisationSystem();
+        Site site = SiteBuilder.createSite(context).build();
+        List<Item> items = new ArrayList<>();
+        for (int i = 0; i < numberOfItems; i++) {
+            items.add(ItemBuilder.createItem(context, collectionNotVisited)
+                                 .withTitle("Statistics pagination item " + i).build());
+        }
+        context.restoreAuthSystemState();
+
+        // ** WHEN **
+        // We register a view event for every item, so each one shows up in the global report with 1 view.
+        ObjectMapper mapper = new ObjectMapper();
+        List<UsageReportPointRest> expectedPoints = new ArrayList<>();
+        for (Item item : items) {
+            ViewEventRest viewEventRest = new ViewEventRest();
+            viewEventRest.setTargetType("item");
+            viewEventRest.setTargetId(item.getID());
+            getClient().perform(post("/api/statistics/viewevents")
+                .content(mapper.writeValueAsBytes(viewEventRest))
+                .contentType(contentType))
+                       .andExpect(status().isCreated());
+            expectedPoints.add(getExpectedDsoViews(item, 1));
+        }
+
+        // ** THEN **
+        // The global TotalVisits report contains a point for every visited item (not just the legacy first 10),
+        // and each point matches the expected item (id/label/views), regardless of ordering.
+        getClient(adminToken)
+            .perform(get("/api/statistics/usagereports/search/object?uri=http://localhost:8080/server/api/core" +
+                         "/sites/" + site.getID()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$._embedded.usagereports", Matchers.containsInAnyOrder(
+                UsageReportMatcher.matchUsageReport(
+                    site.getID() + "_" + TOTAL_VISITS_REPORT_ID,
+                    TOTAL_VISITS_REPORT_ID,
+                    expectedPoints
+                )
+            )));
+    }
+
+    @Test
     public void usageReportsSearch_Community_Visited() throws Exception {
         // ** WHEN **
         // We visit a community
