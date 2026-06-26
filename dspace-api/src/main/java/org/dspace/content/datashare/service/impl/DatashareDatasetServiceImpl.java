@@ -60,19 +60,22 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     private static final String[] ZIP_BUNDLE_NAMES = { "ORIGINAL", "CC-LICENSE", "LICENSE" };
 
     /**
-     * Maximum number of (item, eperson) authorization decisions kept in memory at once. The cache is
-     * bounded so it can never grow without limit; least-recently-used entries are evicted past this
+     * Maximum number of cached zip-download decisions kept in memory at once (shared by both the
+     * per-(item, eperson) authorization cache and the per-item availability cache). The caches are
+     * bounded so they can never grow without limit; least-recently-used entries are evicted past this
      * size.
      */
-    private static final long AUTHZ_CACHE_MAX_SIZE = 20_000L;
+    private static final long ZIP_CACHE_MAX_SIZE = 20_000L;
 
     /**
-     * How long a cached zip-download authorization decision stays valid. The dataset zips are rebuilt
-     * by the {@code ds-datasets} cron and the underlying READ policies change rarely, so a short TTL
-     * keeps the decision fresh while collapsing the per-page-view recomputation that previously
-     * saturated the database.
+     * How long a cached zip-download decision stays valid. The dataset zips are rebuilt by the
+     * {@code ds-datasets} cron and the underlying READ policies change rarely, so a short TTL keeps
+     * the decision fresh while collapsing the per-page-view recomputation that previously saturated
+     * the database. This is also the upper bound on how long a cached decision can be stale after an
+     * access-policy or group-membership change that does not flow through
+     * {@link #createDatasetForItem} / {@link #deleteDatasetForItem} (those invalidate immediately).
      */
-    private static final Duration AUTHZ_CACHE_TTL = Duration.ofSeconds(60);
+    private static final Duration ZIP_CACHE_TTL = Duration.ofSeconds(60);
 
     @Autowired(required = true)
     private DatashareDatasetDAO datashareDatasetDAO;
@@ -98,8 +101,8 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
      * thundering herd while the cache is cold.
      */
     private final Cache<String, Boolean> downloadAuthorizationCache = CacheBuilder.newBuilder()
-            .maximumSize(AUTHZ_CACHE_MAX_SIZE)
-            .expireAfterWrite(AUTHZ_CACHE_TTL)
+            .maximumSize(ZIP_CACHE_MAX_SIZE)
+            .expireAfterWrite(ZIP_CACHE_TTL)
             .build();
 
     /**
@@ -112,8 +115,8 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
      * dropped (see {@link #createDatasetForItem} / {@link #deleteDatasetForItem}).
      */
     private final Cache<UUID, Boolean> datasetAvailabilityCache = CacheBuilder.newBuilder()
-            .maximumSize(AUTHZ_CACHE_MAX_SIZE)
-            .expireAfterWrite(AUTHZ_CACHE_TTL)
+            .maximumSize(ZIP_CACHE_MAX_SIZE)
+            .expireAfterWrite(ZIP_CACHE_TTL)
             .build();
 
     @Override
@@ -298,6 +301,14 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
             return true;
         }
 
+        // The dataset zip only ever exists for an installed (archived) item. For a non-installed item
+        // (workspace/workflow/draft) AuthorizeService would ignore custom bitstream policies (DS-2614);
+        // rather than diverge from that here by honouring them, deny - there is no zip to download for
+        // such an item anyway, and areAllItemBitstreamsAvailable likewise requires isArchived().
+        if (!item.isArchived()) {
+            return false;
+        }
+
         // The user's group membership is identical for every bitstream of the item, so resolve it
         // once. allMemberGroupsSet() includes the user's groups, their parents, the special groups
         // bound to the context and the Anonymous group, and is itself cached on the Context - so
@@ -368,7 +379,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
             return datasetAvailabilityCache.get(item.getID(),
                     () -> DatashareItemDataset.areAllItemBitstreamsAvailable(context, item));
         } catch (ExecutionException | UncheckedExecutionException e) {
-            log.error("Error checking zip content availability for item " + item.getID(), e.getCause());
+            log.error("Error checking zip content availability for item " + item.getID(), e);
             return false;
         }
     }

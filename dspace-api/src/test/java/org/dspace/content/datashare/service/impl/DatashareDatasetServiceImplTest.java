@@ -100,14 +100,21 @@ public class DatashareDatasetServiceImplTest {
         return rp;
     }
 
-    /** Stub the item so it has a single ORIGINAL bundle holding the given bitstreams. */
+    /**
+     * Stub the item so it has a single ORIGINAL bundle holding the given bitstreams. Stubs are lenient
+     * because the different code paths under test reach different subsets of them (e.g. the
+     * special-groups bypass never builds the cache key, so never reads the id).
+     */
     private Item itemWithOriginalBitstreams(Bitstream... bitstreams) throws Exception {
         Item item = mock(Item.class);
-        when(item.getID()).thenReturn(UUID.randomUUID());
+        lenient().when(item.getID()).thenReturn(UUID.randomUUID());
+        // The zip is only authorized for installed (archived) items - the per-bitstream path is only
+        // reached for those.
+        lenient().when(item.isArchived()).thenReturn(true);
         Bundle original = mock(Bundle.class);
-        when(itemService.getBundles(item, "ORIGINAL")).thenReturn(List.of(original));
-        when(original.getBitstreams()).thenReturn(List.of(bitstreams));
-        when(authorizeService.isAdmin(context, item)).thenReturn(false);
+        lenient().when(itemService.getBundles(item, "ORIGINAL")).thenReturn(List.of(original));
+        lenient().when(original.getBitstreams()).thenReturn(List.of(bitstreams));
+        lenient().when(authorizeService.isAdmin(context, item)).thenReturn(false);
         return item;
     }
 
@@ -214,6 +221,7 @@ public class DatashareDatasetServiceImplTest {
         }
         Item item = mock(Item.class);
         when(item.getID()).thenReturn(UUID.randomUUID());
+        when(item.isArchived()).thenReturn(true);
         when(authorizeService.isAdmin(context, item)).thenReturn(false);
         Bundle original = mock(Bundle.class);
         when(itemService.getBundles(item, "ORIGINAL")).thenReturn(List.of(original));
@@ -224,6 +232,65 @@ public class DatashareDatasetServiceImplTest {
         assertTrue(datashareDatasetService.isUserAuthorizedToDownloadZip(context, item));
 
         verify(groupService, times(1)).allMemberGroupsSet(context, null);
+    }
+
+    @Test
+    public void nonArchivedItemIsNotAuthorized() throws Exception {
+        // A non-installed (workspace/workflow/draft) item has no dataset zip. We deny without
+        // evaluating per-bitstream policies, so we never honour custom policies AuthorizeService would
+        // ignore for such an item (DS-2614).
+        Item item = mock(Item.class);
+        when(item.getID()).thenReturn(UUID.randomUUID());
+        when(authorizeService.isAdmin(context, item)).thenReturn(false);
+        when(item.isArchived()).thenReturn(false);
+
+        assertFalse(datashareDatasetService.isUserAuthorizedToDownloadZip(context, item));
+
+        verifyNoInteractions(itemService);
+        verify(resourcePolicyService, never()).find(any(Context.class), any(), eq(Constants.READ));
+    }
+
+    @Test
+    public void specialGroupsBypassTheCache() throws Exception {
+        // When the request carries special (e.g. IP-based) groups the decision is session-specific and
+        // must NOT be shared via the coarse (item, eperson) cache: it is recomputed every call.
+        Bitstream b1 = mock(Bitstream.class);
+        Item item = itemWithOriginalBitstreams(b1);
+        when(itemService.getBundles(item, "CC-LICENSE")).thenReturn(Collections.emptyList());
+        when(itemService.getBundles(item, "LICENSE")).thenReturn(Collections.emptyList());
+        when(context.getSpecialGroups()).thenReturn(List.of(mock(Group.class)));
+        ResourcePolicy p1 = readPolicyForGroup(userGroup);
+        when(resourcePolicyService.find(context, b1, Constants.READ)).thenReturn(List.of(p1));
+
+        assertTrue(datashareDatasetService.isUserAuthorizedToDownloadZip(context, item));
+        assertTrue(datashareDatasetService.isUserAuthorizedToDownloadZip(context, item));
+
+        verify(resourcePolicyService, times(2)).find(context, b1, Constants.READ);
+    }
+
+    @Test
+    public void deletingTheDatasetInvalidatesTheCachedAuthorization() throws Exception {
+        Bitstream b1 = mock(Bitstream.class);
+        Item item = itemWithOriginalBitstreams(b1);
+        when(item.getHandle()).thenReturn("123456789/1");
+        when(itemService.getBundles(item, "CC-LICENSE")).thenReturn(Collections.emptyList());
+        when(itemService.getBundles(item, "LICENSE")).thenReturn(Collections.emptyList());
+        ResourcePolicy p1 = readPolicyForGroup(userGroup);
+        when(resourcePolicyService.find(context, b1, Constants.READ)).thenReturn(List.of(p1));
+
+        try (MockedStatic<DatashareItemDataset> mocked = mockStatic(DatashareItemDataset.class)) {
+            mocked.when(() -> DatashareItemDataset.getFileName("123456789/1")).thenReturn("DS_123456789_1.zip");
+            mocked.when(() -> DatashareItemDataset.getFullFilePath("123456789/1"))
+                    .thenReturn("/does/not/exist/DS_123456789_1.zip");
+
+            assertTrue(datashareDatasetService.isUserAuthorizedToDownloadZip(context, item));
+            // A fileset/policy change drops the item's dataset, which must evict the cached decision...
+            datashareDatasetService.deleteDatasetForItem(context, item);
+            assertTrue(datashareDatasetService.isUserAuthorizedToDownloadZip(context, item));
+        }
+
+        // ...so the second authorization is recomputed, not served from the (now stale) cache.
+        verify(resourcePolicyService, times(2)).find(context, b1, Constants.READ);
     }
 
     @Test
