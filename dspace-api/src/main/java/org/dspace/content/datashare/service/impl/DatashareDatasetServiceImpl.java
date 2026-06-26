@@ -19,6 +19,7 @@ import java.util.concurrent.ExecutionException;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.authorize.ResourcePolicy;
@@ -255,13 +256,18 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         try {
             return downloadAuthorizationCache.get(cacheKey,
                     () -> computeUserAuthorizedToDownloadZip(context, item, currentUser));
-        } catch (ExecutionException e) {
-            // Unwrap the SQLException thrown by the loader so callers see the original cause.
-            if (e.getCause() instanceof SQLException) {
-                throw (SQLException) e.getCause();
+        } catch (ExecutionException | UncheckedExecutionException e) {
+            // Re-throw the loader's original cause so callers see the same exception they would
+            // without the cache (checked SQLException is thrown as-is; ExecutionException wraps
+            // checked causes, UncheckedExecutionException wraps runtime ones).
+            Throwable cause = e.getCause();
+            if (cause instanceof SQLException) {
+                throw (SQLException) cause;
             }
-            throw new RuntimeException("Error authorizing dataset zip download for item " + item.getID(),
-                    e.getCause());
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            }
+            throw new RuntimeException("Error authorizing dataset zip download for item " + item.getID(), cause);
         }
     }
 
@@ -361,7 +367,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         try {
             return datasetAvailabilityCache.get(item.getID(),
                     () -> DatashareItemDataset.areAllItemBitstreamsAvailable(context, item));
-        } catch (ExecutionException e) {
+        } catch (ExecutionException | UncheckedExecutionException e) {
             log.error("Error checking zip content availability for item " + item.getID(), e.getCause());
             return false;
         }
