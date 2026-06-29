@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Default DSpace pattern: authors in dc.contributor.author, dc.date.issued present as a full ISO timestamp. -->
+<metadata xmlns="http://www.lyncode.com/xoai">
+  <element name="dc">
+    <element name="title"><element name="en_US"><field name="value">Item deposited with dc.contributor.author</field></element></element>
+    <element name="contributor"><element name="author"><element name="none"><field name="value">Smith, John</field></element></element></element>
+    <element name="date">
+      <element name="issued"><element name="none"><field name="value">2022-11-30T09:00:00Z</field></element></element>
+    </element>
+    <element name="identifier"><element name="uri"><element name="none"><field name="value">http://hdl.handle.net/123456789/2</field></element></element></element>
+  </element>
+  <element name="repository"><field name="name">Edinburgh DataShare</field><field name="mail">noreply@ed.ac.uk</field></element>
+</metadata>

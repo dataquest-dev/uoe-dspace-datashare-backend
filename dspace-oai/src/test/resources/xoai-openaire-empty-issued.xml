@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Edge case (BUG 2): dc.date.issued node exists but its value is empty/whitespace.
+     The Issued fallback must still fire from dc.date.available, and no empty
+     (schema-invalid) Accepted/Issued dates must be emitted. -->
+<metadata xmlns="http://www.lyncode.com/xoai">
+  <element name="dc">
+    <element name="title"><element name="en_US"><field name="value">Blank issued, available present</field></element></element>
+    <element name="creator"><element name="none"><field name="value">Roe, Mary</field></element></element>
+    <element name="date">
+      <element name="issued"><element name="none"><field name="value"></field></element></element>
+      <element name="available"><element name="none"><field name="value">2020-03-15T12:00:00Z</field></element></element>
+      <element name="accessioned"><element name="none"><field name="value">2021-01-01T00:00:00Z</field></element></element>
+    </element>
+    <element name="identifier"><element name="uri"><element name="none"><field name="value">http://hdl.handle.net/123456789/3</field></element></element></element>
+  </element>
+  <element name="repository"><field name="name">Edinburgh DataShare</field><field name="mail">noreply@ed.ac.uk</field></element>
+</metadata>

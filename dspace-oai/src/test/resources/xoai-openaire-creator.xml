@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Datashare pattern: authors in dc.creator, no dc.date.issued (only dc.date.available). -->
+<metadata xmlns="http://www.lyncode.com/xoai">
+  <element name="dc">
+    <element name="title"><element name="en_US"><field name="value">Dataset deposited with dc.creator</field></element></element>
+    <element name="creator"><element name="none"><field name="value">Doe, Jane</field></element></element>
+    <element name="date">
+      <element name="available"><element name="none"><field name="value">2021-05-01T00:00:00Z</field></element></element>
+    </element>
+    <element name="identifier"><element name="uri"><element name="none"><field name="value">http://hdl.handle.net/123456789/1</field></element></element></element>
+  </element>
+  <element name="repository"><field name="name">Edinburgh DataShare</field><field name="mail">noreply@ed.ac.uk</field></element>
+</metadata>
