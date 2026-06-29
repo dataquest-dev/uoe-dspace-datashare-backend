@@ -75,7 +75,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
      * access-policy or group-membership change that does not flow through
      * {@link #createDatasetForItem} / {@link #deleteDatasetForItem} (those invalidate immediately).
      */
-    private static final Duration ZIP_CACHE_TTL = Duration.ofSeconds(30);
+    private static final Duration ZIP_CACHE_TTL = Duration.ofSeconds(10);
 
     @Autowired(required = true)
     private DatashareDatasetDAO datashareDatasetDAO;
