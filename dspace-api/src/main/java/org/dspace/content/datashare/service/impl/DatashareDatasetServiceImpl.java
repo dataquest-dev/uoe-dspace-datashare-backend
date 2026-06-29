@@ -10,13 +10,21 @@ package org.dspace.content.datashare.service.impl;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.AuthorizeException;
+import org.dspace.authorize.ResourcePolicy;
 import org.dspace.authorize.service.AuthorizeService;
+import org.dspace.authorize.service.ResourcePolicyService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
 import org.dspace.content.DSpaceObject;
@@ -32,6 +40,9 @@ import org.dspace.content.service.ItemService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.core.LogHelper;
+import org.dspace.eperson.EPerson;
+import org.dspace.eperson.Group;
+import org.dspace.eperson.service.GroupService;
 import org.dspace.event.Event;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -48,6 +59,24 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
      */
     private static final String[] ZIP_BUNDLE_NAMES = { "ORIGINAL", "CC-LICENSE", "LICENSE" };
 
+    /**
+     * Maximum number of cached zip-download decisions kept in memory at once (shared by both the
+     * per-(item, eperson) authorization cache and the per-item availability cache). The caches are
+     * bounded so they can never grow without limit; least-recently-used entries are evicted past this
+     * size.
+     */
+    private static final long ZIP_CACHE_MAX_SIZE = 20_000L;
+
+    /**
+     * How long a cached zip-download decision stays valid. The dataset zips are rebuilt by the
+     * {@code ds-datasets} cron and the underlying READ policies change rarely, so a short TTL keeps
+     * the decision fresh while collapsing the per-page-view recomputation that previously saturated
+     * the database. This is also the upper bound on how long a cached decision can be stale after an
+     * access-policy or group-membership change that does not flow through
+     * {@link #createDatasetForItem} / {@link #deleteDatasetForItem} (those invalidate immediately).
+     */
+    private static final Duration ZIP_CACHE_TTL = Duration.ofSeconds(10);
+
     @Autowired(required = true)
     private DatashareDatasetDAO datashareDatasetDAO;
 
@@ -56,6 +85,39 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
 
     @Autowired
     private ItemService itemService;
+
+    @Autowired
+    private ResourcePolicyService resourcePolicyService;
+
+    @Autowired
+    private GroupService groupService;
+
+    /**
+     * Per-(item, eperson) cache of "may this user download the dataset zip" decisions. The
+     * zip-file-link endpoint is hit on every dataset page view, often by many concurrent users
+     * looking at the same item, so without this every view re-authorized every bitstream of the item
+     * - an O(files) x several-queries storm that saturated the backend. Guava's {@code get(key,
+     * loader)} additionally guarantees a single concurrent computation per key, preventing a
+     * thundering herd while the cache is cold.
+     */
+    private final Cache<String, Boolean> downloadAuthorizationCache = CacheBuilder.newBuilder()
+            .maximumSize(ZIP_CACHE_MAX_SIZE)
+            .expireAfterWrite(ZIP_CACHE_TTL)
+            .build();
+
+    /**
+     * Per-item cache of "is the item's zip content currently available" (archived, not embargoed,
+     * not withdrawn and anonymously readable). Unlike the authorization decision this is
+     * user-independent, but it is just as expensive: {@code areAllItemBitstreamsAvailable} walks
+     * every bitstream's READ policies. It is reached on every page view (via the downloadable
+     * check), so without this cache it keeps the database saturated even after the per-user
+     * authorization storm is removed. Invalidated when the item's dataset is (re)generated or
+     * dropped (see {@link #createDatasetForItem} / {@link #deleteDatasetForItem}).
+     */
+    private final Cache<UUID, Boolean> datasetAvailabilityCache = CacheBuilder.newBuilder()
+            .maximumSize(ZIP_CACHE_MAX_SIZE)
+            .expireAfterWrite(ZIP_CACHE_TTL)
+            .build();
 
     @Override
     public DatashareDataset insertDatashareDataset(Context context, Item item, String fileName, String cksum) {
@@ -96,6 +158,8 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         // fileset. This is best-effort: a missing file or unconfigured datasets.path must not
         // break the operation that triggered this (e.g. a bitstream upload/delete).
         deleteDatasetZipFile(item);
+        // The item's fileset/policies just changed - drop any cached download decisions for it.
+        invalidateZipCaches(item);
     }
 
     @Override
@@ -114,6 +178,26 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
             // break the operation that triggered this (the item install).
             log.warn("Error creating dataset zip for item " + item.getID(), e);
         }
+        // A freshly (re)generated zip changes the cached availability/authorization for this item.
+        invalidateZipCaches(item);
+    }
+
+    /**
+     * Drop any cached zip download decisions for the given item. Called when the item's dataset zip
+     * is (re)generated or removed, so a fileset/policy change is reflected immediately rather than
+     * only after the cache TTL elapses.
+     *
+     * @param item the item whose cached decisions should be invalidated; ignored when {@code null}
+     *             or without an id
+     */
+    private void invalidateZipCaches(Item item) {
+        if (item == null || item.getID() == null) {
+            return;
+        }
+        datasetAvailabilityCache.invalidate(item.getID());
+        // The authorization cache is keyed by "<itemId>|<eperson>"; remove every user's entry for it.
+        String prefix = item.getID() + "|";
+        downloadAuthorizationCache.asMap().keySet().removeIf(key -> key.startsWith(prefix));
     }
 
     /**
@@ -161,12 +245,81 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         if (item == null) {
             return false;
         }
-        // The dataset zip bundles all of the item's files. A user may only download it when they
-        // are authorized to READ every bitstream that would be included in the zip.
+        EPerson currentUser = context.getCurrentUser();
+
+        // The result is a pure function of (item, eperson) - EXCEPT when the request carries
+        // "special" groups (e.g. IP-based authentication), which make it session specific. In that
+        // (rare) case we bypass the shared cache and always compute a fresh decision so we never leak
+        // one session's access to another user under a coarse (item, eperson) key.
+        if (!context.getSpecialGroups().isEmpty()) {
+            return computeUserAuthorizedToDownloadZip(context, item, currentUser);
+        }
+
+        String cacheKey = item.getID() + "|" + (currentUser == null ? "anonymous" : currentUser.getID());
+        try {
+            return downloadAuthorizationCache.get(cacheKey,
+                    () -> computeUserAuthorizedToDownloadZip(context, item, currentUser));
+        } catch (ExecutionException | UncheckedExecutionException e) {
+            // Re-throw the loader's original cause so callers see the same exception they would
+            // without the cache (checked SQLException is thrown as-is; ExecutionException wraps
+            // checked causes, UncheckedExecutionException wraps runtime ones).
+            Throwable cause = e.getCause();
+            if (cause instanceof SQLException) {
+                throw (SQLException) cause;
+            }
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            }
+            throw new RuntimeException("Error authorizing dataset zip download for item " + item.getID(), cause);
+        }
+    }
+
+    /**
+     * Decide whether {@code currentUser} may download the item's dataset zip, i.e. whether they are
+     * authorized to READ every bitstream the zip would expose.
+     * <p>
+     * This intentionally does <strong>not</strong> call
+     * {@link AuthorizeService#authorizeActionBoolean(Context, DSpaceObject, int)} per bitstream. For
+     * an installed (archived) item that path additionally probes the workflow and workspace tables
+     * ({@code isAnyItemInstalled}) and resolves each bitstream's parent on every call - pointless work
+     * that, multiplied by every file and recomputed on every page view, saturated the database. Here
+     * the user's full (recursive + special) group membership is resolved once and the per-bitstream
+     * READ policies are evaluated in memory, preserving the original behaviour (administrators are
+     * authorized, embargoed/restricted bitstreams are denied).
+     *
+     * @param context     DSpace context
+     * @param item        the item whose dataset zip is requested
+     * @param currentUser the context's current user ({@code null} for anonymous)
+     * @return {@code true} if the user may download the zip
+     * @throws SQLException if a database error occurs
+     */
+    private boolean computeUserAuthorizedToDownloadZip(Context context, Item item, EPerson currentUser)
+            throws SQLException {
+        // Administrators bypass resource policies entirely, so authorize once at the item level
+        // instead of re-checking every bitstream.
+        if (authorizeService.isAdmin(context, item)) {
+            return true;
+        }
+
+        // The dataset zip only ever exists for an installed (archived) item. For a non-installed item
+        // (workspace/workflow/draft) AuthorizeService would ignore custom bitstream policies (DS-2614);
+        // rather than diverge from that here by honouring them, deny - there is no zip to download for
+        // such an item anyway, and areAllItemBitstreamsAvailable likewise requires isArchived().
+        if (!item.isArchived()) {
+            return false;
+        }
+
+        // The user's group membership is identical for every bitstream of the item, so resolve it
+        // once. allMemberGroupsSet() includes the user's groups, their parents, the special groups
+        // bound to the context and the Anonymous group, and is itself cached on the Context - so
+        // membership can then be tested as an in-memory set lookup, equivalent to
+        // GroupService.isMember(context, currentUser, group).
+        Set<Group> userGroups = groupService.allMemberGroupsSet(context, currentUser);
+
         for (String bundleName : ZIP_BUNDLE_NAMES) {
             for (Bundle bundle : itemService.getBundles(item, bundleName)) {
                 for (Bitstream bitstream : bundle.getBitstreams()) {
-                    if (!authorizeService.authorizeActionBoolean(context, bitstream, Constants.READ)) {
+                    if (!hasReadAccess(context, bitstream, currentUser, userGroups)) {
                         log.debug("User not authorized to read bitstream {} of item {}; "
                                 + "zip download is forbidden.", bitstream.getID(), item.getID());
                         return false;
@@ -177,31 +330,85 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
         return true;
     }
 
+    /**
+     * Evaluate, in memory, whether the user (with the given precomputed group membership) holds a
+     * valid READ policy on the bitstream. Mirrors the matching logic of
+     * {@link AuthorizeService} for an installed item: a single (date-valid) READ policy granted to the
+     * user directly or to one of their groups is sufficient.
+     *
+     * @param context    DSpace context
+     * @param bitstream  the bitstream to authorize
+     * @param currentUser the context's current user ({@code null} for anonymous)
+     * @param userGroups the user's full group membership, resolved once by the caller
+     * @return {@code true} if the user may READ the bitstream
+     * @throws SQLException if a database error occurs while loading the bitstream's policies
+     */
+    private boolean hasReadAccess(Context context, Bitstream bitstream, EPerson currentUser, Set<Group> userGroups)
+            throws SQLException {
+        // One indexed lookup (resource + action) per bitstream, no workflow/workspace/parent probing.
+        for (ResourcePolicy rp : resourcePolicyService.find(context, bitstream, Constants.READ)) {
+            if (!resourcePolicyService.isDateValid(rp)) {
+                // Honour embargo / expiry windows exactly as AuthorizeService does.
+                continue;
+            }
+            if (currentUser != null && currentUser.equals(rp.getEPerson())) {
+                return true;
+            }
+            if (rp.getGroup() != null && userGroups.contains(rp.getGroup())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Cached wrapper around {@link DatashareItemDataset#areAllItemBitstreamsAvailable(Context, Item)}.
+     * That check walks every bitstream of the item to confirm the whole zip is anonymously readable;
+     * its result depends only on the item (not the requesting user), so it is cached per item to keep
+     * the zip-file-link endpoint O(1) on repeated page views.
+     *
+     * @param context DSpace context
+     * @param item    the item whose zip content availability is needed
+     * @return {@code true} if the item's whole fileset may currently be exposed in the zip
+     */
+    private boolean isZipContentAvailable(Context context, Item item) {
+        if (item == null || item.getID() == null) {
+            return false;
+        }
+        try {
+            return datasetAvailabilityCache.get(item.getID(),
+                    () -> DatashareItemDataset.areAllItemBitstreamsAvailable(context, item));
+        } catch (ExecutionException | UncheckedExecutionException e) {
+            log.error("Error checking zip content availability for item " + item.getID(), e);
+            return false;
+        }
+    }
+
     @Override
     public String fetchDatashareDatasetZipFileLink(Context context, Item item) {
         String downloadLink = "";
         try {
-            if (isDatashareDatasetZipFileDownloadable(context, item)) {
-
-                DatashareDataset dataset = findDatashareDatasetByItem(context, item);
-
-                if (dataset != null) {
-                    String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
-                    log.info(filePath, filePath);
-                    if (filePath != null && !filePath.isEmpty()) {
-                        log.info("new File(filePath).exists(): "
-                            + new File(filePath).exists());
-                        if (new File(filePath).exists()) {
-                            downloadLink = DatashareItemDataset.getURL(item) != null
-                                ? DatashareItemDataset.getURL(item) : "";
-                        }
-                    }
+            // The zip exposes every file of the item, so the link must never be handed to a user who
+            // is not authorized to read all of them.
+            if (!isUserAuthorizedToDownloadZip(context, item)) {
+                return downloadLink;
+            }
+            // Resolve the dataset once. This also confirms the item's zip content is available
+            // (findDatashareDatasetByItem -> isZipContentAvailable). The previous code resolved it
+            // twice per request - once via isDatashareDatasetZipFileDownloadable and again here - so a
+            // single lookup halves the per-request database work.
+            DatashareDataset dataset = findDatashareDatasetByItem(context, item);
+            if (dataset != null) {
+                String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
+                if (filePath != null && !filePath.isEmpty() && new File(filePath).exists()) {
+                    String url = DatashareItemDataset.getURL(item);
+                    downloadLink = url != null ? url : "";
                 }
             }
         } catch (Exception e) {
-            log.error("Error fetching download link for item: " + item.getHandle(), e);
+            log.error("Error fetching download link for item: "
+                    + (item != null ? item.getHandle() : null), e);
         }
-        log.info("Download link: " + downloadLink);
         return downloadLink;
     }
 
@@ -232,7 +439,7 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     // Only return DatashareDataset for item if it exists in the file system
     private DatashareDataset findDatashareDatasetByItem(Context context, Item item) {
         try {
-            boolean allItemBitstreamsAvailable = DatashareItemDataset.areAllItemBitstreamsAvailable(context, item);
+            boolean allItemBitstreamsAvailable = isZipContentAvailable(context, item);
             // If all item bitstreams are not available then we don't want to return a
             // dataset.
             if (!allItemBitstreamsAvailable) {
