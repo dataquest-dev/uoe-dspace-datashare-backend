@@ -388,27 +388,27 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
     public String fetchDatashareDatasetZipFileLink(Context context, Item item) {
         String downloadLink = "";
         try {
-            if (isDatashareDatasetZipFileDownloadable(context, item)) {
-
-                DatashareDataset dataset = findDatashareDatasetByItem(context, item);
-
-                if (dataset != null) {
-                    String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
-                    log.info(filePath, filePath);
-                    if (filePath != null && !filePath.isEmpty()) {
-                        log.info("new File(filePath).exists(): "
-                            + new File(filePath).exists());
-                        if (new File(filePath).exists()) {
-                            downloadLink = DatashareItemDataset.getURL(item) != null
-                                ? DatashareItemDataset.getURL(item) : "";
-                        }
-                    }
+            // The zip exposes every file of the item, so the link must never be handed to a user who
+            // is not authorized to read all of them.
+            if (!isUserAuthorizedToDownloadZip(context, item)) {
+                return downloadLink;
+            }
+            // Resolve the dataset once. This also confirms the item's zip content is available
+            // (findDatashareDatasetByItem -> isZipContentAvailable). The previous code resolved it
+            // twice per request - once via isDatashareDatasetZipFileDownloadable and again here - so a
+            // single lookup halves the per-request database work.
+            DatashareDataset dataset = findDatashareDatasetByItem(context, item);
+            if (dataset != null) {
+                String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
+                if (filePath != null && !filePath.isEmpty() && new File(filePath).exists()) {
+                    String url = DatashareItemDataset.getURL(item);
+                    downloadLink = url != null ? url : "";
                 }
             }
         } catch (Exception e) {
-            log.error("Error fetching download link for item: " + item.getHandle(), e);
+            log.error("Error fetching download link for item: "
+                    + (item != null ? item.getHandle() : null), e);
         }
-        log.info("Download link: " + downloadLink);
         return downloadLink;
     }
 

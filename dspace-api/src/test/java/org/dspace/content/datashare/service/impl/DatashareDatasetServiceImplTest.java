@@ -329,6 +329,29 @@ public class DatashareDatasetServiceImplTest {
     }
 
     @Test
+    public void fetchLinkResolvesDatasetOnlyOnce() throws Exception {
+        // fetchDatashareDatasetZipFileLink used to resolve the dataset twice per request (via the
+        // downloadable check and again directly). It must now hit the DAO at most once.
+        Item item = mock(Item.class);
+        when(item.getID()).thenReturn(UUID.randomUUID());
+        when(item.getHandle()).thenReturn("123456789/9");
+        when(authorizeService.isAdmin(context, item)).thenReturn(true);
+        when(datashareDatasetDAO.findLatestDatashareDatasetByItem(context, item))
+                .thenReturn(mock(DatashareDataset.class));
+
+        try (MockedStatic<DatashareItemDataset> mocked = mockStatic(DatashareItemDataset.class)) {
+            mocked.when(() -> DatashareItemDataset.areAllItemBitstreamsAvailable(context, item)).thenReturn(true);
+            // No physical zip on disk -> link stays empty, but the single DAO lookup still happened.
+            mocked.when(() -> DatashareItemDataset.getFullFilePath("123456789/9"))
+                    .thenReturn("/does/not/exist/DS.zip");
+
+            datashareDatasetService.fetchDatashareDatasetZipFileLink(context, item);
+
+            verify(datashareDatasetDAO, times(1)).findLatestDatashareDatasetByItem(context, item);
+        }
+    }
+
+    @Test
     public void deleteDatasetForItemRemovesTheDatabaseRecord() throws Exception {
         Item item = mock(Item.class);
         when(item.getHandle()).thenReturn("123456789/8967");
