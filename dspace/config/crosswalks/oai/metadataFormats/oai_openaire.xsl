@@ -197,7 +197,11 @@
                         <xsl:value-of select="doc:field[starts-with(@name,'organization.legalName')]"/>
                     </xsl:when>
                     <xsl:otherwise>
-                        <xsl:value-of select="doc:field[starts-with(@name,'dc.contributor.author')]"/>
+                        <!-- Datashare patch: a virtual:: entity may originate from dc.creator as well as
+                             dc.contributor.author. buildEntityNode names the field after its source path
+                             (dc.creator.* vs dc.contributor.author.*), so match both to avoid emitting an
+                             empty (schema-invalid) datacite:creatorName for dc.creator entities. -->
+                        <xsl:value-of select="doc:field[starts-with(@name,'dc.contributor.author') or starts-with(@name,'dc.creator')]"/>
                     </xsl:otherwise>
                 </xsl:choose>
             </datacite:creatorName>
@@ -728,9 +732,15 @@
     <!-- https://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/4.0.1/field_embargoenddate.html -->
     <!-- https://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/4.0.1/field_publicationdate.html -->
     <xsl:template match="doc:element[@name='dc']/doc:element[@name='date']" mode="datacite">
-        <xsl:variable name="hasIssued" select="boolean(doc:element[@name='issued']/doc:element/doc:field[@name='value'])"/>
-        <xsl:variable name="hasAvailable" select="boolean(doc:element[@name='available']/doc:element/doc:field[@name='value'])"/>
-        <xsl:variable name="hasAccessioned" select="boolean(doc:element[@name='accessioned']/doc:element/doc:field[@name='value'])"/>
+        <!-- Datashare patch: select the first NON-EMPTY value for each date so that a present-but-blank
+             dc.date.issued (node exists, value is empty/whitespace) does not suppress the fallback nor
+             emit an empty (schema-invalid) Issued. -->
+        <xsl:variable name="issuedValue" select="doc:element[@name='issued']/doc:element/doc:field[@name='value'][normalize-space(.) != ''][1]"/>
+        <xsl:variable name="availableValue" select="doc:element[@name='available']/doc:element/doc:field[@name='value'][normalize-space(.) != ''][1]"/>
+        <xsl:variable name="accessionedValue" select="doc:element[@name='accessioned']/doc:element/doc:field[@name='value'][normalize-space(.) != ''][1]"/>
+        <xsl:variable name="hasIssued" select="boolean($issuedValue)"/>
+        <xsl:variable name="hasAvailable" select="boolean($availableValue)"/>
+        <xsl:variable name="hasAccessioned" select="boolean($accessionedValue)"/>
         <datacite:dates>
             <!-- datacite:date (embargo / issued / accepted / available via per-name templates) -->
             <xsl:for-each select="./doc:element">
@@ -741,10 +751,10 @@
                 <xsl:variable name="fallbackDate">
                     <xsl:choose>
                         <xsl:when test="$hasAvailable">
-                            <xsl:value-of select="substring(doc:element[@name='available']/doc:element/doc:field[@name='value']/text(), 1, 10)"/>
+                            <xsl:value-of select="substring(normalize-space($availableValue), 1, 10)"/>
                         </xsl:when>
                         <xsl:otherwise>
-                            <xsl:value-of select="substring(doc:element[@name='accessioned']/doc:element/doc:field[@name='value']/text(), 1, 10)"/>
+                            <xsl:value-of select="substring(normalize-space($accessionedValue), 1, 10)"/>
                         </xsl:otherwise>
                     </xsl:choose>
                 </xsl:variable>
@@ -759,18 +769,22 @@
         match="doc:element[@name='dc']/doc:element[@name='date']/doc:element[@name='issued']"
         mode="datacite">
         <!-- Datashare patch: trim ISO timestamp to YYYY-MM-DD for consistency with other date outputs -->
-        <xsl:variable name="dc_date_value" select="substring(doc:element/doc:field[@name='value']/text(), 1, 10)"/>
-        <datacite:date dateType="Accepted">
-            <xsl:value-of select="$dc_date_value"/>
-        </datacite:date>
-        <!-- 
-            datacite.date issued is different from dc.date.issued
-            please check - https://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/4.0.1/field_publicationdate.html
-         -->
-        <datacite:date dateType="Issued">
-            <xsl:value-of select="$dc_date_value"/>
-        </datacite:date>
-    </xsl:template> 
+        <xsl:variable name="dc_date_value" select="substring(normalize-space(doc:element/doc:field[@name='value']), 1, 10)"/>
+        <!-- Datashare patch: only emit when non-empty; a blank dc.date.issued must not produce empty
+             (schema-invalid) mandatory dates - the parent template's fallback fills Issued instead. -->
+        <xsl:if test="$dc_date_value != ''">
+            <datacite:date dateType="Accepted">
+                <xsl:value-of select="$dc_date_value"/>
+            </datacite:date>
+            <!--
+                datacite.date issued is different from dc.date.issued
+                please check - https://openaire-guidelines-for-literature-repository-managers.readthedocs.io/en/4.0.1/field_publicationdate.html
+             -->
+            <datacite:date dateType="Issued">
+                <xsl:value-of select="$dc_date_value"/>
+            </datacite:date>
+        </xsl:if>
+    </xsl:template>
 
     <!-- datacite.date @name=accessioned -->
     <xsl:template
@@ -785,14 +799,15 @@
                 <xsl:with-param name="elementName" select="./@name"/>
             </xsl:call-template>
         </xsl:variable>
-        <!-- only consider elements with valid date types -->
-        <xsl:if test="$dateType != ''">
+        <!-- Datashare patch: trim ISO timestamp to YYYY-MM-DD -->
+        <xsl:variable name="dateValue" select="substring(normalize-space(./doc:element/doc:field[@name='value']), 1, 10)"/>
+        <!-- only consider elements with a valid date type AND a non-empty value -->
+        <xsl:if test="$dateType != '' and $dateValue != ''">
             <datacite:date>
                 <xsl:attribute name="dateType">
                     <xsl:value-of select="$dateType"/>
                 </xsl:attribute>
-                <!-- Datashare patch: trim ISO timestamp to YYYY-MM-DD -->
-                <xsl:value-of select="substring(./doc:element/doc:field[@name='value']/text(), 1, 10)"/>
+                <xsl:value-of select="$dateValue"/>
             </datacite:date>
         </xsl:if>
     </xsl:template>
