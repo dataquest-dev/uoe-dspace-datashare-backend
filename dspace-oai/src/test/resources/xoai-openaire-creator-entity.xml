@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    The contents of this file are subject to the license and copyright
+    detailed in the LICENSE and NOTICE files at the root of the source
+    tree and available online at
+
+    http://www.dspace.org/license/
+
+-->
+<!-- Edge case (BUG 1): an author held in dc.creator as a related (virtual::) entity.
+     entity_creator must resolve the name from the dc.creator.* field, not only
+     dc.contributor.author.*, otherwise datacite:creatorName is emitted empty. -->
+<metadata xmlns="http://www.lyncode.com/xoai">
+  <element name="dc">
+    <element name="title"><element name="en_US"><field name="value">Creator as a virtual entity</field></element></element>
+    <element name="creator">
+      <element name="none">
+        <field name="value">Doe, John</field>
+        <field name="authority">virtual::226</field>
+        <field name="confidence">600</field>
+      </element>
+    </element>
+    <element name="date">
+      <element name="issued"><element name="none"><field name="value">2019-06-01</field></element></element>
+    </element>
+    <element name="identifier"><element name="uri"><element name="none"><field name="value">http://hdl.handle.net/123456789/4</field></element></element></element>
+  </element>
+  <element name="person">
+    <element name="familyName">
+      <element name="none">
+        <field name="value">Doe</field>
+        <field name="authority">virtual::226</field>
+        <field name="confidence">600</field>
+      </element>
+    </element>
+    <element name="givenName">
+      <element name="none">
+        <field name="value">John</field>
+        <field name="authority">virtual::226</field>
+        <field name="confidence">600</field>
+      </element>
+    </element>
+  </element>
+  <element name="repository"><field name="name">Edinburgh DataShare</field><field name="mail">noreply@ed.ac.uk</field></element>
+</metadata>

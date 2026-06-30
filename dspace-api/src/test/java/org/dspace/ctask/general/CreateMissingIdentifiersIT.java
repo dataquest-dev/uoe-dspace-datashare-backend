@@ -66,43 +66,52 @@ public class CreateMissingIdentifiersIT
             throws IOException {
         // Must remove any cached named plugins before creating a new one
         CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
-        // Define a new task dynamically
-        configurationService.setProperty(P_TASK_DEF,
-                CreateMissingIdentifiers.class.getCanonicalName() + " = " + TASK_NAME);
+        // Save previous task definition so we can restore it after the test, even on failure.
+        String[] prevTaskDef = configurationService.getArrayProperty(P_TASK_DEF);
+        try {
+            // Define a new task dynamically
+            configurationService.setProperty(P_TASK_DEF,
+                    CreateMissingIdentifiers.class.getCanonicalName() + " = " + TASK_NAME);
 
-        Curator curator = new Curator();
-        curator.addTask(TASK_NAME);
+            Curator curator = new Curator();
+            curator.addTask(TASK_NAME);
 
-        context.setCurrentUser(admin);
-        parentCommunity = CommunityBuilder.createCommunity(context)
-                                          .build();
-        Collection collection = CollectionBuilder.createCollection(context, parentCommunity)
-                                                 .build();
-        Item item = ItemBuilder.createItem(context, collection)
-                               .build();
+            context.setCurrentUser(admin);
+            parentCommunity = CommunityBuilder.createCommunity(context)
+                                              .build();
+            Collection collection = CollectionBuilder.createCollection(context, parentCommunity)
+                                                     .build();
+            Item item = ItemBuilder.createItem(context, collection)
+                                   .build();
 
-        /*
-         * First, install an incompatible provider to make the task fail.
-         */
-        registerProvider(VersionedHandleIdentifierProviderWithCanonicalHandles.class);
+            /*
+             * First, install an incompatible provider to make the task fail.
+             */
+            registerProvider(VersionedHandleIdentifierProviderWithCanonicalHandles.class);
 
-        curator.curate(context, item);
-        System.out.format("With incompatible provider, result is '%s'.\n",
-                curator.getResult(TASK_NAME));
-        assertEquals("Curation should fail", Curator.CURATE_ERROR,
-                curator.getStatus(TASK_NAME));
+            curator.curate(context, item);
+            System.out.format("With incompatible provider, result is '%s'.\n",
+                    curator.getResult(TASK_NAME));
+            assertEquals("Curation should fail", Curator.CURATE_ERROR,
+                    curator.getStatus(TASK_NAME));
 
-        // Unregister this non-default provider
-        unregisterProvider(VersionedHandleIdentifierProviderWithCanonicalHandles.class);
-        // Re-register the default provider (for later tests which may depend on it)
-        registerProvider(VersionedHandleIdentifierProvider.class);
+            // Unregister this non-default provider
+            unregisterProvider(VersionedHandleIdentifierProviderWithCanonicalHandles.class);
+            // Re-register the default provider (for later tests which may depend on it)
+            registerProvider(VersionedHandleIdentifierProvider.class);
 
-        /*
-         * Now, verify curate with default Handle Provider works
-         * (and that our re-registration of the default provider above was successful)
-         */
-        curator.curate(context, item);
-        int status = curator.getStatus(TASK_NAME);
-        assertEquals("Curation should succeed", Curator.CURATE_SUCCESS, status);
+            /*
+             * Now, verify curate with default Handle Provider works
+             * (and that our re-registration of the default provider above was successful)
+             */
+            curator.curate(context, item);
+            int status = curator.getStatus(TASK_NAME);
+            assertEquals("Curation should succeed", Curator.CURATE_SUCCESS, status);
+        } finally {
+            // Always restore the original task definition and drop the cached
+            // dynamic task binding so it cannot leak into later tests.
+            configurationService.setProperty(P_TASK_DEF, prevTaskDef);
+            CoreServiceFactory.getInstance().getPluginService().clearNamedPluginClasses();
+        }
     }
 }
