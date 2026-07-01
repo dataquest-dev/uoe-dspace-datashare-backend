@@ -13,14 +13,13 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -1181,14 +1180,16 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
                 log.info(LogHelper.getHeader(context, "move_item",
                                               "Updating item with inherited policies"));
                 // DATASHARE issue #761 ("Embargo is lost when moving into another collection"):
-                // inheriting the destination collection's default policies replaces each bitstream's
-                // future-dated READ policy (an embargo) with the collection's immediate default READ,
-                // silently lifting the embargo and exposing the files. Snapshot the READ policies of
-                // every object currently under embargo, inherit, then restore them so a move with
-                // "inherit policies" adopts the new collection's defaults WITHOUT lifting an embargo.
-                List<EmbargoReadPolicy> embargoedReadPolicies = snapshotEmbargoedReadPolicies(context, item);
+                // inheriting the destination collection's default policies replaces each embargoed
+                // bitstream's future-dated READ policy with the collection's immediate default READ,
+                // silently lifting the embargo and exposing the files. Capture each object's embargo
+                // lift date first; after inheriting, defer the inherited READ policies of those
+                // objects behind that date. So a move with "inherit policies" adopts the new
+                // collection's access rules WITHOUT lifting the embargo: the files stay unreadable
+                // until the original lift date, then become readable to the destination's audience.
+                Map<DSpaceObject, Date> embargoLiftDates = collectEmbargoLiftDates(context, item);
                 inheritCollectionDefaultPolicies(context, item, to);
-                restoreEmbargoedReadPolicies(context, embargoedReadPolicies);
+                deferInheritedReadPoliciesBehindEmbargo(context, embargoLiftDates);
             }
 
             // Update the item
@@ -1209,19 +1210,18 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
     }
 
     /**
-     * Snapshot the READ resource policies of every object (the item, its bundles and their
-     * bitstreams) that is currently under embargo - i.e. holds at least one READ policy whose start
-     * date is in the future. Used by {@link #move} to preserve an embargo across a move that inherits
-     * the destination collection's default policies (which would otherwise replace an embargoed
-     * bitstream's future-dated READ policy with the collection's immediate READ). See issue #761.
+     * Find, for the item and each of its bundles and bitstreams, the date on which its embargo lifts
+     * - the latest READ policy start date that is still in the future - omitting any object that is
+     * not under embargo. Used by {@link #move} to re-apply an embargo after inheriting the
+     * destination collection's default policies (which drop the embargo READ policies). See #761.
      *
      * @param context DSpace context
      * @param item    the item being moved
-     * @return the READ policies to restore after inheriting, empty when nothing is under embargo
+     * @return a map from each embargoed object to its embargo lift date, empty when none are embargoed
      * @throws SQLException if a database error occurs
      */
-    private List<EmbargoReadPolicy> snapshotEmbargoedReadPolicies(Context context, Item item) throws SQLException {
-        List<EmbargoReadPolicy> snapshots = new ArrayList<>();
+    private Map<DSpaceObject, Date> collectEmbargoLiftDates(Context context, Item item) throws SQLException {
+        Map<DSpaceObject, Date> liftDates = new LinkedHashMap<>();
         Date now = new Date();
         List<DSpaceObject> candidates = new ArrayList<>();
         candidates.add(item);
@@ -1230,91 +1230,52 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
             candidates.addAll(bundle.getBitstreams());
         }
         for (DSpaceObject dso : candidates) {
-            List<ResourcePolicy> readPolicies =
-                    authorizeService.getPoliciesActionFilter(context, dso, Constants.READ);
-            boolean embargoed = false;
-            for (ResourcePolicy rp : readPolicies) {
-                if (rp.getStartDate() != null && rp.getStartDate().after(now)) {
-                    embargoed = true;
-                    break;
+            Date liftDate = null;
+            for (ResourcePolicy rp : authorizeService.getPoliciesActionFilter(context, dso, Constants.READ)) {
+                Date start = rp.getStartDate();
+                if (start != null && start.after(now) && (liftDate == null || start.after(liftDate))) {
+                    liftDate = start;
                 }
             }
-            if (embargoed) {
-                for (ResourcePolicy rp : readPolicies) {
-                    snapshots.add(new EmbargoReadPolicy(dso, rp));
-                }
+            if (liftDate != null) {
+                liftDates.put(dso, liftDate);
             }
         }
-        return snapshots;
+        return liftDates;
     }
 
     /**
-     * Restore the READ resource policies captured by {@link #snapshotEmbargoedReadPolicies} after the
-     * item has inherited its new collection's default policies, so that an embargo survives a move.
-     * The READ policies the inherit added on each embargoed object are removed and the originals
-     * (including the future-dated embargo policy) re-created verbatim. See issue #761.
+     * Defer the READ policies inherited onto each embargoed object behind its embargo lift date, so
+     * that inheriting the destination collection's default policies does not lift the embargo: any
+     * inherited READ policy that would grant access before the lift date (a null or earlier start
+     * date) has its start date pushed to the lift date. Each object therefore stays unreadable until
+     * the original lift date and then becomes readable to the destination collection's audience. See
+     * issue #761.
      *
      * @param context   DSpace context
-     * @param snapshots the READ policies to restore
+     * @param liftDates the embargoed objects and their lift dates from {@link #collectEmbargoLiftDates}
      * @throws SQLException       if a database error occurs
      * @throws AuthorizeException if the current user is not authorized to change the policies
      */
-    private void restoreEmbargoedReadPolicies(Context context, List<EmbargoReadPolicy> snapshots)
+    private void deferInheritedReadPoliciesBehindEmbargo(Context context, Map<DSpaceObject, Date> liftDates)
             throws SQLException, AuthorizeException {
-        if (snapshots.isEmpty()) {
+        if (liftDates.isEmpty()) {
             return;
         }
         context.turnOffAuthorisationSystem();
         try {
-            // Drop the READ policies inherited onto each embargoed object (once per object;
-            // Set#add returns false when the id was already cleared)...
-            Set<UUID> cleared = new HashSet<>();
-            for (EmbargoReadPolicy snapshot : snapshots) {
-                if (cleared.add(snapshot.dso.getID())) {
-                    authorizeService.removePoliciesActionFilter(context, snapshot.dso, Constants.READ);
+            for (Map.Entry<DSpaceObject, Date> entry : liftDates.entrySet()) {
+                Date liftDate = entry.getValue();
+                for (ResourcePolicy rp : authorizeService.getPoliciesActionFilter(context, entry.getKey(),
+                        Constants.READ)) {
+                    if (rp.getStartDate() == null || rp.getStartDate().before(liftDate)) {
+                        rp.setStartDate(liftDate);
+                        resourcePolicyService.update(context, rp);
+                    }
                 }
-            }
-            // ...then re-create the originals, preserving the embargo.
-            for (EmbargoReadPolicy snapshot : snapshots) {
-                authorizeService.createResourcePolicy(context, snapshot.dso, snapshot.group, snapshot.eperson,
-                        Constants.READ, snapshot.rpType, snapshot.rpName, snapshot.rpDescription,
-                        snapshot.startDate, snapshot.endDate);
             }
         } finally {
             context.restoreAuthSystemState();
-        }
-    }
-
-    /**
-     * Immutable snapshot of a single READ {@link ResourcePolicy} on a DSpace object, captured before a
-     * move inherits collection default policies so the policy can be re-created afterwards (see
-     * {@link #snapshotEmbargoedReadPolicies}). The referenced group/eperson survive the inherit; only
-     * the policy row itself is removed and re-created.
-     */
-    private static final class EmbargoReadPolicy {
-        private final DSpaceObject dso;
-        private final Group group;
-        private final EPerson eperson;
-        private final Date startDate;
-        private final Date endDate;
-        private final String rpType;
-        private final String rpName;
-        private final String rpDescription;
-
-        private EmbargoReadPolicy(DSpaceObject dso, ResourcePolicy policy) {
-            this.dso = dso;
-            this.group = policy.getGroup();
-            this.eperson = policy.getEPerson();
-            // Defensive copies: java.util.Date is mutable, so copy it to keep this snapshot immutable.
-            this.startDate = copyDate(policy.getStartDate());
-            this.endDate = copyDate(policy.getEndDate());
-            this.rpType = policy.getRpType();
-            this.rpName = policy.getRpName();
-            this.rpDescription = policy.getRpDescription();
-        }
-
-        private static Date copyDate(Date date) {
-            return date == null ? null : new Date(date.getTime());
         }
     }
 

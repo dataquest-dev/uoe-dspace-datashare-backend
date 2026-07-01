@@ -944,8 +944,10 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
                 .build();
 
             // Embargo the file: replace its immediate anonymous READ with a future-dated anonymous READ,
-            // so it is not readable until the (far future) lift date. Created directly (not via a builder)
-            // so it is cleaned up by cascade when the bitstream is deleted, even though the move replaces it.
+            // so it is not readable until the (far future) lift date. Created directly (not via a
+            // ResourcePolicyBuilder) because the move re-derives the bitstream's READ policies, so a
+            // builder-tracked policy would fail teardown trying to delete a row that is already gone;
+            // created directly it is simply cascade-deleted with the bitstream.
             Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
             authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
             authorizeService.createResourcePolicy(context, bitstream, anonymous, null, Constants.READ,
