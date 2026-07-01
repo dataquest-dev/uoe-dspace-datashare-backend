@@ -1305,11 +1305,16 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
             this.dso = dso;
             this.group = policy.getGroup();
             this.eperson = policy.getEPerson();
-            this.startDate = policy.getStartDate();
-            this.endDate = policy.getEndDate();
+            // Defensive copies: java.util.Date is mutable, so copy it to keep this snapshot immutable.
+            this.startDate = copyDate(policy.getStartDate());
+            this.endDate = copyDate(policy.getEndDate());
             this.rpType = policy.getRpType();
             this.rpName = policy.getRpName();
             this.rpDescription = policy.getRpDescription();
+        }
+
+        private static Date copyDate(Date date) {
+            return date == null ? null : new Date(date.getTime());
         }
     }
 
