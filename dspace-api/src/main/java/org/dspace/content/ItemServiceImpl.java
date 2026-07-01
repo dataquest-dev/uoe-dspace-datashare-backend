@@ -13,12 +13,14 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -1264,12 +1266,12 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
         }
         context.turnOffAuthorisationSystem();
         try {
-            // Drop the READ policies inherited onto each embargoed object (once per object)...
-            List<UUID> cleared = new ArrayList<>();
+            // Drop the READ policies inherited onto each embargoed object (once per object;
+            // Set#add returns false when the id was already cleared)...
+            Set<UUID> cleared = new HashSet<>();
             for (EmbargoReadPolicy snapshot : snapshots) {
-                if (!cleared.contains(snapshot.dso.getID())) {
+                if (cleared.add(snapshot.dso.getID())) {
                     authorizeService.removePoliciesActionFilter(context, snapshot.dso, Constants.READ);
-                    cleared.add(snapshot.dso.getID());
                 }
             }
             // ...then re-create the originals, preserving the embargo.

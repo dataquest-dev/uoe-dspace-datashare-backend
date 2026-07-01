@@ -932,43 +932,45 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
          * collection's immediate READ, making an embargoed file publicly downloadable after the move.
          */
         context.turnOffAuthorisationSystem();
+        try {
+            Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
 
-        Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+            Collection source = CollectionBuilder.createCollection(context, community).build();
+            Collection destination = CollectionBuilder.createCollection(context, community).build();
 
-        Collection source = CollectionBuilder.createCollection(context, community).build();
-        Collection destination = CollectionBuilder.createCollection(context, community).build();
+            Item embargoedItem = ItemBuilder.createItem(context, source).build();
+            Bitstream bitstream = BitstreamBuilder
+                .createBitstream(context, embargoedItem, InputStream.nullInputStream())
+                .build();
 
-        Item embargoedItem = ItemBuilder.createItem(context, source).build();
-        Bitstream bitstream = BitstreamBuilder.createBitstream(context, embargoedItem, InputStream.nullInputStream())
-            .build();
+            // Embargo the file: replace its immediate anonymous READ with a future-dated anonymous READ,
+            // so it is not readable until the (far future) lift date. Created directly (not via a builder)
+            // so it is cleaned up by cascade when the bitstream is deleted, even though the move replaces it.
+            Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
+            authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
+            authorizeService.createResourcePolicy(context, bitstream, anonymous, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, liftDate, null);
 
-        // Embargo the file: replace its immediate anonymous READ with a future-dated anonymous READ,
-        // so it is not readable until the (far future) lift date. Created directly (not via a builder)
-        // so it is cleaned up by cascade when the bitstream is deleted, even though the move replaces it.
-        Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
-        authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
-        authorizeService.createResourcePolicy(context, bitstream, anonymous, null, Constants.READ,
-            ResourcePolicy.TYPE_CUSTOM, null, null, liftDate, null);
+            // Precondition: the bitstream is under embargo - its only READ policy starts in the future.
+            List<ResourcePolicy> before = authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
+            assertEquals(1, before.size());
+            assertTrue("precondition: the bitstream's READ policy is future-dated (embargoed)",
+                before.get(0).getStartDate() != null && before.get(0).getStartDate().after(new Date()));
 
-        // Precondition: the bitstream is under embargo - its only READ policy starts in the future.
-        List<ResourcePolicy> before = authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
-        assertEquals(1, before.size());
-        assertTrue("precondition: the bitstream's READ policy is future-dated (embargoed)",
-            before.get(0).getStartDate() != null && before.get(0).getStartDate().after(new Date()));
+            // Move to the destination collection WITH inherit policies enabled.
+            itemService.move(context, embargoedItem, source, destination, true);
 
-        // Move to the destination collection WITH inherit policies enabled.
-        itemService.move(context, embargoedItem, source, destination, true);
-
-        // The embargo must survive the move: the bitstream must NOT have gained an immediate
-        // (null or past start date) READ policy that lifts the embargo, and its future-dated READ
-        // policy must still be present.
-        List<ResourcePolicy> after = authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
-        assertFalse("moving with inherit policies must not lift the embargo by adding an immediate READ policy",
-            after.stream().anyMatch(rp -> rp.getStartDate() == null || !rp.getStartDate().after(new Date())));
-        assertTrue("the embargo (future-dated READ policy) must still be present after the move",
-            after.stream().anyMatch(rp -> rp.getStartDate() != null && rp.getStartDate().after(new Date())));
-
-        context.restoreAuthSystemState();
+            // The embargo must survive the move: the bitstream must NOT have gained an immediate
+            // (null or past start date) READ policy that lifts the embargo, and its future-dated READ
+            // policy must still be present.
+            List<ResourcePolicy> after = authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
+            assertFalse("moving with inherit policies must not lift the embargo by adding an immediate READ policy",
+                after.stream().anyMatch(rp -> rp.getStartDate() == null || !rp.getStartDate().after(new Date())));
+            assertTrue("the embargo (future-dated READ policy) must still be present after the move",
+                after.stream().anyMatch(rp -> rp.getStartDate() != null && rp.getStartDate().after(new Date())));
+        } finally {
+            context.restoreAuthSystemState();
+        }
     }
 
     private void assertMetadataValue(String authorQualifier, String contributorElement, String dcSchema, String value,
