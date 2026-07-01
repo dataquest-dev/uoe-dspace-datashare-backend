@@ -1183,13 +1183,13 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
                 // inheriting the destination collection's default policies replaces each embargoed
                 // bitstream's future-dated READ policy with the collection's immediate default READ,
                 // silently lifting the embargo and exposing the files. Capture each object's embargo
-                // lift date first; after inheriting, defer the inherited READ policies of those
-                // objects behind that date. So a move with "inherit policies" adopts the new
+                // boundary first; after inheriting, defer the inherited READ policies of those
+                // objects behind that boundary. So a move with "inherit policies" adopts the new
                 // collection's access rules WITHOUT lifting the embargo: the files stay unreadable
-                // until the original lift date, then become readable to the destination's audience.
-                Map<DSpaceObject, Date> embargoLiftDates = collectEmbargoLiftDates(context, item);
+                // until the original boundary, then become readable to the destination's audience.
+                Map<DSpaceObject, Date> embargoBoundaries = collectEmbargoBoundaries(context, item);
                 inheritCollectionDefaultPolicies(context, item, to);
-                deferInheritedReadPoliciesBehindEmbargo(context, embargoLiftDates);
+                deferInheritedReadPoliciesBehindEmbargo(context, embargoBoundaries);
             }
 
             // Update the item
@@ -1210,18 +1210,20 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
     }
 
     /**
-     * Find, for the item and each of its bundles and bitstreams, the date on which its embargo lifts
-     * - the latest READ policy start date that is still in the future - omitting any object that is
-     * not under embargo. Used by {@link #move} to re-apply an embargo after inheriting the
-     * destination collection's default policies (which drop the embargo READ policies). See #761.
+     * Find, for the item and each of its bundles and bitstreams, the latest future-dated READ policy
+     * start date - the boundary until which the object stays embargoed - omitting any object that has
+     * no future-dated READ policy (i.e. is not under embargo). Used by {@link #move} to re-apply the
+     * embargo after inheriting the destination collection's default policies (which drop the embargo
+     * READ policies). The <em>latest</em> such date is used so that the inherited access is not
+     * granted before every embargo window on the object has passed. See issue #761.
      *
      * @param context DSpace context
      * @param item    the item being moved
-     * @return a map from each embargoed object to its embargo lift date, empty when none are embargoed
+     * @return a map from each embargoed object to its embargo boundary, empty when none are embargoed
      * @throws SQLException if a database error occurs
      */
-    private Map<DSpaceObject, Date> collectEmbargoLiftDates(Context context, Item item) throws SQLException {
-        Map<DSpaceObject, Date> liftDates = new LinkedHashMap<>();
+    private Map<DSpaceObject, Date> collectEmbargoBoundaries(Context context, Item item) throws SQLException {
+        Map<DSpaceObject, Date> boundaries = new LinkedHashMap<>();
         Date now = new Date();
         List<DSpaceObject> candidates = new ArrayList<>();
         candidates.add(item);
@@ -1230,47 +1232,47 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
             candidates.addAll(bundle.getBitstreams());
         }
         for (DSpaceObject dso : candidates) {
-            Date liftDate = null;
+            Date boundary = null;
             for (ResourcePolicy rp : authorizeService.getPoliciesActionFilter(context, dso, Constants.READ)) {
                 Date start = rp.getStartDate();
-                if (start != null && start.after(now) && (liftDate == null || start.after(liftDate))) {
-                    liftDate = start;
+                if (start != null && start.after(now) && (boundary == null || start.after(boundary))) {
+                    boundary = start;
                 }
             }
-            if (liftDate != null) {
-                liftDates.put(dso, liftDate);
+            if (boundary != null) {
+                boundaries.put(dso, boundary);
             }
         }
-        return liftDates;
+        return boundaries;
     }
 
     /**
-     * Defer the READ policies inherited onto each embargoed object behind its embargo lift date, so
+     * Defer the READ policies inherited onto each embargoed object behind its embargo boundary, so
      * that inheriting the destination collection's default policies does not lift the embargo: any
-     * inherited READ policy that would grant access before the lift date (a null or earlier start
-     * date) has its start date pushed to the lift date. Each object therefore stays unreadable until
-     * the original lift date and then becomes readable to the destination collection's audience. See
+     * inherited READ policy that would grant access before the boundary (a null or earlier start
+     * date) has its start date pushed to the boundary. Each object therefore stays unreadable until
+     * the original boundary and then becomes readable to the destination collection's audience. See
      * issue #761.
      *
-     * @param context   DSpace context
-     * @param liftDates the embargoed objects and their lift dates from {@link #collectEmbargoLiftDates}
+     * @param context    DSpace context
+     * @param boundaries the embargoed objects and their boundaries from {@link #collectEmbargoBoundaries}
      * @throws SQLException       if a database error occurs
      * @throws AuthorizeException if the current user is not authorized to change the policies
      */
-    private void deferInheritedReadPoliciesBehindEmbargo(Context context, Map<DSpaceObject, Date> liftDates)
+    private void deferInheritedReadPoliciesBehindEmbargo(Context context, Map<DSpaceObject, Date> boundaries)
             throws SQLException, AuthorizeException {
-        if (liftDates.isEmpty()) {
+        if (boundaries.isEmpty()) {
             return;
         }
         context.turnOffAuthorisationSystem();
         try {
             List<ResourcePolicy> deferred = new ArrayList<>();
-            for (Map.Entry<DSpaceObject, Date> entry : liftDates.entrySet()) {
-                Date liftDate = entry.getValue();
+            for (Map.Entry<DSpaceObject, Date> entry : boundaries.entrySet()) {
+                Date boundary = entry.getValue();
                 for (ResourcePolicy rp : authorizeService.getPoliciesActionFilter(context, entry.getKey(),
                         Constants.READ)) {
-                    if (rp.getStartDate() == null || rp.getStartDate().before(liftDate)) {
-                        rp.setStartDate(liftDate);
+                    if (rp.getStartDate() == null || rp.getStartDate().before(boundary)) {
+                        rp.setStartDate(boundary);
                         deferred.add(rp);
                     }
                 }
