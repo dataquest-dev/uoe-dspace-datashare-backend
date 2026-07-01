@@ -1178,7 +1178,15 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
             if (inheritDefaultPolicies) {
                 log.info(LogHelper.getHeader(context, "move_item",
                                               "Updating item with inherited policies"));
+                // DATASHARE issue #761 ("Embargo is lost when moving into another collection"):
+                // inheriting the destination collection's default policies replaces each bitstream's
+                // future-dated READ policy (an embargo) with the collection's immediate default READ,
+                // silently lifting the embargo and exposing the files. Snapshot the READ policies of
+                // every object currently under embargo, inherit, then restore them so a move with
+                // "inherit policies" adopts the new collection's defaults WITHOUT lifting an embargo.
+                List<EmbargoReadPolicy> embargoedReadPolicies = snapshotEmbargoedReadPolicies(context, item);
                 inheritCollectionDefaultPolicies(context, item, to);
+                restoreEmbargoedReadPolicies(context, embargoedReadPolicies);
             }
 
             // Update the item
@@ -1195,6 +1203,111 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
 
             context.addEvent(new Event(Event.MODIFY, Constants.ITEM, item.getID(),
                                        null, getIdentifiers(context, item)));
+        }
+    }
+
+    /**
+     * Snapshot the READ resource policies of every object (the item, its bundles and their
+     * bitstreams) that is currently under embargo - i.e. holds at least one READ policy whose start
+     * date is in the future. Used by {@link #move} to preserve an embargo across a move that inherits
+     * the destination collection's default policies (which would otherwise replace an embargoed
+     * bitstream's future-dated READ policy with the collection's immediate READ). See issue #761.
+     *
+     * @param context DSpace context
+     * @param item    the item being moved
+     * @return the READ policies to restore after inheriting, empty when nothing is under embargo
+     * @throws SQLException if a database error occurs
+     */
+    private List<EmbargoReadPolicy> snapshotEmbargoedReadPolicies(Context context, Item item) throws SQLException {
+        List<EmbargoReadPolicy> snapshots = new ArrayList<>();
+        Date now = new Date();
+        List<DSpaceObject> candidates = new ArrayList<>();
+        candidates.add(item);
+        for (Bundle bundle : item.getBundles()) {
+            candidates.add(bundle);
+            candidates.addAll(bundle.getBitstreams());
+        }
+        for (DSpaceObject dso : candidates) {
+            List<ResourcePolicy> readPolicies =
+                    authorizeService.getPoliciesActionFilter(context, dso, Constants.READ);
+            boolean embargoed = false;
+            for (ResourcePolicy rp : readPolicies) {
+                if (rp.getStartDate() != null && rp.getStartDate().after(now)) {
+                    embargoed = true;
+                    break;
+                }
+            }
+            if (embargoed) {
+                for (ResourcePolicy rp : readPolicies) {
+                    snapshots.add(new EmbargoReadPolicy(dso, rp));
+                }
+            }
+        }
+        return snapshots;
+    }
+
+    /**
+     * Restore the READ resource policies captured by {@link #snapshotEmbargoedReadPolicies} after the
+     * item has inherited its new collection's default policies, so that an embargo survives a move.
+     * The READ policies the inherit added on each embargoed object are removed and the originals
+     * (including the future-dated embargo policy) re-created verbatim. See issue #761.
+     *
+     * @param context   DSpace context
+     * @param snapshots the READ policies to restore
+     * @throws SQLException       if a database error occurs
+     * @throws AuthorizeException if the current user is not authorized to change the policies
+     */
+    private void restoreEmbargoedReadPolicies(Context context, List<EmbargoReadPolicy> snapshots)
+            throws SQLException, AuthorizeException {
+        if (snapshots.isEmpty()) {
+            return;
+        }
+        context.turnOffAuthorisationSystem();
+        try {
+            // Drop the READ policies inherited onto each embargoed object (once per object)...
+            List<UUID> cleared = new ArrayList<>();
+            for (EmbargoReadPolicy snapshot : snapshots) {
+                if (!cleared.contains(snapshot.dso.getID())) {
+                    authorizeService.removePoliciesActionFilter(context, snapshot.dso, Constants.READ);
+                    cleared.add(snapshot.dso.getID());
+                }
+            }
+            // ...then re-create the originals, preserving the embargo.
+            for (EmbargoReadPolicy snapshot : snapshots) {
+                authorizeService.createResourcePolicy(context, snapshot.dso, snapshot.group, snapshot.eperson,
+                        Constants.READ, snapshot.rpType, snapshot.rpName, snapshot.rpDescription,
+                        snapshot.startDate, snapshot.endDate);
+            }
+        } finally {
+            context.restoreAuthSystemState();
+        }
+    }
+
+    /**
+     * Immutable snapshot of a single READ {@link ResourcePolicy} on a DSpace object, captured before a
+     * move inherits collection default policies so the policy can be re-created afterwards (see
+     * {@link #snapshotEmbargoedReadPolicies}). The referenced group/eperson survive the inherit; only
+     * the policy row itself is removed and re-created.
+     */
+    private static final class EmbargoReadPolicy {
+        private final DSpaceObject dso;
+        private final Group group;
+        private final EPerson eperson;
+        private final Date startDate;
+        private final Date endDate;
+        private final String rpType;
+        private final String rpName;
+        private final String rpDescription;
+
+        private EmbargoReadPolicy(DSpaceObject dso, ResourcePolicy policy) {
+            this.dso = dso;
+            this.group = policy.getGroup();
+            this.eperson = policy.getEPerson();
+            this.startDate = policy.getStartDate();
+            this.endDate = policy.getEndDate();
+            this.rpType = policy.getRpType();
+            this.rpName = policy.getRpName();
+            this.rpDescription = policy.getRpDescription();
         }
     }
 
