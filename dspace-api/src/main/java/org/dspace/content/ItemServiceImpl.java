@@ -1264,15 +1264,22 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
         }
         context.turnOffAuthorisationSystem();
         try {
+            List<ResourcePolicy> deferred = new ArrayList<>();
             for (Map.Entry<DSpaceObject, Date> entry : liftDates.entrySet()) {
                 Date liftDate = entry.getValue();
                 for (ResourcePolicy rp : authorizeService.getPoliciesActionFilter(context, entry.getKey(),
                         Constants.READ)) {
                     if (rp.getStartDate() == null || rp.getStartDate().before(liftDate)) {
                         rp.setStartDate(liftDate);
-                        resourcePolicyService.update(context, rp);
+                        deferred.add(rp);
                     }
                 }
+            }
+            // Persist in one call: ResourcePolicyService#update refreshes the related DSOs'
+            // last-modified timestamps and deduplicates them, so a single batch avoids doing that
+            // repeatedly for items with many bitstreams/policies.
+            if (!deferred.isEmpty()) {
+                resourcePolicyService.update(context, deferred);
             }
         } finally {
             context.restoreAuthSystemState();
