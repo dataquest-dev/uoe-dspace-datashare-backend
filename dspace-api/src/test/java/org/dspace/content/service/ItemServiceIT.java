@@ -958,6 +958,8 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
             assertEquals(1, before.size());
             assertTrue("precondition: the bitstream's READ policy is future-dated (embargoed)",
                 before.get(0).getStartDate() != null && before.get(0).getStartDate().after(new Date()));
+            // The embargo lift date, as stored, so we can assert it is preserved (not merely "future").
+            Date embargoLiftDate = before.get(0).getStartDate();
 
             // Move to the destination collection WITH inherit policies enabled.
             itemService.move(context, embargoedItem, source, destination, true);
@@ -970,6 +972,15 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
                 after.stream().anyMatch(rp -> rp.getStartDate() == null || !rp.getStartDate().after(new Date())));
             assertTrue("the embargo (future-dated READ policy) must still be present after the move",
                 after.stream().anyMatch(rp -> rp.getStartDate() != null && rp.getStartDate().after(new Date())));
+            // ...and it keeps its ORIGINAL lift date - a bug that shifted the embargo to a different
+            // (still future) date must not slip through.
+            Date earliestStartAfterMove = after.stream()
+                .map(ResourcePolicy::getStartDate)
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+            assertEquals("the embargo must keep its original lift date after the move",
+                embargoLiftDate, earliestStartAfterMove);
         } finally {
             context.restoreAuthSystemState();
         }
