@@ -113,6 +113,15 @@ public interface EmbargoService {
      */
     public List<MetadataValue> getEmbargoTermsMetadata(Context context, Item item);
 
+    /**
+     * Find all items that carry the embargo lift field (embargo.field.lift). Note that when
+     * embargo.field.lift is configured to a ubiquitous field such as dc.date.available, this matches
+     * essentially every archived item; callers that only want genuinely embargoed items should prefer
+     * {@link #findItemsByEmbargoTermsMetadata(Context)} (see dspace-customers#788).
+     *
+     * @param context the DSpace context
+     * @return iterator over items that carry the lift field
+     */
     public Iterator<Item> findItemsByLiftMetadata(Context context) throws SQLException, IOException, AuthorizeException;
 
     /**

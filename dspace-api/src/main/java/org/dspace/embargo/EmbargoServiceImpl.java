@@ -317,54 +317,63 @@ public class EmbargoServiceImpl implements EmbargoService {
 
                 while (ii.hasNext()) {
                     Item item = ii.next();
-                    DCDate termsDate;
                     try {
-                        termsDate = getEmbargoTermsAsDate(context, item);
-                    } catch (IllegalArgumentException ex) {
-                        // A single unparsable dc.date.embargo value must not abort the whole scan.
-                        log.warn("Skipping item {} in embargo-expiry check: unparsable embargo terms ({})",
-                                item.getID(), ex.getMessage());
-                        continue;
-                    }
+                        DCDate termsDate;
+                        try {
+                            termsDate = getEmbargoTermsAsDate(context, item);
+                        } catch (IllegalArgumentException ex) {
+                            // A single unparsable dc.date.embargo value must not abort the whole scan.
+                            log.warn("Skipping item {} in embargo-expiry check: unparsable embargo terms ({})",
+                                    item.getID(), ex.getMessage());
+                            continue;
+                        }
 
-                    // Safety net: skip anything with no terms date (also avoids a NullPointerException
-                    // on the termsDate.displayDate(...) call below).
-                    if (termsDate == null) {
-                        continue;
-                    }
+                        // Safety net: skip anything with no terms date (also avoids a NullPointerException
+                        // on the termsDate.displayDate(...) call below).
+                        if (termsDate == null) {
+                            continue;
+                        }
 
-                    log.info("-----------------------------------------------");
-                    log.info("Title: " + getItemTitle(item));
-                    log.info("Handle: " + configurationService.getProperty("handle.canonical.prefix")
-                            + item.getHandle());
-                    log.info("termsDate: " + termsDate.displayDate(false, true, context.getCurrentLocale()));
-                    log.info("termsDate.getYear(): " + termsDate.getYear());
-                    log.info("termsDate.getMonth(): " + termsDate.getMonth());
-                    log.info("termsDate.getDay(): " + termsDate.getDay());
+                        log.info("-----------------------------------------------");
+                        log.info("Title: " + getItemTitle(item));
+                        log.info("Handle: " + configurationService.getProperty("handle.canonical.prefix")
+                                + item.getHandle());
+                        log.info("termsDate: " + termsDate.displayDate(false, true, context.getCurrentLocale()));
+                        log.info("termsDate.getYear(): " + termsDate.getYear());
+                        log.info("termsDate.getMonth(): " + termsDate.getMonth());
+                        log.info("termsDate.getDay(): " + termsDate.getDay());
 
-                    // Ensure all Year, Month and Day set.
-                    if (termsDate.getYear() > 0 && termsDate.getMonth() > 0
-                            && termsDate.getDay() > 0) {
-                        LocalDate embargoDate = LocalDate.of(termsDate.getYear(), termsDate.getMonth(),
-                                termsDate.getDay());
+                        // Ensure all Year, Month and Day set.
+                        if (termsDate.getYear() > 0 && termsDate.getMonth() > 0
+                                && termsDate.getDay() > 0) {
+                            LocalDate embargoDate = LocalDate.of(termsDate.getYear(), termsDate.getMonth(),
+                                    termsDate.getDay());
 
-                        log.info("embargoDate.isAfter(now): " + embargoDate.isAfter(now));
+                            log.info("embargoDate.isAfter(now): " + embargoDate.isAfter(now));
 
-                        // We want embargoDate in future (to now) and then send email
-                        if (embargoDate.isAfter(now)) {
-                            long diffInDays = ChronoUnit.DAYS.between(now, embargoDate);
+                            // We want embargoDate in future (to now) and then send email
+                            if (embargoDate.isAfter(now)) {
+                                long diffInDays = ChronoUnit.DAYS.between(now, embargoDate);
 
-                            log.info("diffInDays: " + diffInDays);
+                                log.info("diffInDays: " + diffInDays);
 
-                            // Send Embargo Expiry Email if:
-                            // it is 7 days from now, or,
-                            // it is Friday and 8 or 9 days from now.
-                            if (diffInDays == 7) {
-                                extracted(context, item, termsDate);
-                            } else if (dayNow == DayOfWeek.FRIDAY &&
-                                    (diffInDays == 8 || diffInDays == 9)) {
-                                extracted(context, item, termsDate);
+                                // Send Embargo Expiry Email if:
+                                // it is 7 days from now, or,
+                                // it is Friday and 8 or 9 days from now.
+                                if (diffInDays == 7) {
+                                    sendEmbargoExpiryEmail(context, item, termsDate);
+                                } else if (dayNow == DayOfWeek.FRIDAY &&
+                                        (diffInDays == 8 || diffInDays == 9)) {
+                                    sendEmbargoExpiryEmail(context, item, termsDate);
+                                }
                             }
+                        }
+                    } finally {
+                        // Keep the persistence context small on long scans (uncache even on continue).
+                        try {
+                            context.uncacheEntity(item);
+                        } catch (SQLException ex) {
+                            log.warn("Failed to uncache item {}: {}", item.getID(), ex.getMessage());
                         }
                     }
                 }
@@ -380,7 +389,7 @@ public class EmbargoServiceImpl implements EmbargoService {
 
     }
 
-    private void extracted(Context context, Item item, DCDate termsDate) throws IOException {
+    private void sendEmbargoExpiryEmail(Context context, Item item, DCDate termsDate) throws IOException {
         log.info("Sending Embargo Expiry Email");
         String submitter = item.getSubmitter().getEmail();
         log.info("To: " + submitter);
