@@ -334,14 +334,15 @@ public class EmbargoServiceImpl implements EmbargoService {
                             continue;
                         }
 
-                        log.info("-----------------------------------------------");
-                        log.info("Title: " + getItemTitle(item));
-                        log.info("Handle: " + configurationService.getProperty("handle.canonical.prefix")
+                        // Per-item diagnostics: DEBUG so routine scans are not noisy at INFO.
+                        log.debug("-----------------------------------------------");
+                        log.debug("Title: " + getItemTitle(item));
+                        log.debug("Handle: " + configurationService.getProperty("handle.canonical.prefix")
                                 + item.getHandle());
-                        log.info("termsDate: " + termsDate.displayDate(false, true, context.getCurrentLocale()));
-                        log.info("termsDate.getYear(): " + termsDate.getYear());
-                        log.info("termsDate.getMonth(): " + termsDate.getMonth());
-                        log.info("termsDate.getDay(): " + termsDate.getDay());
+                        log.debug("termsDate: " + termsDate.displayDate(false, true, context.getCurrentLocale()));
+                        log.debug("termsDate.getYear(): " + termsDate.getYear());
+                        log.debug("termsDate.getMonth(): " + termsDate.getMonth());
+                        log.debug("termsDate.getDay(): " + termsDate.getDay());
 
                         // Ensure all Year, Month and Day set.
                         if (termsDate.getYear() > 0 && termsDate.getMonth() > 0
@@ -349,13 +350,13 @@ public class EmbargoServiceImpl implements EmbargoService {
                             LocalDate embargoDate = LocalDate.of(termsDate.getYear(), termsDate.getMonth(),
                                     termsDate.getDay());
 
-                            log.info("embargoDate.isAfter(now): " + embargoDate.isAfter(now));
+                            log.debug("embargoDate.isAfter(now): " + embargoDate.isAfter(now));
 
                             // We want embargoDate in future (to now) and then send email
                             if (embargoDate.isAfter(now)) {
                                 long diffInDays = ChronoUnit.DAYS.between(now, embargoDate);
 
-                                log.info("diffInDays: " + diffInDays);
+                                log.debug("diffInDays: " + diffInDays);
 
                                 // Send Embargo Expiry Email if:
                                 // it is 7 days from now, or,
