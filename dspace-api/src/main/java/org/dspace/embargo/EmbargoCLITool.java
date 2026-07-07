@@ -136,6 +136,13 @@ public class EmbargoCLITool {
                     } else if (dso.getType() != Constants.ITEM) {
                         System.err.println("Error, the handle=" + handle + " is not a DSpace Item.");
                         status = 1;
+                    } else if (embargoService.getEmbargoTermsMetadata(context, (Item) dso).isEmpty()) {
+                        // DATASHARE (UoE): guard the by-handle (-i) path - skip a handle that is not
+                        // actually under embargo. The no-argument run already visits only embargoed
+                        // items via findItemsByEmbargoTermsMetadata() (see dspace-customers#788).
+                        if (line.hasOption('v')) {
+                            System.err.println("Skipping handle=" + handle + ", it is not under embargo.");
+                        }
                     } else {
                         if (processOneItem(context, (Item) dso, line, now)) {
                             status = 1;
@@ -178,15 +185,6 @@ public class EmbargoCLITool {
     protected static boolean processOneItem(Context context, Item item, CommandLine line, Date now)
         throws Exception {
         boolean status = false;
-
-        // DATASHARE (UoE): only act on items that are genuinely under embargo, i.e. that carry the
-        // embargo terms field (embargo.field.terms, e.g. dc.date.embargo). The no-argument run now
-        // iterates by that field, but the -i path resolves arbitrary handles, so we also guard here
-        // to avoid rewriting metadata on a non-embargoed item (see dspace-customers#788).
-        if (embargoService.getEmbargoTermsMetadata(context, item).isEmpty()) {
-            return false;
-        }
-
         List<MetadataValue> lift = embargoService.getLiftMetadata(context, item);
 
         if (lift.size() > 0) {

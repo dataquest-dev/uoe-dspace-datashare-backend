@@ -21,6 +21,7 @@ import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.content.DCDate;
 import org.dspace.content.Item;
+import org.dspace.content.MetadataSchemaEnum;
 import org.dspace.content.MetadataValue;
 import org.dspace.content.service.ItemService;
 import org.dspace.core.Context;
@@ -178,7 +179,8 @@ public class EmbargoServiceImpl implements EmbargoService {
     // True if the given metadata field is dc.date.available - the availability date that every
     // archived item carries and that this deployment also uses as embargo.field.lift.
     private static boolean isDateAvailableField(String schema, String element, String qualifier) {
-        return "dc".equals(schema) && "date".equals(element) && "available".equals(qualifier);
+        return MetadataSchemaEnum.DC.getName().equals(schema)
+                && "date".equals(element) && "available".equals(qualifier);
     }
 
     /**
@@ -304,11 +306,11 @@ public class EmbargoServiceImpl implements EmbargoService {
 
                 while (ii.hasNext()) {
                     Item item = ii.next();
-                    DCDate liftDCDate = getEmbargoTermsAsDate(context, item);
+                    DCDate termsDate = getEmbargoTermsAsDate(context, item);
 
                     // Safety net: skip anything with no/unparsable terms date (also avoids a
-                    // NullPointerException on the liftDCDate.displayDate(...) call below).
-                    if (liftDCDate == null) {
+                    // NullPointerException on the termsDate.displayDate(...) call below).
+                    if (termsDate == null) {
                         continue;
                     }
 
@@ -317,16 +319,16 @@ public class EmbargoServiceImpl implements EmbargoService {
                     log.info("Handle: " + configurationService.getProperty("handle.canonical.prefix")
                             + item.getHandle());
                     System.out
-                            .println("liftDCDate: " + liftDCDate.displayDate(false, true, context.getCurrentLocale()));
-                    log.info("liftDCDate.getYear(): " + liftDCDate.getYear());
-                    log.info("liftDCDate.getMonth(): " + liftDCDate.getMonth());
-                    log.info("liftDCDate.getDay(): " + liftDCDate.getDay());
+                            .println("termsDate: " + termsDate.displayDate(false, true, context.getCurrentLocale()));
+                    log.info("termsDate.getYear(): " + termsDate.getYear());
+                    log.info("termsDate.getMonth(): " + termsDate.getMonth());
+                    log.info("termsDate.getDay(): " + termsDate.getDay());
 
                     // Ensure all Year, Month and Day set.
-                    if (liftDCDate != null && liftDCDate.getYear() > 0 && liftDCDate.getMonth() > 0
-                            && liftDCDate.getDay() > 0) {
-                        LocalDate embargoDate = LocalDate.of(liftDCDate.getYear(), liftDCDate.getMonth(),
-                                liftDCDate.getDay());
+                    if (termsDate != null && termsDate.getYear() > 0 && termsDate.getMonth() > 0
+                            && termsDate.getDay() > 0) {
+                        LocalDate embargoDate = LocalDate.of(termsDate.getYear(), termsDate.getMonth(),
+                                termsDate.getDay());
 
                         log.info("embargoDate.isAfter(now): " + embargoDate.isAfter(now));
 
@@ -340,10 +342,10 @@ public class EmbargoServiceImpl implements EmbargoService {
                             // it is 7 days from now, or,
                             // it is Friday and 8 or 9 days from now.
                             if (diffInDays == 7) {
-                                extracted(context, item, liftDCDate);
+                                extracted(context, item, termsDate);
                             } else if (dayNow == DayOfWeek.FRIDAY &&
                                     (diffInDays == 8 || diffInDays == 9)) {
-                                extracted(context, item, liftDCDate);
+                                extracted(context, item, termsDate);
                             }
                         }
                     }
@@ -360,7 +362,7 @@ public class EmbargoServiceImpl implements EmbargoService {
 
     }
 
-    private void extracted(Context context, Item item, DCDate liftDCDate) throws IOException {
+    private void extracted(Context context, Item item, DCDate termsDate) throws IOException {
         log.info("Sending Embargo Expiry Email");
         String submitter = item.getSubmitter().getEmail();
         log.info("To: " + submitter);
@@ -372,7 +374,7 @@ public class EmbargoServiceImpl implements EmbargoService {
                     I18nUtil.getEmailFilename(context.getCurrentLocale(), "embargo_expire"));
             mail.addArgument(getItemTitle(item));
             mail.addArgument(configurationService.getProperty("handle.canonical.prefix") + item.getHandle());
-            mail.addArgument(liftDCDate.displayDate(false, true, context.getCurrentLocale()));
+            mail.addArgument(termsDate.displayDate(false, true, context.getCurrentLocale()));
 
             mail.addRecipient(submitter);
 
