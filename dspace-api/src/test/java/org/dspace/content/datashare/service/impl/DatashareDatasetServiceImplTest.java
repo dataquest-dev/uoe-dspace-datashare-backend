@@ -384,9 +384,8 @@ public class DatashareDatasetServiceImplTest {
         verifyNoInteractions(datashareDatasetDAO);
     }
 
-    // --- Cache-busting of the "download all files" zip link (dspace-customers issue: after a new file
-    // --- is uploaded the zip is regenerated, but the same browser kept downloading the previous zip
-    // --- because the download URL never changed; a different browser downloaded the new one). ---
+    // Cache-busting of the "download all files" zip link: a regenerated zip must change the link so
+    // the browser refetches it instead of serving the previous one from cache.
 
     @Test
     public void appendCacheBustVersionAddsQueryParamWhenNoQueryPresent() {
@@ -461,9 +460,7 @@ public class DatashareDatasetServiceImplTest {
 
     @Test
     public void fetchLinkVersionChangesWhenZipContentChanges() throws Exception {
-        // The core of the reported bug: a byte-identical download URL let the browser serve its cached
-        // (old) zip after a regeneration. The link must change whenever the zip content (checksum)
-        // changes so the browser is forced to refetch.
+        // Core of the bug: the link must change when the zip content (checksum) changes.
         File zip = File.createTempFile("DS_cachebust", ".zip");
         zip.deleteOnExit();
         try {

@@ -35,19 +35,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * End-to-end regression test for the "download all files" (dataset zip) cache-busting fix.
- *
- * <p>Reproduces the reported bug: after a user uploads a new file, the zip <em>is</em> regenerated
- * server-side, but clicking "Download all files" in the same browser keeps downloading the previous
- * zip - because the download link the {@code zip-file-link} endpoint returns is a static-file URL
- * derived only from the item handle and was byte-identical across regenerations, so the browser
- * served its cached copy (a different browser, with an empty cache, downloaded the new zip). The fix
- * appends a content-version token ({@code ?v=<checksum>}) so the URL changes whenever the zip content
- * changes, forcing the browser to refetch.</p>
- *
- * <p>These tests drive the real {@link DatashareDatasetRestController} endpoint against a real,
- * physically-generated zip (checksum stored in the dataset row), mirroring the datashare instance's
- * HTTP behaviour.</p>
+ * End-to-end test for the "download all files" zip cache-busting fix: the {@code zip-file-link}
+ * endpoint must return a link carrying a {@code ?v=<checksum>} token that changes when a new file is
+ * uploaded and the zip regenerated, so the browser refetches instead of serving the previous zip.
  */
 public class DatashareZipLinkCacheBustIT extends AbstractControllerIntegrationTest {
 
@@ -145,8 +135,6 @@ public class DatashareZipLinkCacheBustIT extends AbstractControllerIntegrationTe
 
         String after = fetchLink(item);
         assertTrue("the regenerated link is versioned, was: " + after, after.matches(VERSIONED_ZIP_URL));
-        // The whole point: regenerating the zip must change the link so the browser refetches instead
-        // of serving the previously-cached (stale) zip.
         assertNotEquals("uploading a new file must change the download link (cache-busting)", before, after);
     }
 }

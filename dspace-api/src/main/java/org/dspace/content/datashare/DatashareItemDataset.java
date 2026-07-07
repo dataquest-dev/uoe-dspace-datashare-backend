@@ -617,11 +617,8 @@ public class DatashareItemDataset {
                 zos.close();
                 fos.close();
 
-                // Replace the previous zip with the freshly generated one. File.renameTo does NOT
-                // overwrite an existing destination on Windows (it silently fails and leaves the stale
-                // zip in place, so a regenerated zip would never reach the download server); use
-                // Files.move with REPLACE_EXISTING, preferring an atomic move where the platform
-                // supports it so a concurrent download never observes a half-written file.
+                // Replace the previous zip. File.renameTo does not overwrite on Windows (leaving the
+                // stale zip in place), so use Files.move with REPLACE_EXISTING, atomic where supported.
                 Path tmpPath = new File(tmpZip).toPath();
                 Path finalPath = new File(getFullPath()).toPath();
                 try {
