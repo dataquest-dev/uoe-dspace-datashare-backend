@@ -9,6 +9,8 @@ package org.dspace.content.datashare.service.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -400,9 +402,19 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
             DatashareDataset dataset = findDatashareDatasetByItem(context, item);
             if (dataset != null) {
                 String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
-                if (filePath != null && !filePath.isEmpty() && new File(filePath).exists()) {
-                    String url = DatashareItemDataset.getURL(item);
-                    downloadLink = url != null ? url : "";
+                if (filePath != null && !filePath.isEmpty()) {
+                    File zipFile = new File(filePath);
+                    if (zipFile.exists()) {
+                        // The zip is served as a static file at a URL derived only from the item handle,
+                        // so that URL is byte-identical after every regeneration. Append a content-version
+                        // token so the browser refetches the regenerated zip instead of serving its cached
+                        // (stale) copy - otherwise the same browser keeps "downloading the previous file"
+                        // after a new file is uploaded, while a different browser gets the new one.
+                        String url = DatashareItemDataset.getURL(item);
+                        if (url != null) {
+                            downloadLink = appendCacheBustVersion(url, resolveZipVersion(dataset, zipFile));
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
@@ -410,6 +422,56 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
                     + (item != null ? item.getHandle() : null), e);
         }
         return downloadLink;
+    }
+
+    /**
+     * Resolve the cache-busting version token for the item's dataset zip. Prefer the stored MD5
+     * checksum: it is (re)computed and re-persisted together with the physical zip on every
+     * (re)generation, so the token - and therefore the download URL built from it - changes exactly
+     * when the zip content changes.
+     * Fall back to the physical file's last-modified time for legacy dataset rows persisted before a
+     * checksum was stored (the {@code checksum} column is nullable for DSpace 6-&gt;8 migrated rows).
+     * Returns {@code null} when neither is available, in which case the plain (unversioned) URL is
+     * used - today's behaviour, which self-heals on the first regeneration that stores a checksum.
+     *
+     * @param dataset the resolved dataset record (its checksum may be {@code null}/blank for legacy
+     *                rows)
+     * @param zipFile the existing physical zip file, used only for the last-modified fallback
+     * @return a non-blank version token, or {@code null} when none can be derived
+     */
+    private String resolveZipVersion(DatashareDataset dataset, File zipFile) {
+        String checksum = dataset != null ? dataset.getChecksum() : null;
+        if (checksum != null && !checksum.isBlank()) {
+            return checksum;
+        }
+        long lastModified = zipFile != null ? zipFile.lastModified() : 0L;
+        return lastModified > 0 ? Long.toString(lastModified) : null;
+    }
+
+    /**
+     * Append a cache-busting {@code v=<token>} query parameter to a dataset download URL.
+     * <p>
+     * The dataset zip is served as a static file at a URL derived solely from the item handle (see
+     * {@link org.dspace.content.datashare.DatashareItemDataset#getURL(Item)}), so that URL is
+     * byte-identical every time the zip is regenerated. A browser that already downloaded the zip
+     * then keeps serving its cached copy after the item's files change - the user sees the OLD zip
+     * while a different browser (empty cache) sees the new one. Adding {@code ?v=<token>}, where the
+     * token changes whenever the zip content changes, makes the URL a new cache key on each
+     * regeneration so the browser refetches; an unchanged zip keeps the same URL and stays cacheable.
+     * The token is URL-encoded and {@code ?} vs {@code &} is chosen based on whether the URL already
+     * carries a query string.
+     *
+     * @param url          the base download URL (may be {@code null}/empty)
+     * @param versionToken the version token to append (ignored when {@code null}/blank)
+     * @return the URL with {@code v=<token>} appended, or {@code url} unchanged when either argument
+     *         is {@code null}/blank
+     */
+    static String appendCacheBustVersion(String url, String versionToken) {
+        if (url == null || url.isEmpty() || versionToken == null || versionToken.isBlank()) {
+            return url;
+        }
+        String separator = url.indexOf('?') >= 0 ? "&" : "?";
+        return url + separator + "v=" + URLEncoder.encode(versionToken.trim(), StandardCharsets.UTF_8);
     }
 
     // Private methods
