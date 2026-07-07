@@ -15,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 import jakarta.mail.MessagingException;
 import org.apache.logging.log4j.Logger;
@@ -158,17 +159,22 @@ public class EmbargoServiceImpl implements EmbargoService {
         // READ policy start_date, so we do not touch resource policies here.
         // lifter.liftEmbargo(context, item);
 
-        // DATASHARE (UoE): once the embargo has lapsed, remove the embargo terms field
-        // (embargo.field.terms, e.g. dc.date.embargo) so it no longer lingers on the item.
-        itemService.clearMetadata(context, item, terms_schema, terms_element, terms_qualifier, Item.ANY);
-
         // DATASHARE (UoE): in this deployment embargo.field.lift is dc.date.available, which already
         // holds the embargo lift date - the real date the item became available - so we keep it as-is
         // rather than re-stamping it to the date this job happens to run (stock DSpace would set it to
         // "now", wrongly reporting a long-embargoed item as only just made available). Under any other
         // configuration, where the lift field is a separate administrative field, clear it so a stale
         // computed lift date does not linger.
-        if (!isDateAvailableField(lift_schema, lift_element, lift_qualifier)) {
+        boolean preserveLiftField = isDateAvailableField(lift_schema, lift_element, lift_qualifier);
+
+        // Remove the embargo terms field (embargo.field.terms, e.g. dc.date.embargo) so it no longer
+        // lingers - unless it is the very field we are preserving as the availability date (a
+        // degenerate configuration where terms and lift are the same dc.date.available field).
+        if (!(preserveLiftField && sameField(terms_schema, terms_element, terms_qualifier,
+                lift_schema, lift_element, lift_qualifier))) {
+            itemService.clearMetadata(context, item, terms_schema, terms_element, terms_qualifier, Item.ANY);
+        }
+        if (!preserveLiftField) {
             itemService.clearMetadata(context, item, lift_schema, lift_element, lift_qualifier, Item.ANY);
         }
 
@@ -181,6 +187,11 @@ public class EmbargoServiceImpl implements EmbargoService {
     private static boolean isDateAvailableField(String schema, String element, String qualifier) {
         return MetadataSchemaEnum.DC.getName().equals(schema)
                 && "date".equals(element) && "available".equals(qualifier);
+    }
+
+    // True if two metadata field specs (schema.element.qualifier) refer to the same field.
+    private static boolean sameField(String s1, String e1, String q1, String s2, String e2, String q2) {
+        return Objects.equals(s1, s2) && Objects.equals(e1, e2) && Objects.equals(q1, q2);
     }
 
     /**
@@ -306,10 +317,18 @@ public class EmbargoServiceImpl implements EmbargoService {
 
                 while (ii.hasNext()) {
                     Item item = ii.next();
-                    DCDate termsDate = getEmbargoTermsAsDate(context, item);
+                    DCDate termsDate;
+                    try {
+                        termsDate = getEmbargoTermsAsDate(context, item);
+                    } catch (IllegalArgumentException ex) {
+                        // A single unparsable dc.date.embargo value must not abort the whole scan.
+                        log.warn("Skipping item {} in embargo-expiry check: unparsable embargo terms ({})",
+                                item.getID(), ex.getMessage());
+                        continue;
+                    }
 
-                    // Safety net: skip anything with no/unparsable terms date (also avoids a
-                    // NullPointerException on the termsDate.displayDate(...) call below).
+                    // Safety net: skip anything with no terms date (also avoids a NullPointerException
+                    // on the termsDate.displayDate(...) call below).
                     if (termsDate == null) {
                         continue;
                     }
@@ -318,14 +337,13 @@ public class EmbargoServiceImpl implements EmbargoService {
                     log.info("Title: " + getItemTitle(item));
                     log.info("Handle: " + configurationService.getProperty("handle.canonical.prefix")
                             + item.getHandle());
-                    System.out
-                            .println("termsDate: " + termsDate.displayDate(false, true, context.getCurrentLocale()));
+                    log.info("termsDate: " + termsDate.displayDate(false, true, context.getCurrentLocale()));
                     log.info("termsDate.getYear(): " + termsDate.getYear());
                     log.info("termsDate.getMonth(): " + termsDate.getMonth());
                     log.info("termsDate.getDay(): " + termsDate.getDay());
 
                     // Ensure all Year, Month and Day set.
-                    if (termsDate != null && termsDate.getYear() > 0 && termsDate.getMonth() > 0
+                    if (termsDate.getYear() > 0 && termsDate.getMonth() > 0
                             && termsDate.getDay() > 0) {
                         LocalDate embargoDate = LocalDate.of(termsDate.getYear(), termsDate.getMonth(),
                                 termsDate.getDay());
