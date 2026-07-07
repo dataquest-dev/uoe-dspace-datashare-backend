@@ -21,7 +21,6 @@ import org.apache.logging.log4j.Logger;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.content.DCDate;
 import org.dspace.content.Item;
-import org.dspace.content.MetadataSchemaEnum;
 import org.dspace.content.MetadataValue;
 import org.dspace.content.service.ItemService;
 import org.dspace.core.Context;
@@ -153,21 +152,20 @@ public class EmbargoServiceImpl implements EmbargoService {
     @Override
     public void liftEmbargo(Context context, Item item)
             throws SQLException, AuthorizeException, IOException {
-        // Since 3.0 the lift process for all embargoes is performed through the dates
-        // on the authorization process (see DS-2588)
+        // Since 3.0 the lift process for all embargoes is performed through the dates on the
+        // authorization process (see DS-2588): access has already re-opened via the bitstream
+        // READ policy start_date, so we do not touch resource policies here.
         // lifter.liftEmbargo(context, item);
-        itemService.clearMetadata(context, item, lift_schema, lift_element, lift_qualifier, Item.ANY);
 
-        // DATASHARE (UoE): once the embargo is lifted, remove the embargo terms field
+        // DATASHARE (UoE): once the embargo has lapsed, remove the embargo terms field
         // (embargo.field.terms, e.g. dc.date.embargo) so it no longer lingers on the item.
-        // Done before re-setting dc.date.available below so the new availability date always wins,
-        // even in the (unusual) case where the terms and lift fields are configured the same.
         itemService.clearMetadata(context, item, terms_schema, terms_element, terms_qualifier, Item.ANY);
 
-        // set the dc.date.available value to right now
-        itemService.clearMetadata(context, item, MetadataSchemaEnum.DC.getName(), "date", "available", Item.ANY);
-        itemService.addMetadata(context, item, MetadataSchemaEnum.DC.getName(), "date", "available", null,
-                DCDate.getCurrent().toString());
+        // DATASHARE (UoE): keep dc.date.available as-is. Because embargo.field.lift is
+        // dc.date.available, it already holds the embargo lift date - the real date the item
+        // became available - so we must NOT overwrite it with the date this job happens to run
+        // (stock DSpace re-stamps dc.date.available to "now" here, which would wrongly report a
+        // long-embargoed item as only just made available).
 
         log.info("Lifting embargo on Item " + item.getHandle());
         itemService.update(context, item);
@@ -255,6 +253,11 @@ public class EmbargoServiceImpl implements EmbargoService {
     }
 
     @Override
+    public List<MetadataValue> getEmbargoTermsMetadata(Context context, Item item) {
+        return itemService.getMetadata(item, terms_schema, terms_element, terms_qualifier, Item.ANY);
+    }
+
+    @Override
     public Iterator<Item> findItemsByLiftMetadata(Context context)
             throws SQLException, IOException, AuthorizeException {
         return itemService.findByMetadataField(context, lift_schema, lift_element, lift_qualifier, Item.ANY);
@@ -280,6 +283,14 @@ public class EmbargoServiceImpl implements EmbargoService {
                 while (ii.hasNext()) {
                     Item item = ii.next();
                     DCDate liftDCDate = getEmbargoTermsAsDate(context, item);
+
+                    // DATASHARE (UoE): findItemsByLiftMetadata() is keyed on dc.date.available, which
+                    // every archived item carries, so most items reached here are not actually under
+                    // embargo and have no terms date. Skip them (this also avoids a NullPointerException
+                    // on the liftDCDate.displayDate(...) call below).
+                    if (liftDCDate == null) {
+                        continue;
+                    }
 
                     log.info("-----------------------------------------------");
                     log.info("Title: " + getItemTitle(item));

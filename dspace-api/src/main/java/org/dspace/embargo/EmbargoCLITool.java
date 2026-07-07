@@ -176,6 +176,16 @@ public class EmbargoCLITool {
     protected static boolean processOneItem(Context context, Item item, CommandLine line, Date now)
         throws Exception {
         boolean status = false;
+
+        // DATASHARE (UoE): only act on items that are genuinely under embargo, i.e. that carry the
+        // embargo terms field (embargo.field.terms, e.g. dc.date.embargo). embargo.field.lift is
+        // dc.date.available - a field every archived item has - so findItemsByLiftMetadata() matches
+        // the whole repository; without this guard we would "lift" and rewrite metadata on every
+        // item, not just embargoed ones (see dspace-customers#788).
+        if (embargoService.getEmbargoTermsMetadata(context, item).isEmpty()) {
+            return false;
+        }
+
         List<MetadataValue> lift = embargoService.getLiftMetadata(context, item);
 
         if (lift.size() > 0) {

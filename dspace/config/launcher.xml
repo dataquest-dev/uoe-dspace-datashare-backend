@@ -82,17 +82,16 @@
             <class>dsrun</class>
         </step>
     </command>
-    <!-- DATASHARE - start -->
-    <!-- 
+    <!-- DATASHARE (UoE): re-enabled. The embargo lifter now only acts on items that actually
+         carry the embargo terms field (dc.date.embargo), so it no longer rewrites metadata on
+         every archived item. See dspace-customers#788. -->
     <command>
         <name>embargo-lifter</name>
         <description>Embargo manager tool used to check, list and lift embargoes</description>
         <step>
             <class>org.dspace.embargo.EmbargoCLITool</class>
         </step>
-    </command> 
-    -->
-    <!-- DATASHARE - end -->
+    </command>
     <command>
         <name>generate-sitemaps</name>
         <description>Generate search engine and html sitemaps</description>

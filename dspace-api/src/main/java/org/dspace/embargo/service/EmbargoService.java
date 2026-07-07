@@ -100,6 +100,19 @@ public interface EmbargoService {
 
     public List<MetadataValue> getLiftMetadata(Context context, Item item);
 
+    /**
+     * Get the raw embargo terms metadata (embargo.field.terms, e.g. dc.date.embargo) for an item.
+     * Only items actually placed under embargo carry this field, so an empty result means the item
+     * is not under embargo. This lets callers tell a genuinely embargoed item apart from an ordinary
+     * archived item, which matters because embargo.field.lift (dc.date.available) is present on every
+     * archived item.
+     *
+     * @param context the DSpace context
+     * @param item    the item to inspect
+     * @return the embargo terms metadata values (empty if the item is not under embargo)
+     */
+    public List<MetadataValue> getEmbargoTermsMetadata(Context context, Item item);
+
     public Iterator<Item> findItemsByLiftMetadata(Context context) throws SQLException, IOException, AuthorizeException;
 
     // DATASHARE - start
