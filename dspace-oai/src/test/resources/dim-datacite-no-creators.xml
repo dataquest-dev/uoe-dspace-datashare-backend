@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    The contents of this file are subject to the license and copyright
+    detailed in the LICENSE and NOTICE files at the root of the source
+    tree and available online at
+
+    http://www.dspace.org/license/
+
+-->
+<!-- No author metadata at all; lower-case "software" type. -->
+<dim:dim xmlns:dim="http://www.dspace.org/xmlns/dspace/dim" dspaceType="ITEM">
+  <dim:field mdschema="dc" element="title">No authors at all</dim:field>
+  <dim:field mdschema="dc" element="type">software</dim:field>
+</dim:dim>

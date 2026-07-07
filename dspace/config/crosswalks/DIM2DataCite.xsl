@@ -9,6 +9,13 @@
        C3 — Rights: handle dc.rights.uri qualifier as <rights rightsURI="…"/>.
        C4 — Rights: detect "Creative Commons Attribution 4.0" and add SPDX
             rightsIdentifier=CC-BY-4.0, schemeURI, etc.
+       C5 — Creators: also build <creator>s from dc.creator (not only
+            dc.contributor.author). The DSpace 5.x -> 8 migration moved author
+            names into dc.creator, so migrated items were registering DOIs with
+            "(:unkn) unknown" creators (issue #786).
+       C6 — ResourceType: match dc.type case-insensitively so migrated lower-case
+            values (e.g. "dataset") keep resourceTypeGeneral="Dataset" instead of
+            being downgraded to "Other" (issue #786).
      Search for "DATASHARE" markers below to locate each customization.
   -->
 
@@ -98,9 +105,18 @@
             -->
             <creators>
                 <xsl:choose>
-                    <xsl:when test="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='author']">
-                        <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='author']" />
+                    <!-- // DATASHARE - start (C5) build creators from dc.creator as well as
+                         dc.contributor.author. The DSpace 5.x -> 8 migration moved author
+                         names from dc.contributor.author into dc.creator, so items registered
+                         after the migration otherwise fell through to the "(:unkn) unknown"
+                         placeholder (customers issue #786). Only NON-EMPTY values switch on
+                         this branch, so a present-but-blank field can neither suppress the
+                         fallback nor emit an empty (schema-invalid) creatorName. -->
+                    <xsl:when test="//dspace:field[@mdschema='dc' and ((@element='contributor' and @qualifier='author') or @element='creator') and normalize-space(.) != '']">
+                        <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='author' and normalize-space(.) != '']" />
+                        <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='creator' and normalize-space(.) != '']" />
                     </xsl:when>
+                    <!-- // DATASHARE - end (C5) -->
                     <xsl:otherwise>
                         <creator>
                             <creatorName>(:unkn) unknown</creatorName>
@@ -373,7 +389,7 @@
         </xsl:if>
     </xsl:template>
 
-    <!-- DataCite (2) :: Creator -->
+    <!-- DataCite (2) :: Creator (dc.contributor.author) -->
     <xsl:template match="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='author']">
         <creator>
             <creatorName>
@@ -381,6 +397,19 @@
             </creatorName>
         </creator>
     </xsl:template>
+
+    <!-- DataCite (2) :: Creator (dc.creator) -->
+    <!-- // DATASHARE - start (C5) DataShare holds author names in dc.creator; map them to
+         <creator> exactly like dc.contributor.author so migrated items keep their authors
+         in the registered DataCite metadata instead of "(:unkn) unknown" (issue #786). -->
+    <xsl:template match="//dspace:field[@mdschema='dc' and @element='creator']">
+        <creator>
+            <creatorName>
+                <xsl:value-of select="." />
+            </creatorName>
+        </creator>
+    </xsl:template>
+    <!-- // DATASHARE - end (C5) -->
 
     <!-- DataCite (3) :: Title -->
     <xsl:template match="dspace:field[@mdschema='dc' and @element='title']">
@@ -547,33 +576,38 @@
     -->
     <xsl:template match="//dspace:field[@mdschema='dc' and @element='type'][1]">
         <xsl:element name="resourceType">
+            <!-- // DATASHARE - start (C6) match the DSpace type case-insensitively. After the
+                 migration dc.type values are stored lower-case (e.g. "dataset"), which the
+                 case-sensitive comparison below downgraded to resourceTypeGeneral="Other"
+                 (issue #786: "Dataset" became "Other" on migrated items). -->
+            <xsl:variable name="typeLower" select="lower-case(normalize-space(string(text())))" />
             <xsl:attribute name="resourceTypeGeneral">
                 <xsl:choose>
-                    <xsl:when test="string(text())='Animation'">Audiovisual</xsl:when>
-                    <xsl:when test="string(text())='Article'">JournalArticle</xsl:when>
-                    <xsl:when test="string(text())='Book'">Book</xsl:when>
-                    <xsl:when test="string(text())='Book chapter'">BookChapter</xsl:when>
-                    <xsl:when test="string(text())='Dataset'">Dataset</xsl:when>
-                    <xsl:when test="string(text())='Learning Object'">InteractiveResource</xsl:when>
-                    <xsl:when test="string(text())='Image'">Image</xsl:when>
-                    <xsl:when test="string(text())='Image, 3-D'">Image</xsl:when>
-                    <xsl:when test="string(text())='Map'">Model</xsl:when>
-                    <xsl:when test="string(text())='Musical Score'">Other</xsl:when>
-                    <xsl:when test="string(text())='Plan or blueprint'">Model</xsl:when>
-                    <xsl:when test="string(text())='Preprint'">Preprint</xsl:when>
-                    <xsl:when test="string(text())='Presentation'">Other</xsl:when>
-                    <xsl:when test="string(text())='Recording, acoustical'">Sound</xsl:when>
-                    <xsl:when test="string(text())='Recording, musical'">Sound</xsl:when>
-                    <xsl:when test="string(text())='Recording, oral'">Sound</xsl:when>
-                    <xsl:when test="string(text())='Software'">Software</xsl:when>
-                    <xsl:when test="string(text())='Technical Report'">Report</xsl:when>
-                    <xsl:when test="string(text())='Thesis'">Dissertation</xsl:when>
-                    <xsl:when test="string(text())='Video'">Audiovisual</xsl:when>
-                    <xsl:when test="string(text())='Working Paper'">Text</xsl:when>
-                    <xsl:when test="string(text())='Other'">Other</xsl:when>
+                    <xsl:when test="$typeLower='animation'">Audiovisual</xsl:when>
+                    <xsl:when test="$typeLower='article'">JournalArticle</xsl:when>
+                    <xsl:when test="$typeLower='book'">Book</xsl:when>
+                    <xsl:when test="$typeLower='book chapter'">BookChapter</xsl:when>
+                    <xsl:when test="$typeLower='dataset'">Dataset</xsl:when>
+                    <xsl:when test="$typeLower='learning object'">InteractiveResource</xsl:when>
+                    <xsl:when test="$typeLower='image'">Image</xsl:when>
+                    <xsl:when test="$typeLower='image, 3-d'">Image</xsl:when>
+                    <xsl:when test="$typeLower='map'">Model</xsl:when>
+                    <xsl:when test="$typeLower='musical score'">Other</xsl:when>
+                    <xsl:when test="$typeLower='plan or blueprint'">Model</xsl:when>
+                    <xsl:when test="$typeLower='preprint'">Preprint</xsl:when>
+                    <xsl:when test="$typeLower='presentation'">Other</xsl:when>
+                    <xsl:when test="$typeLower='recording, acoustical'">Sound</xsl:when>
+                    <xsl:when test="$typeLower='recording, musical'">Sound</xsl:when>
+                    <xsl:when test="$typeLower='recording, oral'">Sound</xsl:when>
+                    <xsl:when test="$typeLower='software'">Software</xsl:when>
+                    <xsl:when test="$typeLower='technical report'">Report</xsl:when>
+                    <xsl:when test="$typeLower='thesis'">Dissertation</xsl:when>
+                    <xsl:when test="$typeLower='video'">Audiovisual</xsl:when>
+                    <xsl:when test="$typeLower='working paper'">Text</xsl:when>
                     <xsl:otherwise>Other</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
+            <!-- // DATASHARE - end (C6) -->
             <xsl:value-of select="." />
         </xsl:element>
     </xsl:template>
