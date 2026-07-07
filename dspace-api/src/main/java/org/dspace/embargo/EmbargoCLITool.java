@@ -185,44 +185,47 @@ public class EmbargoCLITool {
     protected static boolean processOneItem(Context context, Item item, CommandLine line, Date now)
         throws Exception {
         boolean status = false;
-        List<MetadataValue> lift = embargoService.getLiftMetadata(context, item);
-
-        if (lift.size() > 0) {
-            DCDate liftDate = new DCDate(lift.get(0).getValue());
-            // need to survive any failure on a single item, go on to process the rest.
-            try {
-                if (line.hasOption('a')) {
-                    embargoService.setEmbargo(context, item);
-                } else {
-                    log.debug("Testing embargo on item=" + item.getHandle() + ", date=" + liftDate.toString());
-                    if (liftDate.toDate().before(now)) {
-                        if (line.hasOption('v')) {
-                            System.err.println(
-                                "Lifting embargo from Item handle=" + item.getHandle() + ", lift date=" +
-                                    lift.get(0).getValue());
-                        }
-                        if (line.hasOption('n')) {
-                            if (!line.hasOption('q')) {
-                                System.err.println("DRY RUN: would have lifted embargo from Item handle=" + item
-                                    .getHandle() + ", lift date=" + lift.get(0).getValue());
-                            }
-                        } else if (!line.hasOption('c')) {
-                            embargoService.liftEmbargo(context, item);
-                        }
-                    } else if (!line.hasOption('l')) {
-                        if (line.hasOption('v')) {
-                            System.err.println(
-                                "Checking current embargo on Item handle=" + item.getHandle() + ", lift date=" + lift
-                                    .get(0).getValue());
-                        }
-                        embargoService.checkEmbargo(context, item);
-                    }
-                }
-            } catch (IOException | SQLException | AuthorizeException e) {
-                log.error("Failed attempting to lift embargo, item=" + item.getHandle() + ": ", e);
-                System.err.println("Failed attempting to lift embargo, item=" + item.getHandle() + ": " + e);
-                status = true;
+        // need to survive any failure on a single item, go on to process the rest.
+        try {
+            if (line.hasOption('a')) {
+                // Adjust: (re)apply the embargo access policies from the item's terms. This must run
+                // even when the lift date (dc.date.available) has not been computed yet, so it is not
+                // gated on lift metadata being present.
+                embargoService.setEmbargo(context, item);
+                return status;
             }
+
+            List<MetadataValue> lift = embargoService.getLiftMetadata(context, item);
+            if (lift.size() > 0) {
+                DCDate liftDate = new DCDate(lift.get(0).getValue());
+                log.debug("Testing embargo on item=" + item.getHandle() + ", date=" + liftDate.toString());
+                if (liftDate.toDate().before(now)) {
+                    if (line.hasOption('v')) {
+                        System.err.println(
+                            "Lifting embargo from Item handle=" + item.getHandle() + ", lift date=" +
+                                lift.get(0).getValue());
+                    }
+                    if (line.hasOption('n')) {
+                        if (!line.hasOption('q')) {
+                            System.err.println("DRY RUN: would have lifted embargo from Item handle=" + item
+                                .getHandle() + ", lift date=" + lift.get(0).getValue());
+                        }
+                    } else if (!line.hasOption('c')) {
+                        embargoService.liftEmbargo(context, item);
+                    }
+                } else if (!line.hasOption('l')) {
+                    if (line.hasOption('v')) {
+                        System.err.println(
+                            "Checking current embargo on Item handle=" + item.getHandle() + ", lift date=" + lift
+                                .get(0).getValue());
+                    }
+                    embargoService.checkEmbargo(context, item);
+                }
+            }
+        } catch (IOException | SQLException | AuthorizeException e) {
+            log.error("Failed attempting to lift embargo, item=" + item.getHandle() + ": ", e);
+            System.err.println("Failed attempting to lift embargo, item=" + item.getHandle() + ": " + e);
+            status = true;
         }
         return status;
     }

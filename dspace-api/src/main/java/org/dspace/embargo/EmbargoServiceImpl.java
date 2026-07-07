@@ -308,7 +308,7 @@ public class EmbargoServiceImpl implements EmbargoService {
             LocalDate now = LocalDate.now();
             DayOfWeek dayNow = now.getDayOfWeek();
 
-            // Ignore today if is Saturday && Sunday
+            // Skip weekends (Saturday or Sunday); only run on weekdays.
             if (dayNow != DayOfWeek.SATURDAY && dayNow != DayOfWeek.SUNDAY) {
                 // Iterate only genuinely embargoed items (those carrying embargo.field.terms) rather
                 // than every item that has embargo.field.lift = dc.date.available, which is present on
