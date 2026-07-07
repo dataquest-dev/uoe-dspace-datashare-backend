@@ -66,12 +66,14 @@ public class DataCiteXslTest {
         if (input == null) {
             throw new IllegalArgumentException("Test fixture not found on classpath: " + fixture);
         }
-        Transformer transformer = factory.newTransformer(new StreamSource(CROSSWALK));
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        transformer.transform(new StreamSource(input), new StreamResult(out));
-        // Decode as UTF-8 explicitly: the crosswalk emits UTF-8 and the default platform
-        // charset would make the XML/XPath assertions environment-dependent.
-        return out.toString(StandardCharsets.UTF_8);
+        try (input) {
+            Transformer transformer = factory.newTransformer(new StreamSource(CROSSWALK));
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            transformer.transform(new StreamSource(input), new StreamResult(out));
+            // Decode as UTF-8 explicitly: the crosswalk emits UTF-8 and the default platform
+            // charset would make the XML/XPath assertions environment-dependent.
+            return out.toString(StandardCharsets.UTF_8);
+        }
     }
 
     /** dc.creator alone must populate the creators (vanilla read only dc.contributor.author). */
