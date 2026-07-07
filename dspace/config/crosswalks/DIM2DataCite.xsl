@@ -580,7 +580,7 @@
                  migration dc.type values are stored lower-case (e.g. "dataset"), which the
                  case-sensitive comparison below downgraded to resourceTypeGeneral="Other"
                  (issue #786: "Dataset" became "Other" on migrated items). -->
-            <xsl:variable name="typeLower" select="lower-case(normalize-space(string(text())))" />
+            <xsl:variable name="typeLower" select="lower-case(normalize-space(.))" />
             <xsl:attribute name="resourceTypeGeneral">
                 <xsl:choose>
                     <xsl:when test="$typeLower='animation'">Audiovisual</xsl:when>

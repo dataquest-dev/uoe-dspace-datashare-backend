@@ -14,6 +14,8 @@ import static org.hamcrest.core.IsEqual.equalTo;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
@@ -60,12 +62,16 @@ public class DataCiteXslTest {
         new File("../dspace/config/crosswalks/DIM2DataCite.xsl");
 
     private String transform(String fixture) throws Exception {
+        InputStream input = getClass().getClassLoader().getResourceAsStream(fixture);
+        if (input == null) {
+            throw new IllegalArgumentException("Test fixture not found on classpath: " + fixture);
+        }
         Transformer transformer = factory.newTransformer(new StreamSource(CROSSWALK));
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        transformer.transform(
-            new StreamSource(getClass().getClassLoader().getResourceAsStream(fixture)),
-            new StreamResult(out));
-        return out.toString();
+        transformer.transform(new StreamSource(input), new StreamResult(out));
+        // Decode as UTF-8 explicitly: the crosswalk emits UTF-8 and the default platform
+        // charset would make the XML/XPath assertions environment-dependent.
+        return out.toString(StandardCharsets.UTF_8);
     }
 
     /** dc.creator alone must populate the creators (vanilla read only dc.contributor.author). */
