@@ -143,7 +143,9 @@ public class EmbargoCLITool {
                     }
                 }
             } else {
-                Iterator<Item> ii = embargoService.findItemsByLiftMetadata(context);
+                // Iterate only genuinely embargoed items (those carrying embargo.field.terms), not
+                // every item with embargo.field.lift = dc.date.available (see dspace-customers#788).
+                Iterator<Item> ii = embargoService.findItemsByEmbargoTermsMetadata(context);
                 while (ii.hasNext()) {
                     Item item = ii.next();
                     if (processOneItem(context, item, line, now)) {
@@ -178,10 +180,9 @@ public class EmbargoCLITool {
         boolean status = false;
 
         // DATASHARE (UoE): only act on items that are genuinely under embargo, i.e. that carry the
-        // embargo terms field (embargo.field.terms, e.g. dc.date.embargo). embargo.field.lift is
-        // dc.date.available - a field every archived item has - so findItemsByLiftMetadata() matches
-        // the whole repository; without this guard we would "lift" and rewrite metadata on every
-        // item, not just embargoed ones (see dspace-customers#788).
+        // embargo terms field (embargo.field.terms, e.g. dc.date.embargo). The no-argument run now
+        // iterates by that field, but the -i path resolves arbitrary handles, so we also guard here
+        // to avoid rewriting metadata on a non-embargoed item (see dspace-customers#788).
         if (embargoService.getEmbargoTermsMetadata(context, item).isEmpty()) {
             return false;
         }

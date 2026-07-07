@@ -115,6 +115,18 @@ public interface EmbargoService {
 
     public Iterator<Item> findItemsByLiftMetadata(Context context) throws SQLException, IOException, AuthorizeException;
 
+    /**
+     * Find all items that carry the embargo terms field (embargo.field.terms, e.g. dc.date.embargo).
+     * Only items actually placed under embargo have that field, so - unlike
+     * {@link #findItemsByLiftMetadata(Context)}, whose lift field (dc.date.available) is present on
+     * every archived item - this visits only genuinely embargoed items.
+     *
+     * @param context the DSpace context
+     * @return iterator over items that are under embargo
+     */
+    public Iterator<Item> findItemsByEmbargoTermsMetadata(Context context)
+        throws SQLException, IOException, AuthorizeException;
+
     // DATASHARE - start
     /**
      * Check for any items whose embargo is about to expire.

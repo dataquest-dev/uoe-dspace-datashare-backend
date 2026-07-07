@@ -161,14 +161,24 @@ public class EmbargoServiceImpl implements EmbargoService {
         // (embargo.field.terms, e.g. dc.date.embargo) so it no longer lingers on the item.
         itemService.clearMetadata(context, item, terms_schema, terms_element, terms_qualifier, Item.ANY);
 
-        // DATASHARE (UoE): keep dc.date.available as-is. Because embargo.field.lift is
-        // dc.date.available, it already holds the embargo lift date - the real date the item
-        // became available - so we must NOT overwrite it with the date this job happens to run
-        // (stock DSpace re-stamps dc.date.available to "now" here, which would wrongly report a
-        // long-embargoed item as only just made available).
+        // DATASHARE (UoE): in this deployment embargo.field.lift is dc.date.available, which already
+        // holds the embargo lift date - the real date the item became available - so we keep it as-is
+        // rather than re-stamping it to the date this job happens to run (stock DSpace would set it to
+        // "now", wrongly reporting a long-embargoed item as only just made available). Under any other
+        // configuration, where the lift field is a separate administrative field, clear it so a stale
+        // computed lift date does not linger.
+        if (!isDateAvailableField(lift_schema, lift_element, lift_qualifier)) {
+            itemService.clearMetadata(context, item, lift_schema, lift_element, lift_qualifier, Item.ANY);
+        }
 
         log.info("Lifting embargo on Item " + item.getHandle());
         itemService.update(context, item);
+    }
+
+    // True if the given metadata field is dc.date.available - the availability date that every
+    // archived item carries and that this deployment also uses as embargo.field.lift.
+    private static boolean isDateAvailableField(String schema, String element, String qualifier) {
+        return "dc".equals(schema) && "date".equals(element) && "available".equals(qualifier);
     }
 
     /**
@@ -263,6 +273,15 @@ public class EmbargoServiceImpl implements EmbargoService {
         return itemService.findByMetadataField(context, lift_schema, lift_element, lift_qualifier, Item.ANY);
     }
 
+    @Override
+    public Iterator<Item> findItemsByEmbargoTermsMetadata(Context context)
+            throws SQLException, IOException, AuthorizeException {
+        // Only genuinely embargoed items carry embargo.field.terms (e.g. dc.date.embargo), so this
+        // visits just those items - unlike findItemsByLiftMetadata(), whose lift field
+        // (dc.date.available) is present on the entire archive (see dspace-customers#788).
+        return itemService.findByMetadataField(context, terms_schema, terms_element, terms_qualifier, Item.ANY);
+    }
+
     // DATASHARE - start
     /**
      * Check for any items whose embargo is about to expire.
@@ -278,16 +297,17 @@ public class EmbargoServiceImpl implements EmbargoService {
 
             // Ignore today if is Saturday && Sunday
             if (dayNow != DayOfWeek.SATURDAY && dayNow != DayOfWeek.SUNDAY) {
-                Iterator<Item> ii = findItemsByLiftMetadata(context);
+                // Iterate only genuinely embargoed items (those carrying embargo.field.terms) rather
+                // than every item that has embargo.field.lift = dc.date.available, which is present on
+                // the whole archive (see dspace-customers#788).
+                Iterator<Item> ii = findItemsByEmbargoTermsMetadata(context);
 
                 while (ii.hasNext()) {
                     Item item = ii.next();
                     DCDate liftDCDate = getEmbargoTermsAsDate(context, item);
 
-                    // DATASHARE (UoE): findItemsByLiftMetadata() is keyed on dc.date.available, which
-                    // every archived item carries, so most items reached here are not actually under
-                    // embargo and have no terms date. Skip them (this also avoids a NullPointerException
-                    // on the liftDCDate.displayDate(...) call below).
+                    // Safety net: skip anything with no/unparsable terms date (also avoids a
+                    // NullPointerException on the liftDCDate.displayDate(...) call below).
                     if (liftDCDate == null) {
                         continue;
                     }
