@@ -24,12 +24,10 @@ import org.dspace.builder.BitstreamBuilder;
 import org.dspace.builder.CollectionBuilder;
 import org.dspace.builder.CommunityBuilder;
 import org.dspace.builder.ItemBuilder;
-import org.dspace.content.Bundle;
 import org.dspace.content.Collection;
 import org.dspace.content.Item;
 import org.dspace.content.datashare.service.DatashareDatasetService;
 import org.dspace.content.factory.ContentServiceFactory;
-import org.dspace.content.service.ItemService;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
 import org.junit.After;
@@ -59,7 +57,6 @@ public class DatashareZipLinkCacheBustIT extends AbstractControllerIntegrationTe
 
     private final DatashareDatasetService datasetService =
             ContentServiceFactory.getInstance().getDatashareDatasetService();
-    private final ItemService itemService = ContentServiceFactory.getInstance().getItemService();
     private final ConfigurationService configurationService =
             DSpaceServicesFactory.getInstance().getConfigurationService();
 
@@ -131,7 +128,6 @@ public class DatashareZipLinkCacheBustIT extends AbstractControllerIntegrationTe
     public void zipFileLinkVersionChangesAfterRegeneration() throws Exception {
         context.turnOffAuthorisationSystem();
         Item item = archivedItemWithGeneratedZip();
-        Bundle original = itemService.getBundles(item, "ORIGINAL").get(0);
         context.restoreAuthSystemState();
 
         String before = fetchLink(item);
