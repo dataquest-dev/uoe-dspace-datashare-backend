@@ -37,14 +37,20 @@ import org.junit.Test;
  * so migrated items registered DOIs with {@code "(:unkn) unknown"} creators and
  * {@code resourceTypeGeneral="Other"} (issue #786).
  *
- * <p>These tests pin the patched behaviour:
+ * <p>These tests pin the patched behaviour, which follows the "Mapping between
+ * Datashare and DataCite metadata fields" wiki:
  * <ul>
  *   <li>creators are built from {@code dc.creator} as well as
- *       {@code dc.contributor.author};</li>
+ *       {@code dc.contributor.author}, with a {@code dc.publisher} fallback before
+ *       the {@code (:unkn) unknown} placeholder;</li>
  *   <li>a present-but-blank creator value does not emit an empty (schema-invalid)
  *       {@code creatorName} nor suppress the {@code (:unkn) unknown} fallback;</li>
- *   <li>{@code dc.type} is matched case-insensitively so {@code "dataset"} keeps
- *       {@code resourceTypeGeneral="Dataset"}.</li>
+ *   <li>{@code dc.type} is mapped to {@code resourceTypeGeneral} per the spec and
+ *       matched case-insensitively so {@code "dataset"} keeps {@code "Dataset"};</li>
+ *   <li>{@code dc.contributor} (the depositor) becomes a {@code ContactPerson} and the
+ *       vanilla {@code DataManager}/{@code HostingInstitution} ("My University")
+ *       contributors are gone;</li>
+ *   <li>{@code dc.contributor.other} (funders) becomes {@code fundingReferences}.</li>
  * </ul>
  *
  * <p>Mirrors the {@link AbstractXSLTest}/{@link OpenaireXslTest} harness (offline
@@ -158,6 +164,71 @@ public class DataCiteXslTest {
                 .withXPath("count(//d:creators/d:creator)", equalTo("2"))
                 .withXPath("//d:creators/d:creator[1]/d:creatorName", equalTo("Author, Primary"))
                 .withXPath("//d:creators/d:creator[2]/d:creatorName", equalTo("Creator, Secondary"))));
+    }
+
+    /** With no creator/author but a dc.publisher, the publisher is used as the creator. */
+    @Test
+    public void usesPublisherAsCreatorWhenNoCreator() throws Exception {
+        String result = transform("dim-datacite-publisher-fallback.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("count(//d:creators/d:creator)", equalTo("1"))
+                .withXPath("//d:creators/d:creator/d:creatorName", equalTo("University of Edinburgh"))));
+    }
+
+    /** Spec mapping: dc.type "article" maps to resourceTypeGeneral="Text". */
+    @Test
+    public void mapsArticleTypeToText() throws Exception {
+        String result = transform("dim-datacite-publisher-fallback.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("//d:resourceType/@resourceTypeGeneral", equalTo("Text"))));
+    }
+
+    /** The depositor (unqualified dc.contributor) maps to a ContactPerson contributor. */
+    @Test
+    public void mapsDepositorToContactPerson() throws Exception {
+        String result = transform("dim-datacite-creator.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("count(//d:contributors/d:contributor)", equalTo("1"))
+                .withXPath("//d:contributors/d:contributor/@contributorType", equalTo("ContactPerson"))
+                .withXPath("//d:contributors/d:contributor/d:contributorName", equalTo("Nudelman, Fabio"))));
+    }
+
+    /**
+     * The vanilla DataManager/HostingInstitution contributors (which rendered as the
+     * unconfigured "My University" placeholder) must no longer be emitted.
+     */
+    @Test
+    public void doesNotEmitPlaceholderInstitutionContributors() throws Exception {
+        String result = transform("dim-datacite-creator.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("count(//d:contributor[@contributorType='DataManager'])", equalTo("0"))
+                .withXPath("count(//d:contributor[@contributorType='HostingInstitution'])", equalTo("0"))
+                .withXPath("count(//d:contributorName[contains(., 'My University')])", equalTo("0"))));
+    }
+
+    /** dc.contributor.other (funder) maps to a fundingReference, not a contributor. */
+    @Test
+    public void mapsFunderToFundingReference() throws Exception {
+        String result = transform("dim-datacite-creator.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("count(//d:fundingReferences/d:fundingReference)", equalTo("1"))
+                .withXPath("//d:fundingReferences/d:fundingReference/d:funderName",
+                        equalTo("EPSRC - Engineering and Physical Sciences Research Council"))
+                .withXPath("count(//d:contributorName[contains(., 'EPSRC')])", equalTo("0"))));
+    }
+
+    /** No <contributors> element is emitted when there is no depositor contributor. */
+    @Test
+    public void omitsContributorsWhenNoDepositor() throws Exception {
+        String result = transform("dim-datacite-both.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("count(//d:contributors)", equalTo("0"))));
     }
 
     private XmlMatcherBuilder datacite() {
