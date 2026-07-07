@@ -37,20 +37,23 @@ import org.junit.Test;
  * so migrated items registered DOIs with {@code "(:unkn) unknown"} creators and
  * {@code resourceTypeGeneral="Other"} (issue #786).
  *
- * <p>These tests pin the patched behaviour, which follows the "Mapping between
- * Datashare and DataCite metadata fields" wiki:
+ * <p>These tests pin the patched behaviour, which restores the pre-migration
+ * DataShare output (verified against the live DataCite records of DOIs registered
+ * before the DSpace-8 migration):
  * <ul>
  *   <li>creators are built from {@code dc.creator} as well as
- *       {@code dc.contributor.author}, with a {@code dc.publisher} fallback before
- *       the {@code (:unkn) unknown} placeholder;</li>
+ *       {@code dc.contributor.author}; with neither, the {@code (:unkn) unknown}
+ *       placeholder is kept;</li>
  *   <li>a present-but-blank creator value does not emit an empty (schema-invalid)
- *       {@code creatorName} nor suppress the {@code (:unkn) unknown} fallback;</li>
- *   <li>{@code dc.type} is mapped to {@code resourceTypeGeneral} per the spec and
- *       matched case-insensitively so {@code "dataset"} keeps {@code "Dataset"};</li>
+ *       {@code creatorName} nor suppress that fallback;</li>
+ *   <li>{@code dc.type} is matched case-insensitively so {@code "dataset"} keeps
+ *       {@code "Dataset"}, and the DataShare-specific values {@code "sound"},
+ *       {@code "moving image"} and {@code "interactive resource"} map correctly;</li>
  *   <li>{@code dc.contributor} (the depositor) becomes a {@code ContactPerson} and the
  *       vanilla {@code DataManager}/{@code HostingInstitution} ("My University")
  *       contributors are gone;</li>
- *   <li>{@code dc.contributor.other} (funders) becomes {@code fundingReferences}.</li>
+ *   <li>{@code dc.contributor.other} is dropped (as v5 did) — no funder metadata is
+ *       registered.</li>
  * </ul>
  *
  * <p>Mirrors the {@link AbstractXSLTest}/{@link OpenaireXslTest} harness (offline
@@ -166,25 +169,6 @@ public class DataCiteXslTest {
                 .withXPath("//d:creators/d:creator[2]/d:creatorName", equalTo("Creator, Secondary"))));
     }
 
-    /** With no creator/author but a dc.publisher, the publisher is used as the creator. */
-    @Test
-    public void usesPublisherAsCreatorWhenNoCreator() throws Exception {
-        String result = transform("dim-datacite-publisher-fallback.xml");
-
-        assertThat(result, is(datacite()
-                .withXPath("count(//d:creators/d:creator)", equalTo("1"))
-                .withXPath("//d:creators/d:creator/d:creatorName", equalTo("University of Edinburgh"))));
-    }
-
-    /** Spec mapping: dc.type "article" maps to resourceTypeGeneral="Text". */
-    @Test
-    public void mapsArticleTypeToText() throws Exception {
-        String result = transform("dim-datacite-publisher-fallback.xml");
-
-        assertThat(result, is(datacite()
-                .withXPath("//d:resourceType/@resourceTypeGeneral", equalTo("Text"))));
-    }
-
     /** The depositor (unqualified dc.contributor) maps to a ContactPerson contributor. */
     @Test
     public void mapsDepositorToContactPerson() throws Exception {
@@ -210,16 +194,17 @@ public class DataCiteXslTest {
                 .withXPath("count(//d:contributorName[contains(., 'My University')])", equalTo("0"))));
     }
 
-    /** dc.contributor.other (funder) maps to a fundingReference, not a contributor. */
+    /**
+     * dc.contributor.other (a dirty free-text "funder" field) is dropped entirely, as
+     * production DataShare v5 did: it becomes neither a fundingReference nor a contributor.
+     */
     @Test
-    public void mapsFunderToFundingReference() throws Exception {
+    public void dropsContributorOther() throws Exception {
         String result = transform("dim-datacite-creator.xml");
 
         assertThat(result, is(datacite()
-                .withXPath("count(//d:fundingReferences/d:fundingReference)", equalTo("1"))
-                .withXPath("//d:fundingReferences/d:fundingReference/d:funderName",
-                        equalTo("EPSRC - Engineering and Physical Sciences Research Council"))
-                .withXPath("count(//d:contributorName[contains(., 'EPSRC')])", equalTo("0"))));
+                .withXPath("count(//d:fundingReferences)", equalTo("0"))
+                .withXPath("count(//*[contains(., 'EPSRC')])", equalTo("0"))));
     }
 
     /** No <contributors> element is emitted when there is no depositor contributor. */
@@ -229,6 +214,33 @@ public class DataCiteXslTest {
 
         assertThat(result, is(datacite()
                 .withXPath("count(//d:contributors)", equalTo("0"))));
+    }
+
+    /** DataShare-specific dc.type "sound" maps to resourceTypeGeneral="Sound". */
+    @Test
+    public void mapsSoundType() throws Exception {
+        String result = transform("dim-datacite-type-sound.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("//d:resourceType/@resourceTypeGeneral", equalTo("Sound"))));
+    }
+
+    /** DataShare-specific dc.type "moving image" maps to resourceTypeGeneral="Audiovisual". */
+    @Test
+    public void mapsMovingImageType() throws Exception {
+        String result = transform("dim-datacite-type-moving-image.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("//d:resourceType/@resourceTypeGeneral", equalTo("Audiovisual"))));
+    }
+
+    /** DataShare-specific dc.type "interactive resource" maps to resourceTypeGeneral="InteractiveResource". */
+    @Test
+    public void mapsInteractiveResourceType() throws Exception {
+        String result = transform("dim-datacite-type-interactive-resource.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("//d:resourceType/@resourceTypeGeneral", equalTo("InteractiveResource"))));
     }
 
     private XmlMatcherBuilder datacite() {

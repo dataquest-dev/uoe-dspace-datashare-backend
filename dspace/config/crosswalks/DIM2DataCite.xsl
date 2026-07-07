@@ -10,20 +10,19 @@
        C4 — Rights: detect "Creative Commons Attribution 4.0" and add SPDX
             rightsIdentifier=CC-BY-4.0, schemeURI, etc.
        C5 — Creators: also build <creator>s from dc.creator (not only
-            dc.contributor.author), with a dc.publisher fallback before the
-            "(:unkn) unknown" placeholder. The DSpace 5.x -> 8 migration moved
-            author names into dc.creator, so migrated items were registering DOIs
-            with "(:unkn) unknown" creators (issue #786).
-       C6 — ResourceType: map dc.type to resourceTypeGeneral per the documented
-            DataShare -> DataCite mapping, matched case-insensitively so migrated
-            lower-case values (e.g. "dataset") keep resourceTypeGeneral="Dataset"
-            instead of being downgraded to "Other" (issue #786).
+            dc.contributor.author). DataShare holds author names in dc.creator, so
+            the vanilla DSpace-8 crosswalk registered DOIs with "(:unkn) unknown"
+            creators (issue #786).
+       C6 — ResourceType: match dc.type case-insensitively (so lower-case "dataset"
+            keeps resourceTypeGeneral="Dataset" instead of "Other", issue #786) and
+            add the DataShare-specific values "moving image", "interactive resource"
+            and "sound" that the vanilla list omits.
        C7 — Contributors: map dc.contributor (depositor) to ContactPerson and
             remove the vanilla DataManager/HostingInstitution contributors, which
             rendered as an unconfigured "My University" contributor on every DOI.
-       C8 — FundingReferences: map dc.contributor.other (funders) to
-            fundingReferences/funderName instead of a generic contributor.
-     These follow the "Mapping between Datashare and DataCite metadata fields" wiki.
+            dc.contributor.other is dropped, matching v5 (see DataCite (19)).
+     These restore the pre-migration DataShare output verified against the live
+     DataCite records of DOIs registered before the DSpace-8 migration.
      Search for "DATASHARE" markers below to locate each customization.
   -->
 
@@ -115,25 +114,15 @@
             <creators>
                 <xsl:choose>
                     <!-- // DATASHARE - start (C5) build creators from dc.creator as well as
-                         dc.contributor.author. The DSpace 5.x -> 8 migration moved author
-                         names from dc.contributor.author into dc.creator, so items registered
-                         after the migration otherwise fell through to the "(:unkn) unknown"
-                         placeholder (customers issue #786). Only NON-EMPTY values switch on
-                         this branch, so a present-but-blank field can neither suppress the
-                         fallback nor emit an empty (schema-invalid) creatorName. -->
+                         dc.contributor.author. DataShare holds author names in dc.creator, but
+                         the vanilla DSpace-8 crosswalk that replaced DataShare's custom one only
+                         read dc.contributor.author, so DOIs were registered with "(:unkn) unknown"
+                         creators (issue #786). Only NON-EMPTY values switch on this branch, so a
+                         present-but-blank field can neither suppress the fallback nor emit an
+                         empty (schema-invalid) creatorName. -->
                     <xsl:when test="//dspace:field[@mdschema='dc' and ((@element='contributor' and @qualifier='author') or @element='creator') and normalize-space(.) != '']">
                         <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='author' and normalize-space(.) != '']" />
                         <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='creator' and normalize-space(.) != '']" />
-                    </xsl:when>
-                    <!-- Per the DataShare -> DataCite mapping spec: when there is no creator,
-                         fall back to the publisher (the depositing institution) as creator
-                         before resorting to the "(:unkn) unknown" placeholder. -->
-                    <xsl:when test="//dspace:field[@mdschema='dc' and @element='publisher' and normalize-space(.) != '']">
-                        <creator>
-                            <creatorName>
-                                <xsl:value-of select="//dspace:field[@mdschema='dc' and @element='publisher' and normalize-space(.) != ''][1]" />
-                            </creatorName>
-                        </creator>
                     </xsl:when>
                     <!-- // DATASHARE - end (C5) -->
                     <xsl:otherwise>
@@ -234,9 +223,9 @@
                  vanilla DataManager/HostingInstitution contributors are removed: they are
                  not part of the DataShare mapping and, because the publisher/datamanager/
                  hostingInstitution parameters were left at the "My University" placeholder,
-                 they rendered as a bogus "My University" contributor on every DOI. Funders
-                 (dc.contributor.other) are emitted as fundingReferences (C8) instead of
-                 contributors. Only emit <contributors> when there is at least one, so we
+                 they rendered as a bogus "My University" contributor on every DOI.
+                 dc.contributor.other is excluded here (and dropped entirely, as v5 did — see
+                 DataCite (19)). Only emit <contributors> when there is at least one, so we
                  never produce an empty (schema-invalid) element. -->
             <xsl:if test="//dspace:field[@mdschema='dc' and @element='contributor' and not(@qualifier='author') and not(@qualifier='other') and normalize-space(.) != '']">
                 <contributors>
@@ -377,36 +366,19 @@
             <!--
                 DataCite (19)
                 FundingReference
+                // DATASHARE (C8 removed): dc.contributor.other holds a free-text "funder"
+                field, but production DataShare v5 never emitted fundingReferences (0 of the
+                repository's ~7800 DOIs carry one) and the field is dirty (values such as
+                "Self-funded", "Other", the depositing institution, or bare grant numbers).
+                To stay faithful to the pre-migration output we drop it entirely, exactly as
+                v5 did, rather than register incorrect funder metadata with DataCite.
             -->
-            <!-- // DATASHARE - start (C8) Per the DataShare -> DataCite mapping spec,
-                 dc.contributor.other holds funder names, which map to fundingReferences
-                 (funderName), not to <contributors>. -->
-            <xsl:if test="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='other' and normalize-space(.) != '']">
-                <fundingReferences>
-                    <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='other' and normalize-space(.) != '']" mode="funding" />
-                </fundingReferences>
-            </xsl:if>
-            <!-- // DATASHARE - end (C8) -->
             <!--
                 DataCite (20)
                 RelatedItem
             -->
         </resource>
     </xsl:template>
-
-    <!--
-        DataCite (19), DataCite (19.1)
-        Adds a fundingReference/funderName for each dc.contributor.other value.
-    -->
-    <!-- // DATASHARE - start (C8) -->
-    <xsl:template match="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='other']" mode="funding">
-        <fundingReference>
-            <funderName>
-                <xsl:value-of select="." />
-            </funderName>
-        </fundingReference>
-    </xsl:template>
-    <!-- // DATASHARE - end (C8) -->
 
 
     <!-- Add doi identifier information. -->
@@ -525,9 +497,8 @@
                 </xsl:element>
             </xsl:when>
             <!-- // DATASHARE - start (C7) an unqualified dc.contributor is the depositor and
-                 maps to ContactPerson (was "Other"). dc.contributor.other is handled as a
-                 fundingReference (C8), not a contributor, so it is intentionally not matched
-                 here. -->
+                 maps to ContactPerson (was "Other"). dc.contributor.other is dropped (as v5
+                 did) and is intentionally not matched here. -->
             <xsl:when test="not(@qualifier)">
                 <xsl:element name="contributor">
                     <xsl:attribute name="contributorType">ContactPerson</xsl:attribute>
@@ -613,17 +584,20 @@
     -->
     <xsl:template match="//dspace:field[@mdschema='dc' and @element='type'][1]">
         <xsl:element name="resourceType">
-            <!-- // DATASHARE - start (C6) map dc.type to resourceTypeGeneral following the
-                 documented DataShare -> DataCite mapping, and match case-insensitively.
-                 After the migration dc.type values are stored lower-case (e.g. "dataset"),
-                 which the previous case-sensitive comparison downgraded to "Other"
-                 (issue #786: "Dataset" became "Other" on migrated items). -->
+            <!-- // DATASHARE - start (C6) match dc.type case-insensitively and add the three
+                 DataShare-specific type values that the vanilla list omits ("moving image",
+                 "interactive resource", "sound"). After the migration dc.type is stored
+                 lower-case (e.g. "dataset"), which the previous case-sensitive comparison
+                 downgraded to "Other" (issue #786: "Dataset" became "Other"); the same happened
+                 to DataShare's "sound"/"moving image"/"interactive resource" items. The verified
+                 DataShare vocabulary is image/dataset/sound/software/text/moving image/interactive
+                 resource; the remaining rows are inherited from vanilla and unused by DataShare. -->
             <xsl:variable name="typeLower" select="lower-case(normalize-space(.))" />
             <xsl:attribute name="resourceTypeGeneral">
                 <xsl:choose>
                     <xsl:when test="$typeLower='animation'">Audiovisual</xsl:when>
                     <xsl:when test="$typeLower='moving image'">Audiovisual</xsl:when>
-                    <xsl:when test="$typeLower='article'">Text</xsl:when>
+                    <xsl:when test="$typeLower='article'">JournalArticle</xsl:when>
                     <xsl:when test="$typeLower='book'">Book</xsl:when>
                     <xsl:when test="$typeLower='book chapter'">BookChapter</xsl:when>
                     <xsl:when test="$typeLower='dataset'">Dataset</xsl:when>
@@ -634,15 +608,15 @@
                     <xsl:when test="$typeLower='map'">Model</xsl:when>
                     <xsl:when test="$typeLower='musical score'">Other</xsl:when>
                     <xsl:when test="$typeLower='plan or blueprint'">Model</xsl:when>
-                    <xsl:when test="$typeLower='preprint'">Text</xsl:when>
-                    <xsl:when test="$typeLower='presentation'">Text</xsl:when>
+                    <xsl:when test="$typeLower='preprint'">Preprint</xsl:when>
+                    <xsl:when test="$typeLower='presentation'">Other</xsl:when>
                     <xsl:when test="$typeLower='recording, acoustical'">Sound</xsl:when>
                     <xsl:when test="$typeLower='recording, musical'">Sound</xsl:when>
                     <xsl:when test="$typeLower='recording, oral'">Sound</xsl:when>
                     <xsl:when test="$typeLower='sound'">Sound</xsl:when>
                     <xsl:when test="$typeLower='software'">Software</xsl:when>
-                    <xsl:when test="$typeLower='technical report'">Text</xsl:when>
-                    <xsl:when test="$typeLower='thesis'">Text</xsl:when>
+                    <xsl:when test="$typeLower='technical report'">Report</xsl:when>
+                    <xsl:when test="$typeLower='thesis'">Dissertation</xsl:when>
                     <xsl:when test="$typeLower='video'">Audiovisual</xsl:when>
                     <xsl:when test="$typeLower='working paper'">Text</xsl:when>
                     <xsl:otherwise>Other</xsl:otherwise>
