@@ -198,8 +198,15 @@ public class EmbargoCLITool {
             List<MetadataValue> lift = embargoService.getLiftMetadata(context, item);
             if (lift.size() > 0) {
                 DCDate liftDate = new DCDate(lift.get(0).getValue());
+                Date liftAsDate = liftDate.toDate();
+                if (liftAsDate == null) {
+                    // A bad/unparsable lift value must not abort the whole run (survive per item).
+                    log.warn("Skipping item {} in embargo lifter: unparsable lift date '{}'",
+                            item.getID(), lift.get(0).getValue());
+                    return status;
+                }
                 log.debug("Testing embargo on item=" + item.getHandle() + ", date=" + liftDate.toString());
-                if (liftDate.toDate().before(now)) {
+                if (liftAsDate.before(now)) {
                     if (line.hasOption('v')) {
                         System.err.println(
                             "Lifting embargo from Item handle=" + item.getHandle() + ", lift date=" +
