@@ -288,14 +288,18 @@ public class DataCiteXslTest {
 
         assertThat(result, is(datacite()
                 .withXPath("count(//d:relatedIdentifiers/d:relatedIdentifier)", equalTo("4"))
-                .withXPath("//d:relatedIdentifier[@relationType='IsReferencedBy']/@relatedIdentifierType",
-                        equalTo("DOI"))
                 .withXPath("//d:relatedIdentifier[@relationType='IsVersionOf']/@relatedIdentifierType",
                         equalTo("DOI"))
                 .withXPath("//d:relatedIdentifier[@relationType='IsNewVersionOf']/@relatedIdentifierType",
                         equalTo("DOI"))
                 .withXPath("//d:relatedIdentifier[@relationType='IsObsoletedBy']/@relatedIdentifierType",
                         equalTo("URL"))
+                // a doi.org URL is emitted as the bare DOI; a non-DOI URL is emitted verbatim
+                .withXPath("//d:relatedIdentifier[@relationType='IsReferencedBy']",
+                        equalTo("10.1021/acs.cgd.6c00474"))
+                .withXPath("//d:relatedIdentifier[@relationType='IsObsoletedBy']",
+                        equalTo("https://datashare.ed.ac.uk/handle/10283/9999"))
+                // the non-URL dc.relation.isreferencedby value is skipped -> only one IsReferencedBy
                 .withXPath("count(//d:relatedIdentifier[@relationType='IsReferencedBy'])", equalTo("1"))));
     }
 

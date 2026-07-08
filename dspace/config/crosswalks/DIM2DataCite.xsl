@@ -681,18 +681,23 @@
         DataCite (12), DataCite (12.1)
         Adds RelatedIdentifier, relatedIdentifierType and relationType information.
     -->
-    <!-- // DATASHARE - start (C9) A dc.relation.* URL becomes a relatedIdentifier. The
-         relatedIdentifierType is DOI when the URL points at doi.org, otherwise URL. The
-         relationType is derived from the qualifier: isversionof -> IsVersionOf,
-         isreplacedby -> IsObsoletedBy, replaces -> IsNewVersionOf, isreferencedby ->
-         IsReferencedBy. NOTE: the wiki's worked example shows IsCitedBy for the
-         referenced-by case; IsReferencedBy is used here as the semantically direct DataCite
-         relationType for dc.relation.isreferencedby - confirm which the customer wants. -->
+    <!-- // DATASHARE - start (C9) A dc.relation.* URL becomes a relatedIdentifier. A doi.org /
+         dx.doi.org URL (matched case-insensitively at the start of the value) is emitted as
+         relatedIdentifierType="DOI" with the bare DOI as the value (consistent with the primary
+         <identifier>, and the form DataCite expects); any other URL is emitted verbatim as
+         relatedIdentifierType="URL". The relationType is derived from the qualifier: isversionof
+         -> IsVersionOf, isreplacedby -> IsObsoletedBy, replaces -> IsNewVersionOf, isreferencedby
+         -> IsReferencedBy. NOTE: the wiki's worked example shows IsCitedBy for the referenced-by
+         case and the full doi.org URL as the value; IsReferencedBy and the bare DOI are used here
+         as the semantically direct / DataCite-correct forms - confirm if the literal wiki forms
+         are preferred instead. -->
     <xsl:template match="//dspace:field[@mdschema='dc' and @element='relation']" mode="related">
+        <xsl:variable name="value" select="normalize-space(.)" />
+        <xsl:variable name="isDoi" select="matches($value, '^https?://(dx\.)?doi\.org/', 'i')" />
         <xsl:element name="relatedIdentifier">
             <xsl:attribute name="relatedIdentifierType">
                 <xsl:choose>
-                    <xsl:when test="contains(., 'doi.org')">DOI</xsl:when>
+                    <xsl:when test="$isDoi">DOI</xsl:when>
                     <xsl:otherwise>URL</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
@@ -705,7 +710,14 @@
                     <xsl:otherwise>References</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
-            <xsl:value-of select="normalize-space(.)" />
+            <xsl:choose>
+                <xsl:when test="$isDoi">
+                    <xsl:value-of select="replace($value, '^https?://(dx\.)?doi\.org/', '', 'i')" />
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$value" />
+                </xsl:otherwise>
+            </xsl:choose>
         </xsl:element>
     </xsl:template>
     <!-- // DATASHARE - end (C9) -->
