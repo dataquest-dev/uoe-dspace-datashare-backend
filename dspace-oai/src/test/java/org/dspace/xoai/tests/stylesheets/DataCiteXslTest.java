@@ -295,12 +295,12 @@ public class DataCiteXslTest {
                 .withXPath("//d:relatedIdentifier[@relationType='IsObsoletedBy']/@relatedIdentifierType",
                         equalTo("URL"))
                 // a doi.org URL is emitted as the bare DOI; a non-DOI URL is emitted verbatim
-                .withXPath("//d:relatedIdentifier[@relationType='IsReferencedBy']",
+                .withXPath("//d:relatedIdentifier[@relationType='IsCitedBy']",
                         equalTo("10.1021/acs.cgd.6c00474"))
                 .withXPath("//d:relatedIdentifier[@relationType='IsObsoletedBy']",
                         equalTo("https://datashare.ed.ac.uk/handle/10283/9999"))
-                // the non-URL dc.relation.isreferencedby value is skipped -> only one IsReferencedBy
-                .withXPath("count(//d:relatedIdentifier[@relationType='IsReferencedBy'])", equalTo("1"))));
+                // the non-URL dc.relation.isreferencedby value is skipped -> only one IsCitedBy
+                .withXPath("count(//d:relatedIdentifier[@relationType='IsCitedBy'])", equalTo("1"))));
     }
 
     private XmlMatcherBuilder datacite() {

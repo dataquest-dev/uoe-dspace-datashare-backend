@@ -99,7 +99,7 @@ public class DataCiteDisseminationCrosswalkIT extends AbstractIntegrationTestWit
         assertThat(xml, containsString("<identifier identifierType=\"DOI\">10.5072/dspace-testit</identifier>"));
         // C9: dc.relation.* doi.org URL -> relatedIdentifier with type DOI and the bare DOI value
         assertThat(xml, containsString(
-                "<relatedIdentifier relatedIdentifierType=\"DOI\" relationType=\"IsReferencedBy\">"
+                "<relatedIdentifier relatedIdentifierType=\"DOI\" relationType=\"IsCitedBy\">"
                 + "10.1021/acs.cgd.6c00474</relatedIdentifier>"));
     }
 }

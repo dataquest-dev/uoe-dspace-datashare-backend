@@ -687,10 +687,9 @@
          <identifier>, and the form DataCite expects); any other URL is emitted verbatim as
          relatedIdentifierType="URL". The relationType is derived from the qualifier: isversionof
          -> IsVersionOf, isreplacedby -> IsObsoletedBy, replaces -> IsNewVersionOf, isreferencedby
-         -> IsReferencedBy. NOTE: the wiki's worked example shows IsCitedBy for the referenced-by
-         case and the full doi.org URL as the value; IsReferencedBy and the bare DOI are used here
-         as the semantically direct / DataCite-correct forms - confirm if the literal wiki forms
-         are preferred instead. -->
+         -> IsCitedBy. The relationTypes follow both the wiki's worked example and the actual
+         pre-migration (v6) DataCite records (which registered relationType=IsCitedBy and the
+         bare DOI for referenced-by DOIs). -->
     <xsl:template match="//dspace:field[@mdschema='dc' and @element='relation']" mode="related">
         <xsl:variable name="value" select="normalize-space(.)" />
         <xsl:variable name="isDoi" select="matches($value, '^https?://(dx\.)?doi\.org/', 'i')" />
@@ -706,7 +705,7 @@
                     <xsl:when test="@qualifier='isversionof'">IsVersionOf</xsl:when>
                     <xsl:when test="@qualifier='isreplacedby'">IsObsoletedBy</xsl:when>
                     <xsl:when test="@qualifier='replaces'">IsNewVersionOf</xsl:when>
-                    <xsl:when test="@qualifier='isreferencedby'">IsReferencedBy</xsl:when>
+                    <xsl:when test="@qualifier='isreferencedby'">IsCitedBy</xsl:when>
                     <xsl:otherwise>References</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
