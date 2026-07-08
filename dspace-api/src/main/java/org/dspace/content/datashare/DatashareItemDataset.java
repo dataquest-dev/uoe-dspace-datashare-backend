@@ -13,6 +13,10 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -613,9 +617,14 @@ public class DatashareItemDataset {
                 zos.close();
                 fos.close();
 
-                // Rename zip from temporary file to final name
-                if (!new File(tmpZip).renameTo(new File(getFullPath()))) {
-                    log.error("Problem renaming " + tmpZip + " to " + getFullPath());
+                // Replace the previous zip. File.renameTo does not overwrite on Windows (leaving the
+                // stale zip in place), so use Files.move with REPLACE_EXISTING, atomic where supported.
+                Path tmpPath = new File(tmpZip).toPath();
+                Path finalPath = new File(getFullPath()).toPath();
+                try {
+                    Files.move(tmpPath, finalPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                } catch (AtomicMoveNotSupportedException e) {
+                    Files.move(tmpPath, finalPath, StandardCopyOption.REPLACE_EXISTING);
                 }
                 log.info(getFileName() + " complete");
             } catch (SQLException ex) {

@@ -9,6 +9,8 @@ package org.dspace.content.datashare.service.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -400,9 +402,16 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
             DatashareDataset dataset = findDatashareDatasetByItem(context, item);
             if (dataset != null) {
                 String filePath = DatashareItemDataset.getFullFilePath(item.getHandle());
-                if (filePath != null && !filePath.isEmpty() && new File(filePath).exists()) {
-                    String url = DatashareItemDataset.getURL(item);
-                    downloadLink = url != null ? url : "";
+                if (filePath != null && !filePath.isEmpty()) {
+                    File zipFile = new File(filePath);
+                    if (zipFile.exists()) {
+                        // Version the (otherwise handle-stable) static URL so the browser refetches a
+                        // regenerated zip instead of serving the previous one from its cache.
+                        String url = DatashareItemDataset.getURL(item);
+                        if (url != null) {
+                            downloadLink = appendCacheBustVersion(url, resolveZipVersion(dataset, zipFile));
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
@@ -410,6 +419,33 @@ public class DatashareDatasetServiceImpl implements DatashareDatasetService {
                     + (item != null ? item.getHandle() : null), e);
         }
         return downloadLink;
+    }
+
+    /**
+     * Cache-busting version token for the item's zip: the stored MD5 checksum (changes iff the zip
+     * content changes), else the file's last-modified time for legacy rows with no checksum, else
+     * {@code null} (plain URL).
+     */
+    private String resolveZipVersion(DatashareDataset dataset, File zipFile) {
+        String checksum = dataset != null ? dataset.getChecksum() : null;
+        if (checksum != null && !checksum.isBlank()) {
+            return checksum;
+        }
+        long lastModified = zipFile != null ? zipFile.lastModified() : 0L;
+        return lastModified > 0 ? Long.toString(lastModified) : null;
+    }
+
+    /**
+     * Append a cache-busting {@code v=<token>} query parameter to {@code url} (URL-encoded, using
+     * {@code ?} or {@code &} as appropriate). Returns {@code url} unchanged when either argument is
+     * {@code null}/blank.
+     */
+    static String appendCacheBustVersion(String url, String versionToken) {
+        if (url == null || url.isEmpty() || versionToken == null || versionToken.isBlank()) {
+            return url;
+        }
+        String separator = url.indexOf('?') >= 0 ? "&" : "?";
+        return url + separator + "v=" + URLEncoder.encode(versionToken.trim(), StandardCharsets.UTF_8);
     }
 
     // Private methods

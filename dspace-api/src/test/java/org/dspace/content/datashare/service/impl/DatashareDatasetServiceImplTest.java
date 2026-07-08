@@ -7,7 +7,10 @@
  */
 package org.dspace.content.datashare.service.impl;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -20,6 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -378,5 +382,112 @@ public class DatashareDatasetServiceImplTest {
         datashareDatasetService.deleteDatasetForItem(context, item);
 
         verifyNoInteractions(datashareDatasetDAO);
+    }
+
+    // Cache-busting of the "download all files" zip link: a regenerated zip must change the link so
+    // the browser refetches it instead of serving the previous one from cache.
+
+    @Test
+    public void appendCacheBustVersionAddsQueryParamWhenNoQueryPresent() {
+        assertEquals("http://host/download/DS_1_2.zip?v=abc123",
+                DatashareDatasetServiceImpl.appendCacheBustVersion("http://host/download/DS_1_2.zip", "abc123"));
+    }
+
+    @Test
+    public void appendCacheBustVersionUsesAmpersandWhenQueryAlreadyPresent() {
+        assertEquals("http://host/download/DS_1_2.zip?a=b&v=abc123",
+                DatashareDatasetServiceImpl.appendCacheBustVersion("http://host/download/DS_1_2.zip?a=b", "abc123"));
+    }
+
+    @Test
+    public void appendCacheBustVersionUrlEncodesTheToken() {
+        // A token is never expected to contain unsafe characters (md5 hex / epoch millis), but the
+        // helper must still encode defensively so a stray character can never break the URL.
+        assertEquals("http://host/DS.zip?v=a%2Fb+c",
+                DatashareDatasetServiceImpl.appendCacheBustVersion("http://host/DS.zip", "a/b c"));
+    }
+
+    @Test
+    public void appendCacheBustVersionReturnsUrlUnchangedWhenTokenBlankOrNull() {
+        assertEquals("http://host/DS.zip", DatashareDatasetServiceImpl.appendCacheBustVersion("http://host/DS.zip",
+                null));
+        assertEquals("http://host/DS.zip", DatashareDatasetServiceImpl.appendCacheBustVersion("http://host/DS.zip",
+                "   "));
+    }
+
+    @Test
+    public void appendCacheBustVersionReturnsUrlUnchangedWhenUrlBlankOrNull() {
+        assertNull(DatashareDatasetServiceImpl.appendCacheBustVersion(null, "abc"));
+        assertEquals("", DatashareDatasetServiceImpl.appendCacheBustVersion("", "abc"));
+    }
+
+    /**
+     * Drive {@link DatashareDatasetServiceImpl#fetchDatashareDatasetZipFileLink} for an authorized
+     * (admin) user against an item whose dataset row carries {@code checksum} and whose physical zip
+     * is {@code zipFile}, with the static download base URL stubbed to {@code baseUrl}. Returns the
+     * link the endpoint produced.
+     */
+    private String fetchLinkWith(String baseUrl, String checksum, File zipFile) throws Exception {
+        Item item = mock(Item.class);
+        lenient().when(item.getID()).thenReturn(UUID.randomUUID());
+        when(item.getHandle()).thenReturn("123456789/42");
+        // Admin bypasses per-bitstream authorization, keeping this test focused on the link itself.
+        when(authorizeService.isAdmin(context, item)).thenReturn(true);
+        DatashareDataset dataset = mock(DatashareDataset.class);
+        lenient().when(dataset.getChecksum()).thenReturn(checksum);
+        when(datashareDatasetDAO.findLatestDatashareDatasetByItem(context, item)).thenReturn(dataset);
+        try (MockedStatic<DatashareItemDataset> mocked = mockStatic(DatashareItemDataset.class)) {
+            mocked.when(() -> DatashareItemDataset.areAllItemBitstreamsAvailable(context, item)).thenReturn(true);
+            mocked.when(() -> DatashareItemDataset.getFullFilePath("123456789/42"))
+                    .thenReturn(zipFile.getAbsolutePath());
+            mocked.when(() -> DatashareItemDataset.getURL(item)).thenReturn(baseUrl);
+            return datashareDatasetService.fetchDatashareDatasetZipFileLink(context, item);
+        }
+    }
+
+    @Test
+    public void fetchLinkAppendsChecksumAsCacheBustingVersion() throws Exception {
+        File zip = File.createTempFile("DS_cachebust", ".zip");
+        zip.deleteOnExit();
+        try {
+            String link = fetchLinkWith("http://localhost:8080/download/DS_123456789_42.zip",
+                    "abc123checksum", zip);
+            assertEquals("http://localhost:8080/download/DS_123456789_42.zip?v=abc123checksum", link);
+        } finally {
+            zip.delete();
+        }
+    }
+
+    @Test
+    public void fetchLinkVersionChangesWhenZipContentChanges() throws Exception {
+        // Core of the bug: the link must change when the zip content (checksum) changes.
+        File zip = File.createTempFile("DS_cachebust", ".zip");
+        zip.deleteOnExit();
+        try {
+            String before = fetchLinkWith("http://localhost:8080/download/DS_123456789_42.zip",
+                    "checksum-before", zip);
+            String after = fetchLinkWith("http://localhost:8080/download/DS_123456789_42.zip",
+                    "checksum-after", zip);
+            assertNotEquals("regenerating the zip must change the download link so the browser refetches",
+                    before, after);
+            assertTrue("stale link must carry the old version: " + before, before.endsWith("?v=checksum-before"));
+            assertTrue("fresh link must carry the new version: " + after, after.endsWith("?v=checksum-after"));
+        } finally {
+            zip.delete();
+        }
+    }
+
+    @Test
+    public void fetchLinkFallsBackToLastModifiedWhenChecksumMissing() throws Exception {
+        // Legacy dataset rows (DSpace 6->8 migration) can have a null/blank checksum; the link must
+        // still carry a version token, so fall back to the physical file's last-modified time.
+        File zip = File.createTempFile("DS_cachebust", ".zip");
+        zip.deleteOnExit();
+        try {
+            String link = fetchLinkWith("http://localhost:8080/download/DS_123456789_42.zip", null, zip);
+            assertEquals("http://localhost:8080/download/DS_123456789_42.zip?v=" + zip.lastModified(), link);
+        } finally {
+            zip.delete();
+        }
     }
 }
