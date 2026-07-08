@@ -66,12 +66,14 @@ public class ItemOwningCollectionUpdateRestController {
     Utils utils;
 
     /**
-     * This method will update the owning collection of the item that correspond to the provided item uuid, effectively
+     * This method will update the owning collection of the item that corresponds to the provided item uuid, effectively
      * moving the item to the new collection.
      *
      * @param uuid The UUID of the item that will be moved
      * @param inheritCollectionPolicies   Boolean flag whether to inherit the target collection policies when
      *                                    moving the item
+     * @param keepEmbargoPolicies         Boolean flag whether to keep an existing embargo when inheriting the target
+     *                                    collection policies (only the non-embargo access is inherited)
      * @param response The response object
      * @param request  The request object
      * @return The wrapped resource containing the new owning collection or null when the item was not moved
