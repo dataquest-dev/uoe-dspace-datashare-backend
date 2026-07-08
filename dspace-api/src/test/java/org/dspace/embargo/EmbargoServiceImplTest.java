@@ -179,4 +179,44 @@ public class EmbargoServiceImplTest extends AbstractUnitTest {
         assertEquals("dc.date.available must be updated to today on lift",
                      expectedToday, available.get(0).getValue().substring(0, 10));
     }
+
+    /**
+     * Guard for issue #670: liftEmbargo must be a no-op for an item that carries no embargo terms
+     * (dc.date.embargo). Because dc.date.available (the configured lift field) is stamped on every
+     * archived item, re-enabling the embargo-lifter would otherwise reset the availability date of
+     * ordinary, never-embargoed items on every run. This proves the guard protects them.
+     */
+    @Test
+    public void testLiftEmbargo_noEmbargoTerms_isNoOp_availableUnchanged() throws Exception {
+        Item item;
+        // A clearly-past availability date, exactly the kind the lifter would otherwise act on.
+        final String originalAvailable = "2001-02-03";
+
+        context.turnOffAuthorisationSystem();
+        try {
+            item = createItem();
+
+            // Normal, never-embargoed archived item: dc.date.available present (in the past),
+            // but no dc.date.embargo terms field.
+            itemService.addMetadata(context, item, "dc", "date", "available", null, originalAvailable);
+            itemService.update(context, item);
+
+            // Precondition: no embargo terms present.
+            assertEquals(0, itemService.getMetadata(item, "dc", "date", "embargo", Item.ANY).size());
+
+            embargoService.liftEmbargo(context, item);
+        } finally {
+            context.restoreAuthSystemState();
+        }
+
+        // Still no embargo terms (there was nothing to remove).
+        assertEquals("dc.date.embargo must stay absent for a non-embargoed item",
+                     0, itemService.getMetadata(item, "dc", "date", "embargo", Item.ANY).size());
+
+        // The key guarantee: dc.date.available must NOT be reset to today.
+        List<MetadataValue> available = itemService.getMetadata(item, "dc", "date", "available", Item.ANY);
+        assertEquals("dc.date.available must remain present exactly once", 1, available.size());
+        assertEquals("dc.date.available must be UNCHANGED for a non-embargoed item",
+                     originalAvailable, available.get(0).getValue());
+    }
 }
