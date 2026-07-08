@@ -70,9 +70,9 @@ public class ItemOwningCollectionUpdateRestController {
      * moving the item to the new collection.
      *
      * @param uuid The UUID of the item that will be moved
-     * @param inheritCollectionPolicies   Boolean flag whether to inherit the target collection policies when
+     * @param inheritCollectionPolicies   Whether to inherit the target collection policies when
      *                                    moving the item
-     * @param keepEmbargoPolicies         Boolean flag whether to keep an existing embargo when inheriting the target
+     * @param keepEmbargoPolicies         Whether to keep an existing embargo when inheriting the target
      *                                    collection policies (only the non-embargo access is inherited)
      * @param response The response object
      * @param request  The request object
@@ -118,8 +118,8 @@ public class ItemOwningCollectionUpdateRestController {
      * @param item              The item to be moved
      * @param currentCollection The current owning collection of the item
      * @param targetCollection  The target collection of the item
-     * @param inheritPolicies   Boolean flag whether to inherit the target collection policies when moving the item
-     * @param keepEmbargoPolicies Boolean flag whether to keep an existing embargo when inheriting policies
+     * @param inheritPolicies   Whether to inherit the target collection policies when moving the item
+     * @param keepEmbargoPolicies Whether to keep an existing embargo when inheriting policies
      * @return The target collection
      * @throws SQLException       If something goes wrong
      * @throws IOException        If something goes wrong
