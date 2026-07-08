@@ -986,6 +986,58 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
         }
     }
 
+    @Test
+    public void testMoveItemWithInheritPoliciesKeepsNonEmbargoedGroupImmediate() throws Exception {
+        /*
+         * Issue #761 follow-up: DSpace's embargo future-dates only the "default read" audience
+         * (typically Anonymous) and leaves other groups' READ immediate. A move with "inherit
+         * policies" must therefore defer only the embargoed (future-dated) principal, not every
+         * inherited READ policy - a group that had immediate access must keep it during the embargo.
+         */
+        context.turnOffAuthorisationSystem();
+        try {
+            Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+            Group staff = GroupBuilder.createGroup(context).withName("Staff").build();
+
+            Collection source = CollectionBuilder.createCollection(context, community).build();
+            // The destination grants BOTH anonymous (by default) and staff immediate bitstream READ.
+            Collection destination = CollectionBuilder.createCollection(context, community).build();
+            authorizeService.addPolicy(context, destination, Constants.DEFAULT_BITSTREAM_READ, staff);
+
+            Item item = ItemBuilder.createItem(context, source).build();
+            Bitstream bitstream = BitstreamBuilder
+                .createBitstream(context, item, InputStream.nullInputStream())
+                .build();
+
+            // Embargo: Anonymous is future-dated (embargoed); the staff group keeps immediate READ.
+            Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
+            authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
+            authorizeService.createResourcePolicy(context, bitstream, anonymous, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, liftDate, null);
+            authorizeService.createResourcePolicy(context, bitstream, staff, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, null, null);
+
+            itemService.move(context, item, source, destination, true);
+
+            List<ResourcePolicy> after =
+                authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
+            // The embargoed Anonymous READ must stay future-dated...
+            ResourcePolicy anonymousPolicy = after.stream()
+                .filter(rp -> anonymous.equals(rp.getGroup())).findFirst().orElse(null);
+            assertNotNull("Anonymous must still have a READ policy after the move", anonymousPolicy);
+            assertTrue("the embargoed Anonymous READ must stay future-dated after the move",
+                anonymousPolicy.getStartDate() != null && anonymousPolicy.getStartDate().after(new Date()));
+            // ...but the non-embargoed staff group must keep its immediate (null/past start) access.
+            ResourcePolicy staffPolicy = after.stream()
+                .filter(rp -> staff.equals(rp.getGroup())).findFirst().orElse(null);
+            assertNotNull("staff must still have a READ policy inherited from the destination", staffPolicy);
+            assertTrue("a group that was not embargoed must keep its immediate access after the move",
+                staffPolicy.getStartDate() == null || !staffPolicy.getStartDate().after(new Date()));
+        } finally {
+            context.restoreAuthSystemState();
+        }
+    }
+
     private void assertMetadataValue(String authorQualifier, String contributorElement, String dcSchema, String value,
                                      String authority, int place, MetadataValue metadataValue) {
         assertThat(metadataValue.getValue(), equalTo(value));
