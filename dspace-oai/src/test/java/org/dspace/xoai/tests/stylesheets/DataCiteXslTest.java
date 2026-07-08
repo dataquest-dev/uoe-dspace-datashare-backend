@@ -217,6 +217,19 @@ public class DataCiteXslTest {
                 .withXPath("count(//d:contributors)", equalTo("0"))));
     }
 
+    /**
+     * An item whose only extra contributor uses a qualifier the template does not emit
+     * (e.g. sponsor) must not produce an empty (schema-invalid) <contributors> element.
+     */
+    @Test
+    public void omitsContributorsForUnhandledQualifierOnly() throws Exception {
+        String result = transform("dim-datacite-unhandled-contributor.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("count(//d:contributors)", equalTo("0"))
+                .withXPath("count(//*[contains(., 'Some Sponsor')])", equalTo("0"))));
+    }
+
     /** DataShare-specific dc.type "sound" maps to resourceTypeGeneral="Sound". */
     @Test
     public void mapsSoundType() throws Exception {

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    The contents of this file are subject to the license and copyright
+    detailed in the LICENSE and NOTICE files at the root of the source
+    tree and available online at
+
+    http://www.dspace.org/license/
+
+-->
+<!-- The only extra contributor uses a qualifier the contributor template does not emit
+     (sponsor); no <contributors> element must be produced (empty would be schema-invalid). -->
+<dim:dim xmlns:dim="http://www.dspace.org/xmlns/dspace/dim" dspaceType="ITEM">
+  <dim:field mdschema="dc" element="creator">Doe, Jane</dim:field>
+  <dim:field mdschema="dc" element="title">t</dim:field>
+  <dim:field mdschema="dc" element="type">dataset</dim:field>
+  <dim:field mdschema="dc" element="contributor" qualifier="sponsor">Some Sponsor</dim:field>
+</dim:dim>

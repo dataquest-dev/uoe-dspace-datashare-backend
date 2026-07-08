@@ -113,7 +113,7 @@
             <!-- // DATASHARE (C9): select the DOI by its own qualifier ($mdQualifier), not any
                  identifier that merely contains the prefix, so that e.g. dc.identifier.citation
                  (which embeds the DOI URL) is not treated as the primary identifier. -->
-            <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='identifier' and @qualifier=$mdQualifier and (contains(., $prefix))]" />
+            <xsl:apply-templates select="//dspace:field[@mdschema=$mdSchema and @element=$mdElement and @qualifier=$mdQualifier and (contains(., $prefix))]" />
 
             <!--
                 DataCite (2)
@@ -244,11 +244,19 @@
                  hostingInstitution parameters were left at the "My University" placeholder,
                  they rendered as a bogus "My University" contributor on every DOI.
                  dc.contributor.other is excluded here (and dropped entirely, as v5 did — see
-                 DataCite (19)). Only emit <contributors> when there is at least one, so we
-                 never produce an empty (schema-invalid) element. -->
-            <xsl:if test="//dspace:field[@mdschema='dc' and @element='contributor' and not(@qualifier='author') and not(@qualifier='other') and normalize-space(.) != '']">
+                 DataCite (19)). We select only the qualifiers the contributor template below
+                 actually emits (unqualified depositor, editor, advisor, illustrator) so that an
+                 item whose only extra contributor uses an unhandled qualifier does not produce
+                 an empty (schema-invalid) <contributors> element. Keep this list in sync with
+                 the DataCite (7.1) template. -->
+            <xsl:variable name="datashareContributors"
+                select="//dspace:field[@mdschema='dc' and @element='contributor'
+                        and (not(@qualifier) or @qualifier='editor' or @qualifier='advisor'
+                             or @qualifier='illustrator')
+                        and normalize-space(.) != '']" />
+            <xsl:if test="$datashareContributors">
                 <contributors>
-                    <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='contributor' and not(@qualifier='author') and not(@qualifier='other') and normalize-space(.) != '']" />
+                    <xsl:apply-templates select="$datashareContributors" />
                 </contributors>
             </xsl:if>
             <!-- // DATASHARE - end (C7) -->
