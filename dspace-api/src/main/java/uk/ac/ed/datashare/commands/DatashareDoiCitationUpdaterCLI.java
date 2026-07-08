@@ -8,13 +8,10 @@
 package uk.ac.ed.datashare.commands;
 
 import java.sql.SQLException;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
-import java.util.StringTokenizer;
 import java.util.stream.StreamSupport;
 
 import org.apache.commons.cli.CommandLine;
@@ -39,17 +36,23 @@ import org.dspace.identifier.IdentifierNotResolvableException;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
 import org.dspace.utils.DSpace;
+import uk.ac.ed.datashare.DatashareCitation;
 
 /**
- * Functionality to register items with no DOIs and update Metadata in Datashare
- * with DOI. Currently only Dublin Core dc.identifier.citation is added.
+ * Batch (backfill) tool to register DOIs for items that have none ({@code -d}) and to (re)build the
+ * {@code dc.identifier.citation} value ({@code -c}). It shares its citation logic with
+ * {@link uk.ac.ed.datashare.DatashareCitation}.
  *
- * Cron:
- * 5 8-19 * * * $DSPACE/bin/dspace ds-doi-citation -c > $DSPACE/log/doi-citation-updater.log 2>&1
+ * <p>Since the event-driven {@link uk.ac.ed.datashare.event.DatashareDoiCitationConsumer} now writes
+ * the citation at item install (with a DOI placeholder) and folds in the real DOI automatically when
+ * the {@code doi-organiser} job registers it, this CLI is no longer required for day-to-day
+ * operation. It is retained as a backfill / safety net (e.g. to (re)build citations for items that
+ * pre-date the consumer). The batch keeps the historical "no placeholder" behaviour.</p>
+ *
+ * <p>Legacy cron (optional, backfill only):
+ * {@code 5 8-19 * * * $DSPACE/bin/dspace ds-doi-citation -c > $DSPACE/log/doi-citation-updater.log 2>&1}</p>
  *
  * @author John Pinto
- *
- *
  */
 public class DatashareDoiCitationUpdaterCLI {
 
@@ -253,228 +256,19 @@ public class DatashareDoiCitationUpdaterCLI {
 
     private boolean needsCitationUpdate(Item item) {
         ItemService itemService = ContentServiceFactory.getInstance().getItemService();
-
-        // Get citation directly using DSpace API
-        List<MetadataValue> citations = itemService.getMetadata(item, "dc", "identifier", "citation", Item.ANY, false);
-        String citation = citations.isEmpty() ? null : citations.get(0).getValue();
-
-        // Check if item has DOI directly using DSpace API
-        List<MetadataValue> identifiers = itemService.getMetadata(item, "dc", "identifier", "uri", Item.ANY, false);
-        boolean hasDoi = identifiers.stream()
-                .anyMatch(identifier -> identifier.getValue().startsWith("https://doi.org"));
-
-        log.info("Item {} citation: '{}' hasDoi: {}", item.getID(), citation, hasDoi);
-
-        // Case 1: No citation
-        boolean needsNewCitation = citation == null;
-
-        // Case 2: Has citation but it doesn't contain the DOI URL
-        boolean needsUpdatedCitation = hasDoi && citation != null && !citation.contains("https://doi.org");
-
-        log.info("Item {} needsNewCitation: {} needsUpdatedCitation: {}",
-                item.getID(), needsNewCitation, needsUpdatedCitation);
-
-        return needsNewCitation || needsUpdatedCitation;
+        return DatashareCitation.needsCitationUpdate(item, itemService);
     }
 
     private void processItemCitation(Item item) {
         try {
             ItemService itemService = ContentServiceFactory.getInstance().getItemService();
-
-            // Get current citation
-            List<MetadataValue> citations = itemService.getMetadata(item, "dc", "identifier", "citation", Item.ANY,
-                    false);
-            String citation = citations.isEmpty() ? null : citations.get(0).getValue();
-
-            // Check if item has DOI
-            List<MetadataValue> identifiers = itemService.getMetadata(item, "dc", "identifier", "uri", Item.ANY, false);
-            boolean hasDoi = identifiers.stream()
-                    .anyMatch(identifier -> identifier.getValue().startsWith("https://doi.org"));
-
-            log.info("Item " + item.getID() + " citation: " + citation);
-
-            if (citation == null) {
-                // Create new citation
-                String newCitation = createCitation(item);
-                if (newCitation != null) {
-                    itemService.addMetadata(context, item, "dc", "identifier", "citation", "en", newCitation);
-                }
-            } else if (citation != null && !citation.contains("https://doi.org") && hasDoi) {
-                // Clear existing citation and create new one
-                itemService.clearMetadata(context, item, "dc", "identifier", "citation", Item.ANY);
-                String newCitation = createCitation(item);
-                if (newCitation != null) {
-                    itemService.addMetadata(context, item, "dc", "identifier", "citation", "en", newCitation);
-                    log.info("Item " + item.getID() + " has new citation: " + newCitation);
-                }
-            }
-
-            itemService.update(context, item);
+            // The batch keeps the historical "no placeholder" behaviour ("" placeholder); the
+            // event-driven DatashareDoiCitationConsumer is what writes the configured placeholder at
+            // install time. Both share the same builder in DatashareCitation.
+            DatashareCitation.applyCitation(context, item, itemService, "");
         } catch (AuthorizeException | SQLException ex) {
             log.error("Error updating citation for item " + item.getID() + ": " + ex.getMessage());
         }
-    }
-
-    /**
-     * Create a citation for a given DSpace item using DSpace core APIs
-     */
-    private String createCitation(Item item) {
-        try {
-            ItemService itemService = ContentServiceFactory.getInstance().getItemService();
-            StringBuilder buffer = new StringBuilder(200);
-
-            // Get creators
-            List<MetadataValue> creators = itemService.getMetadata(item, "dc", "creator", Item.ANY, Item.ANY, false);
-            boolean creatorGiven = !creators.isEmpty();
-
-            if (creatorGiven) {
-                // Add creators
-                for (int i = 0; i < creators.size(); i++) {
-                    if (i > 0) {
-                        buffer.append("; ");
-                    }
-                    buffer.append(creators.get(i).getValue());
-                }
-                buffer.append(". ");
-            } else {
-                // Add publisher if no creators
-                List<MetadataValue> publishers = itemService.getMetadata(item, "dc", "publisher", Item.ANY, Item.ANY,
-                        false);
-                if (!publishers.isEmpty()) {
-                    buffer.append(" ");
-                    buffer.append(publishers.get(0).getValue());
-                    buffer.append(".");
-                }
-                buffer.append(" ");
-            }
-
-            // Add date available year if available
-            buffer.append("(");
-            List<MetadataValue> dateAvailable = itemService.getMetadata(item, "dc", "date", "available", Item.ANY,
-                    false);
-            if (!dateAvailable.isEmpty()) {
-                String dateStr = dateAvailable.get(0).getValue();
-                // Extract year from date string (assuming format like "2023-01-01" or "2023")
-                String year = dateStr.length() >= 4 ? dateStr.substring(0, 4) : dateStr;
-                buffer.append(year);
-            } else {
-                // No date available, use current year
-                Calendar calendar = new GregorianCalendar();
-                calendar.setTime(new Date());
-                buffer.append(calendar.get(Calendar.YEAR));
-            }
-            buffer.append("). ");
-
-            // Add title
-            List<MetadataValue> titles = itemService.getMetadata(item, "dc", "title", Item.ANY, Item.ANY, false);
-            if (!titles.isEmpty()) {
-                buffer.append(titles.get(0).getValue());
-            }
-            buffer.append(", ");
-
-            // Add time period if available
-            List<MetadataValue> temporal = itemService.getMetadata(item, "dc", "coverage", "temporal", Item.ANY, false);
-            if (!temporal.isEmpty()) {
-                String timePeriod = temporal.get(0).getValue();
-                String[] dates = decodeTimePeriod(timePeriod);
-
-                if (dates != null && dates.length == 2) {
-                    String from = dates[0].length() >= 4 ? dates[0].substring(0, 4) : dates[0];
-                    String to = dates[1].length() >= 4 ? dates[1].substring(0, 4) : dates[1];
-
-                    if (from.equals(to)) {
-                        timePeriod = from;
-                    } else {
-                        timePeriod = from + "-" + to;
-                    }
-
-                    buffer.append(timePeriod);
-                    buffer.append(" ");
-                }
-            }
-
-            // Add item type
-            List<MetadataValue> types = itemService.getMetadata(item, "dc", "type", Item.ANY, Item.ANY, false);
-            buffer.append("[");
-            if (!types.isEmpty()) {
-                buffer.append(types.get(0).getValue());
-            }
-            buffer.append("].");
-
-            // Append publisher if creator is specified
-            if (creatorGiven) {
-                List<MetadataValue> publishers = itemService.getMetadata(item, "dc", "publisher", Item.ANY, Item.ANY,
-                        false);
-                if (!publishers.isEmpty()) {
-                    buffer.append(" ");
-                    buffer.append(publishers.get(0).getValue());
-                    buffer.append(".");
-                }
-            }
-
-            // Add DOI if available
-            List<MetadataValue> identifiers = itemService.getMetadata(item, "dc", "identifier", "uri", Item.ANY, false);
-            for (MetadataValue identifier : identifiers) {
-                if (identifier.getValue().startsWith("https://doi.org")) {
-                    buffer.append(" ");
-                    buffer.append(identifier.getValue());
-                    buffer.append(".");
-                    break;
-                }
-            }
-
-            return buffer.toString();
-
-        } catch (Exception e) {
-            log.error("Error creating citation for item " + item.getID() + ": " + e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Decode time period W3CDTF profile of ISO 8601.
-     * (Copied from DatashareDspaceUtils since we can't use it)
-     */
-    private String[] decodeTimePeriod(String encoding) {
-        String[] dates = null;
-
-        if (encoding != null) {
-            String startStr = null;
-            String endStr = null;
-
-            // get tokens delimited by ";"- there should be three -
-            // start=, end= and scheme=
-            StringTokenizer st = new StringTokenizer(encoding, ";");
-
-            if (st.countTokens() > 1) {
-                for (int i = 0; i < st.countTokens(); i++) {
-                    if (i == 0) {
-                        startStr = st.nextToken();
-                    } else if (i == 1) {
-                        endStr = st.nextToken();
-                    } else {
-                        break;
-                    }
-                }
-
-                String startArray[] = startStr.split("=");
-                String endArray[] = endStr.split("=");
-
-                if (startArray.length == 2 || endArray.length == 2) {
-                    dates = new String[2];
-                }
-
-                if (startArray.length == 2) {
-                    dates[0] = startArray[1];
-                }
-
-                if (endArray.length == 2) {
-                    dates[1] = endArray[1];
-                }
-            }
-        }
-
-        return dates;
     }
 
 }
