@@ -196,8 +196,8 @@ public class EmbargoServiceImplTest extends AbstractUnitTest {
         try {
             item = createItem();
 
-            // Normal, never-embargoed archived item: dc.date.available present (in the past),
-            // but no dc.date.embargo terms field.
+            // A never-embargoed item (createItem() yields a WorkspaceItem, so not in-archive; the guard
+            // only inspects metadata): dc.date.available present (in the past), but no dc.date.embargo.
             itemService.addMetadata(context, item, "dc", "date", "available", null, originalAvailable);
             itemService.update(context, item);
 

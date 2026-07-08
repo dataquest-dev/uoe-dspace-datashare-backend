@@ -162,8 +162,8 @@ public class EmbargoServiceImpl implements EmbargoService {
         List<MetadataValue> terms = itemService.getMetadata(item, terms_schema, terms_element,
                 terms_qualifier, Item.ANY);
         if (terms == null || terms.isEmpty()) {
-            log.debug("Skipping embargo lift for Item " + item.getHandle()
-                    + ": no embargo terms metadata present, nothing to lift.");
+            log.debug("Skipping embargo lift for Item {}: no embargo terms metadata present, nothing to lift.",
+                    item.getID());
             return;
         }
 
