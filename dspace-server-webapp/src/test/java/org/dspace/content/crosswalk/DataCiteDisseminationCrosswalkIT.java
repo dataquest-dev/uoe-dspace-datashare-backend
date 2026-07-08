@@ -58,6 +58,10 @@ public class DataCiteDisseminationCrosswalkIT extends AbstractIntegrationTestWit
                 .withMetadata("dc", "contributor", "other",
                         "EPSRC - Engineering and Physical Sciences Research Council")
                 .withMetadata("dc", "publisher", null, "University of Edinburgh. School of Chemistry")
+                .withMetadata("dc", "identifier", "uri", "https://doi.org/10.5072/dspace-testit")
+                .withMetadata("dc", "identifier", "citation",
+                        "Abdullah, Rana. (2026). t, [dataset]. UoE. https://doi.org/10.5072/dspace-testit.")
+                .withMetadata("dc", "relation", "isreferencedby", "https://doi.org/10.1021/acs.cgd.6c00474")
                 .withType("dataset")
                 .withIssueDate("2026-06-17")
                 .build();
@@ -89,5 +93,12 @@ public class DataCiteDisseminationCrosswalkIT extends AbstractIntegrationTestWit
         // C8 reverted: dc.contributor.other is dropped, as v5 did
         assertThat(xml, not(containsString("fundingReference")));
         assertThat(xml, not(containsString("EPSRC")));
+
+        // C9: dc.identifier.citation kept as alternateIdentifier (only the primary DOI excluded)
+        assertThat(xml, containsString("alternateIdentifierType=\"citation\""));
+        assertThat(xml, containsString("<identifier identifierType=\"DOI\">10.5072/dspace-testit</identifier>"));
+        // C9: dc.relation.* URL -> relatedIdentifier
+        assertThat(xml, containsString("relationType=\"IsReferencedBy\""));
+        assertThat(xml, containsString("https://doi.org/10.1021/acs.cgd.6c00474"));
     }
 }

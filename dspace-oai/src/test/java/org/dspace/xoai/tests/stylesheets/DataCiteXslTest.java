@@ -37,23 +37,24 @@ import org.junit.Test;
  * so migrated items registered DOIs with {@code "(:unkn) unknown"} creators and
  * {@code resourceTypeGeneral="Other"} (issue #786).
  *
- * <p>These tests pin the patched behaviour, which restores the pre-migration
- * DataShare output (verified against the live DataCite records of DOIs registered
- * before the DSpace-8 migration):
+ * <p>These tests pin the patched behaviour, which follows the "Mapping between
+ * Datashare and DataCite metadata fields" wiki:
  * <ul>
  *   <li>creators are built from {@code dc.creator} as well as
- *       {@code dc.contributor.author}; with neither, the {@code (:unkn) unknown}
- *       placeholder is kept;</li>
+ *       {@code dc.contributor.author}, with a {@code dc.publisher} fallback before
+ *       the {@code (:unkn) unknown} placeholder;</li>
  *   <li>a present-but-blank creator value does not emit an empty (schema-invalid)
  *       {@code creatorName} nor suppress that fallback;</li>
- *   <li>{@code dc.type} is matched case-insensitively so {@code "dataset"} keeps
- *       {@code "Dataset"}, and the DataShare-specific values {@code "sound"},
- *       {@code "moving image"} and {@code "interactive resource"} map correctly;</li>
+ *   <li>{@code dc.type} is mapped per the wiki, matched case-insensitively, so
+ *       {@code "dataset"} keeps {@code "Dataset"}, {@code "article"} maps to
+ *       {@code "Text"}, and {@code "sound"}/{@code "moving image"}/
+ *       {@code "interactive resource"} map correctly;</li>
  *   <li>{@code dc.contributor} (the depositor) becomes a {@code ContactPerson} and the
  *       vanilla {@code DataManager}/{@code HostingInstitution} ("My University")
- *       contributors are gone;</li>
- *   <li>{@code dc.contributor.other} is dropped (as v5 did) — no funder metadata is
- *       registered.</li>
+ *       contributors are gone; {@code dc.contributor.other} is dropped;</li>
+ *   <li>{@code dc.identifier.citation} is kept as an alternateIdentifier (only the
+ *       primary DOI is excluded), and {@code dc.relation.*} URLs map to
+ *       relatedIdentifiers.</li>
  * </ul>
  *
  * <p>Mirrors the {@link AbstractXSLTest}/{@link OpenaireXslTest} harness (offline
@@ -241,6 +242,61 @@ public class DataCiteXslTest {
 
         assertThat(result, is(datacite()
                 .withXPath("//d:resourceType/@resourceTypeGeneral", equalTo("InteractiveResource"))));
+    }
+
+    /** With no creator/author but a dc.publisher, the publisher is used as the creator. */
+    @Test
+    public void usesPublisherAsCreatorWhenNoCreator() throws Exception {
+        String result = transform("dim-datacite-publisher-fallback.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("count(//d:creators/d:creator)", equalTo("1"))
+                .withXPath("//d:creators/d:creator/d:creatorName", equalTo("University of Edinburgh"))));
+    }
+
+    /** Wiki mapping: dc.type "article" maps to resourceTypeGeneral="Text". */
+    @Test
+    public void mapsArticleTypeToText() throws Exception {
+        String result = transform("dim-datacite-publisher-fallback.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("//d:resourceType/@resourceTypeGeneral", equalTo("Text"))));
+    }
+
+    /**
+     * dc.identifier.citation embeds the item's own DOI but must still be emitted as an
+     * alternateIdentifier; only the primary dc.identifier.uri DOI is excluded, and there is
+     * no stray alternateIdentifier outside the wrapper.
+     */
+    @Test
+    public void keepsCitationAsAlternateIdentifier() throws Exception {
+        String result = transform("dim-datacite-citation.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("//d:identifier[@identifierType='DOI']", equalTo("10.5072/dspace-8142"))
+                .withXPath("count(//d:alternateIdentifier)", equalTo("2"))
+                .withXPath("count(//d:alternateIdentifiers/d:alternateIdentifier"
+                        + "[@alternateIdentifierType='citation'])", equalTo("1"))
+                .withXPath("count(//d:alternateIdentifiers/d:alternateIdentifier"
+                        + "[@alternateIdentifierType='uri'])", equalTo("1"))));
+    }
+
+    /** dc.relation.* URLs map to relatedIdentifiers (DOI vs URL, relationType); non-URLs are skipped. */
+    @Test
+    public void mapsRelationsToRelatedIdentifiers() throws Exception {
+        String result = transform("dim-datacite-relations.xml");
+
+        assertThat(result, is(datacite()
+                .withXPath("count(//d:relatedIdentifiers/d:relatedIdentifier)", equalTo("4"))
+                .withXPath("//d:relatedIdentifier[@relationType='IsReferencedBy']/@relatedIdentifierType",
+                        equalTo("DOI"))
+                .withXPath("//d:relatedIdentifier[@relationType='IsVersionOf']/@relatedIdentifierType",
+                        equalTo("DOI"))
+                .withXPath("//d:relatedIdentifier[@relationType='IsNewVersionOf']/@relatedIdentifierType",
+                        equalTo("DOI"))
+                .withXPath("//d:relatedIdentifier[@relationType='IsObsoletedBy']/@relatedIdentifierType",
+                        equalTo("URL"))
+                .withXPath("count(//d:relatedIdentifier[@relationType='IsReferencedBy'])", equalTo("1"))));
     }
 
     private XmlMatcherBuilder datacite() {
