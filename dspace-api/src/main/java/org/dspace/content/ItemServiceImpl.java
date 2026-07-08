@@ -1155,6 +1155,16 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
     @Override
     public void move(Context context, Item item, Collection from, Collection to, boolean inheritDefaultPolicies)
         throws SQLException, AuthorizeException, IOException {
+        // By default a move that inherits the destination collection's policies keeps any existing
+        // embargo (DATASHARE issue #761); callers wanting the plain DSpace behaviour (embargo lifted by
+        // the inherited default READ) use the overload with keepEmbargoPolicies=false.
+        move(context, item, from, to, inheritDefaultPolicies, true);
+    }
+
+    @Override
+    public void move(Context context, Item item, Collection from, Collection to, boolean inheritDefaultPolicies,
+                     boolean keepEmbargoPolicies)
+        throws SQLException, AuthorizeException, IOException {
         // Check authorisation on the item before that the move occur
         // otherwise we will need edit permission on the "target collection" to archive our goal
         // only do write authorization if user is not an editor
@@ -1179,18 +1189,24 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
             if (inheritDefaultPolicies) {
                 log.info(LogHelper.getHeader(context, "move_item",
                                               "Updating item with inherited policies"));
-                // DATASHARE issue #761 ("Embargo is lost when moving into another collection"):
-                // inheriting the destination collection's default policies replaces each embargoed
-                // bitstream's future-dated READ policy with the collection's immediate default READ,
-                // silently lifting the embargo and exposing the files. Capture, per embargoed
-                // principal, the boundary until which it must stay embargoed; after inheriting, defer
-                // only the inherited READ policies of those same principals behind that boundary. So a
-                // move with "inherit policies" adopts the new collection's access rules WITHOUT
-                // lifting the embargo: the embargoed audience (e.g. Anonymous) stays locked out until
-                // the original boundary, while principals that already had immediate access keep it.
-                Map<DSpaceObject, Map<String, Date>> embargoBoundaries = collectEmbargoBoundaries(context, item);
-                inheritCollectionDefaultPolicies(context, item, to);
-                deferInheritedReadPoliciesBehindEmbargo(context, embargoBoundaries);
+                if (keepEmbargoPolicies) {
+                    // DATASHARE issue #761 ("Embargo is lost when moving into another collection"):
+                    // inheriting the destination collection's default policies replaces each embargoed
+                    // bitstream's future-dated READ policy with the collection's immediate default READ,
+                    // silently lifting the embargo. Capture, per embargoed principal, the boundary until
+                    // which it must stay embargoed; after inheriting, defer only the inherited READ
+                    // policies of those same principals behind that boundary. So the move adopts the new
+                    // collection's access rules WITHOUT lifting the embargo: the embargoed audience (e.g.
+                    // Anonymous) stays locked out until the original boundary, while principals that
+                    // already had immediate access keep it.
+                    Map<DSpaceObject, Map<String, Date>> embargoBoundaries = collectEmbargoBoundaries(context, item);
+                    inheritCollectionDefaultPolicies(context, item, to);
+                    deferInheritedReadPoliciesBehindEmbargo(context, embargoBoundaries);
+                } else {
+                    // Plain DSpace behaviour: inherit everything, letting the collection's default READ
+                    // replace (and thereby lift) any existing embargo.
+                    inheritCollectionDefaultPolicies(context, item, to);
+                }
             }
 
             // Update the item

@@ -1038,6 +1038,44 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
         }
     }
 
+    @Test
+    public void testMoveItemWithInheritPoliciesNotKeepingEmbargoLiftsIt() throws Exception {
+        /*
+         * The move(..., keepEmbargoPolicies=false) overload restores the plain DSpace behaviour:
+         * inheriting the destination collection's default policies lifts the embargo (the "Keep
+         * embargo policies" option left unticked in the UI). This guards that the new flag actually
+         * toggles the issue #761 behaviour on and off.
+         */
+        context.turnOffAuthorisationSystem();
+        try {
+            Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+
+            Collection source = CollectionBuilder.createCollection(context, community).build();
+            Collection destination = CollectionBuilder.createCollection(context, community).build();
+
+            Item item = ItemBuilder.createItem(context, source).build();
+            Bitstream bitstream = BitstreamBuilder
+                .createBitstream(context, item, InputStream.nullInputStream())
+                .build();
+
+            Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
+            authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
+            authorizeService.createResourcePolicy(context, bitstream, anonymous, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, liftDate, null);
+
+            // Move WITHOUT keeping the embargo -> the inherited default READ lifts it.
+            itemService.move(context, item, source, destination, true, false);
+
+            List<ResourcePolicy> after =
+                authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
+            assertTrue("without keepEmbargoPolicies the inherited default READ must lift the embargo "
+                    + "(an immediate READ policy is present)",
+                after.stream().anyMatch(rp -> rp.getStartDate() == null || !rp.getStartDate().after(new Date())));
+        } finally {
+            context.restoreAuthSystemState();
+        }
+    }
+
     private void assertMetadataValue(String authorQualifier, String contributorElement, String dcSchema, String value,
                                      String authority, int place, MetadataValue metadataValue) {
         assertThat(metadataValue.getValue(), equalTo(value));

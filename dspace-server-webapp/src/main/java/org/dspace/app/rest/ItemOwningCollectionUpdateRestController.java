@@ -85,6 +85,8 @@ public class ItemOwningCollectionUpdateRestController {
     public CollectionRest move(@PathVariable UUID uuid,
                                @RequestParam(name = "inheritPolicies", defaultValue = "false")
                                Boolean inheritCollectionPolicies,
+                               @RequestParam(name = "keepEmbargoPolicies", defaultValue = "true")
+                               Boolean keepEmbargoPolicies,
                                HttpServletResponse response,
                                HttpServletRequest request)
             throws SQLException, IOException, AuthorizeException {
@@ -98,7 +100,7 @@ public class ItemOwningCollectionUpdateRestController {
         }
 
         Collection targetCollection = performItemMove(context, uuid, (Collection) dsoList.get(0),
-                inheritCollectionPolicies);
+                inheritCollectionPolicies, keepEmbargoPolicies);
 
         if (targetCollection == null) {
             return null;
@@ -115,6 +117,7 @@ public class ItemOwningCollectionUpdateRestController {
      * @param currentCollection The current owning collection of the item
      * @param targetCollection  The target collection of the item
      * @param inheritPolicies   Boolean flag whether to inherit the target collection policies when moving the item
+     * @param keepEmbargoPolicies Boolean flag whether to keep an existing embargo when inheriting policies
      * @return The target collection
      * @throws SQLException       If something goes wrong
      * @throws IOException        If something goes wrong
@@ -122,9 +125,9 @@ public class ItemOwningCollectionUpdateRestController {
      */
     private Collection moveItem(final Context context, final Item item, final Collection currentCollection,
                                 final Collection targetCollection,
-                                final boolean inheritPolicies)
+                                final boolean inheritPolicies, final boolean keepEmbargoPolicies)
             throws SQLException, IOException, AuthorizeException {
-        itemService.move(context, item, currentCollection, targetCollection, inheritPolicies);
+        itemService.move(context, item, currentCollection, targetCollection, inheritPolicies, keepEmbargoPolicies);
         // Necessary because Controller does not pass through general RestResourceController, and as such does not do
         // its commit in DSpaceRestRepository.createAndReturn() or similar
         context.commit();
@@ -139,13 +142,14 @@ public class ItemOwningCollectionUpdateRestController {
      * @param itemUuid         The uuid of the item to be moved
      * @param targetCollection The target collection
      * @param inheritPolicies  Whether to inherit the target collection policies when moving the item
+     * @param keepEmbargoPolicies Whether to keep an existing embargo when inheriting the target collection policies
      * @return The new owning collection of the item when authorized or null when not authorized
      * @throws SQLException       If something goes wrong
      * @throws IOException        If something goes wrong
      * @throws AuthorizeException If the user is not authorized to perform the move action
      */
     private Collection performItemMove(final Context context, final UUID itemUuid, final Collection targetCollection,
-                                       boolean inheritPolicies)
+                                       boolean inheritPolicies, boolean keepEmbargoPolicies)
             throws SQLException, IOException, AuthorizeException {
 
         Item item = itemService.find(context, itemUuid);
@@ -164,7 +168,7 @@ public class ItemOwningCollectionUpdateRestController {
 
         if (authorizeService.authorizeActionBoolean(context, currentCollection, Constants.ADMIN)) {
 
-            return moveItem(context, item, currentCollection, targetCollection, inheritPolicies);
+            return moveItem(context, item, currentCollection, targetCollection, inheritPolicies, keepEmbargoPolicies);
         }
 
         return null;
