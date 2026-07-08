@@ -1076,6 +1076,41 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
         }
     }
 
+    @Test
+    public void testMoveItemWithInheritPoliciesPreservesItemLevelEmbargo() throws Exception {
+        /*
+         * Issue #761: the move logic captures/re-applies embargo boundaries for the item, its bundles
+         * and its bitstreams. This covers an ITEM-level embargo (a future-dated READ policy on the item
+         * itself), which must also survive a move that inherits the destination collection's policies.
+         */
+        context.turnOffAuthorisationSystem();
+        try {
+            Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+
+            Collection source = CollectionBuilder.createCollection(context, community).build();
+            Collection destination = CollectionBuilder.createCollection(context, community).build();
+
+            Item embargoedItem = ItemBuilder.createItem(context, source).build();
+
+            // Embargo the item itself: replace its immediate anonymous READ with a future-dated one.
+            Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
+            authorizeService.removePoliciesActionFilter(context, embargoedItem, Constants.READ);
+            authorizeService.createResourcePolicy(context, embargoedItem, anonymous, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, liftDate, null);
+
+            itemService.move(context, embargoedItem, source, destination, true);
+
+            List<ResourcePolicy> after =
+                authorizeService.getPoliciesActionFilter(context, embargoedItem, Constants.READ);
+            assertFalse("moving with inherit policies must not lift an item-level embargo",
+                after.stream().anyMatch(rp -> rp.getStartDate() == null || !rp.getStartDate().after(new Date())));
+            assertTrue("the item-level embargo (future-dated READ) must still be present after the move",
+                after.stream().anyMatch(rp -> rp.getStartDate() != null && rp.getStartDate().after(new Date())));
+        } finally {
+            context.restoreAuthSystemState();
+        }
+    }
+
     private void assertMetadataValue(String authorQualifier, String contributorElement, String dcSchema, String value,
                                      String authority, int place, MetadataValue metadataValue) {
         assertThat(metadataValue.getValue(), equalTo(value));

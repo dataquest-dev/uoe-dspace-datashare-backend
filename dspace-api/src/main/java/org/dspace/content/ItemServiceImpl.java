@@ -1260,7 +1260,8 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
                 if (start != null && start.after(now) && principal != null) {
                     Date current = perPrincipal.get(principal);
                     if (current == null || start.after(current)) {
-                        perPrincipal.put(principal, start);
+                        // Defensive copy: java.util.Date is mutable, so don't alias the policy's own field.
+                        perPrincipal.put(principal, copyDate(start));
                     }
                 }
             }
@@ -1300,7 +1301,8 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
                         Constants.READ)) {
                     Date boundary = perPrincipal.get(principalKey(rp));
                     if (boundary != null && (rp.getStartDate() == null || rp.getStartDate().before(boundary))) {
-                        rp.setStartDate(boundary);
+                        // Defensive copy so each policy gets its own Date rather than a shared instance.
+                        rp.setStartDate(copyDate(boundary));
                         deferred.add(rp);
                     }
                 }
@@ -1332,6 +1334,17 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
             return "e:" + policy.getEPerson().getID();
         }
         return null;
+    }
+
+    /**
+     * Defensive copy of a (mutable) {@link Date}, so a captured embargo boundary is never an alias of a
+     * {@link ResourcePolicy}'s own start-date field and is not shared between policies.
+     *
+     * @param date the date to copy, may be {@code null}
+     * @return an independent copy, or {@code null} when {@code date} is {@code null}
+     */
+    private static Date copyDate(Date date) {
+        return date == null ? null : new Date(date.getTime());
     }
 
     @Override
