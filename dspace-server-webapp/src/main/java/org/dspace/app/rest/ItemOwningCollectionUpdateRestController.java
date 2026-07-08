@@ -84,9 +84,9 @@ public class ItemOwningCollectionUpdateRestController {
     @PostAuthorize("returnObject != null")
     public CollectionRest move(@PathVariable UUID uuid,
                                @RequestParam(name = "inheritPolicies", defaultValue = "false")
-                               Boolean inheritCollectionPolicies,
+                               boolean inheritCollectionPolicies,
                                @RequestParam(name = "keepEmbargoPolicies", defaultValue = "true")
-                               Boolean keepEmbargoPolicies,
+                               boolean keepEmbargoPolicies,
                                HttpServletResponse response,
                                HttpServletRequest request)
             throws SQLException, IOException, AuthorizeException {
