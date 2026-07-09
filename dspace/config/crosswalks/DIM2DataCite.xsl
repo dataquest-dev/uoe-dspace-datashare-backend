@@ -9,6 +9,26 @@
        C3 — Rights: handle dc.rights.uri qualifier as <rights rightsURI="…"/>.
        C4 — Rights: detect "Creative Commons Attribution 4.0" and add SPDX
             rightsIdentifier=CC-BY-4.0, schemeURI, etc.
+       C5 — Creators: also build <creator>s from dc.creator (not only
+            dc.contributor.author), with a dc.publisher fallback before the
+            "(:unkn) unknown" placeholder (per the mapping wiki). DataShare holds
+            author names in dc.creator, so the vanilla DSpace-8 crosswalk registered
+            DOIs with "(:unkn) unknown" creators (issue #786).
+       C6 — ResourceType: map dc.type to resourceTypeGeneral per the mapping wiki,
+            matched case-insensitively (so lower-case "dataset" keeps "Dataset"
+            instead of "Other", issue #786), including the DataShare-specific values
+            "moving image", "interactive resource" and "sound".
+       C7 — Contributors: map dc.contributor (depositor) to ContactPerson and
+            remove the vanilla DataManager/HostingInstitution contributors, which
+            rendered as an unconfigured "My University" contributor on every DOI.
+            dc.contributor.other is dropped (dirty free-text funder field the
+            previous crosswalk never emitted).
+       C9 — AlternateIdentifiers/RelatedIdentifiers: keep dc.identifier.citation as
+            an alternateIdentifier (exclude only the primary DOI, not any value that
+            merely embeds it), and map dc.relation.* URLs to relatedIdentifiers.
+     These follow the "Mapping between Datashare and DataCite metadata fields" wiki.
+     (dc.description provenance and dc.contributor.other funders are intentionally
+     NOT emitted; see the notes at those elements.)
      Search for "DATASHARE" markers below to locate each customization.
   -->
 
@@ -46,9 +66,10 @@
     <xsl:param name="prefix">10.5072/dspace-</xsl:param>
     <!-- The content of the following parameter will be used as element publisher. -->
     <xsl:param name="publisher">My University</xsl:param>
-    <!-- The content of the following variable will be used as element contributor with contributorType datamanager. -->
+    <!-- // DATASHARE (C7): datamanager and hostinginstitution are still declared because
+         DataCiteXMLCreator injects them from configuration, but they are no longer emitted
+         as contributors (see DataCite (7) below). -->
     <xsl:param name="datamanager"><xsl:value-of select="$publisher" /></xsl:param>
-    <!-- The content of the following variable will be used as element contributor with contributorType hostingInstitution. -->
     <xsl:param name="hostinginstitution"><xsl:value-of select="$publisher" /></xsl:param>
     <!-- Please take a look into the DataCite schema documentation if you want to know how to use these elements.
          http://schema.datacite.org -->
@@ -89,7 +110,10 @@
                 company as well. We have to ensure to use URIs of our prefix
                 as primary identifiers only.
             -->
-            <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='identifier' and @qualifier and (contains(., $prefix))]" />
+            <!-- // DATASHARE (C9): select the DOI by its own qualifier ($mdQualifier), not any
+                 identifier that merely contains the prefix, so that e.g. dc.identifier.citation
+                 (which embeds the DOI URL) is not treated as the primary identifier. -->
+            <xsl:apply-templates select="//dspace:field[@mdschema=$mdSchema and @element=$mdElement and @qualifier=$mdQualifier and (contains(., $prefix))]" />
 
             <!--
                 DataCite (2)
@@ -98,9 +122,28 @@
             -->
             <creators>
                 <xsl:choose>
-                    <xsl:when test="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='author']">
-                        <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='author']" />
+                    <!-- // DATASHARE - start (C5) build creators from dc.creator as well as
+                         dc.contributor.author. DataShare holds author names in dc.creator, but
+                         the vanilla DSpace-8 crosswalk that replaced DataShare's custom one only
+                         read dc.contributor.author, so DOIs were registered with "(:unkn) unknown"
+                         creators (issue #786). Only NON-EMPTY values switch on this branch, so a
+                         present-but-blank field can neither suppress the fallback nor emit an
+                         empty (schema-invalid) creatorName. -->
+                    <xsl:when test="//dspace:field[@mdschema='dc' and ((@element='contributor' and @qualifier='author') or @element='creator') and normalize-space(.) != '']">
+                        <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='author' and normalize-space(.) != '']" />
+                        <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='creator' and normalize-space(.) != '']" />
                     </xsl:when>
+                    <!-- Per the DataShare -> DataCite mapping wiki: when there is no creator,
+                         fall back to the publisher (the depositing institution) as creator
+                         before resorting to the "(:unkn) unknown" placeholder. -->
+                    <xsl:when test="//dspace:field[@mdschema='dc' and @element='publisher' and normalize-space(.) != '']">
+                        <creator>
+                            <creatorName>
+                                <xsl:value-of select="//dspace:field[@mdschema='dc' and @element='publisher' and normalize-space(.) != ''][1]" />
+                            </creatorName>
+                        </creator>
+                    </xsl:when>
+                    <!-- // DATASHARE - end (C5) -->
                     <xsl:otherwise>
                         <creator>
                             <creatorName>(:unkn) unknown</creatorName>
@@ -189,27 +232,34 @@
 
             <!--
                 DataCite (7)
-                Add contributorType from configuration above.
                 Template Call for Contributors
                 Occ: 0-n
                 Format: personal name: family, given
                 Required Attribute: contributorType - controlled list
-            --> 
-            <contributors>
-                <xsl:element name="contributor">
-                    <xsl:attribute name="contributorType">DataManager</xsl:attribute>
-                    <xsl:element name="contributorName">
-                        <xsl:value-of select="$datamanager"/>
-                    </xsl:element>
-                </xsl:element>
-                <xsl:element name="contributor">
-                    <xsl:attribute name="contributorType">HostingInstitution</xsl:attribute>
-                    <contributorName>
-                        <xsl:value-of select="$hostinginstitution" />
-                    </contributorName>
-                </xsl:element>
-                <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='contributor'][not(@qualifier='author')]" />
-            </contributors>
+            -->
+            <!-- // DATASHARE - start (C7) Per the DataShare -> DataCite mapping spec:
+                 dc.contributor (the depositor) maps to a ContactPerson contributor. The
+                 vanilla DataManager/HostingInstitution contributors are removed: they are
+                 not part of the DataShare mapping and, because the publisher/datamanager/
+                 hostingInstitution parameters were left at the "My University" placeholder,
+                 they rendered as a bogus "My University" contributor on every DOI.
+                 dc.contributor.other is excluded here (and dropped entirely, as v5 did — see
+                 DataCite (19)). We select only the qualifiers the contributor template below
+                 actually emits (unqualified depositor, editor, advisor, illustrator) so that an
+                 item whose only extra contributor uses an unhandled qualifier does not produce
+                 an empty (schema-invalid) <contributors> element. Keep this list in sync with
+                 the DataCite (7.1) template. -->
+            <xsl:variable name="datashareContributors"
+                select="//dspace:field[@mdschema='dc' and @element='contributor'
+                        and (not(@qualifier) or @qualifier='editor' or @qualifier='advisor'
+                             or @qualifier='illustrator')
+                        and normalize-space(.) != '']" />
+            <xsl:if test="$datashareContributors">
+                <contributors>
+                    <xsl:apply-templates select="$datashareContributors" />
+                </contributors>
+            </xsl:if>
+            <!-- // DATASHARE - end (C7) -->
 
             <!--
                 DataCite (8)
@@ -272,19 +322,31 @@
                 Occ: 0-n
                 Required Attribute: alternateIdentifierType (free format)
             -->
-            <xsl:if test="//dspace:field[@mdschema='dc' and @element='identifier' and @qualifier and not(contains(., $prefix))]">
+            <xsl:if test="//dspace:field[@mdschema='dc' and @element='identifier' and @qualifier and not(@qualifier=$mdQualifier and contains(., $prefix))]">
                 <xsl:element name="alternateIdentifiers">
-                    <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='identifier' and @qualifier and not(contains(., $prefix))]" />
+                    <xsl:apply-templates select="//dspace:field[@mdschema='dc' and @element='identifier' and @qualifier and not(@qualifier=$mdQualifier and contains(., $prefix))]" />
                 </xsl:element>
             </xsl:if>
 
             <!--
                 DataCite (12)
                 Add relatedIdentifier.
-                DataCite requires a relatedIdentifierType, but we do not know which
-                type of identifier is part of the dc.relation.* fields within DSpace.
-                Skip the related identifier until we find a proper solution.
             -->
+            <!-- // DATASHARE - start (C9) Per the DataShare -> DataCite mapping wiki, map the
+                 dc.relation.* fields below to relatedIdentifiers, but only when the value is a
+                 URL. relatedIdentifierType is DOI for doi.org URLs, otherwise URL. See the
+                 relatedIdentifier template for the relationType per qualifier. -->
+            <xsl:variable name="relations"
+                select="//dspace:field[@mdschema='dc' and @element='relation'
+                        and (@qualifier='isreferencedby' or @qualifier='isversionof'
+                             or @qualifier='replaces' or @qualifier='isreplacedby')
+                        and starts-with(normalize-space(.), 'http')]" />
+            <xsl:if test="$relations">
+                <relatedIdentifiers>
+                    <xsl:apply-templates select="$relations" mode="related" />
+                </relatedIdentifiers>
+            </xsl:if>
+            <!-- // DATASHARE - end (C9) -->
 
             <!--
                 DataCite (13)
@@ -343,7 +405,12 @@
             <!--
                 DataCite (19)
                 FundingReference
-                DSpace currently doesn't store FundingReference.
+                // DATASHARE (C8 removed): dc.contributor.other holds a free-text "funder"
+                field, but production DataShare v5 never emitted fundingReferences (0 of the
+                repository's ~7800 DOIs carry one) and the field is dirty (values such as
+                "Self-funded", "Other", the depositing institution, or bare grant numbers).
+                To stay faithful to the pre-migration output we drop it entirely, exactly as
+                v5 did, rather than register incorrect funder metadata with DataCite.
             -->
             <!--
                 DataCite (20)
@@ -373,7 +440,7 @@
         </xsl:if>
     </xsl:template>
 
-    <!-- DataCite (2) :: Creator -->
+    <!-- DataCite (2) :: Creator (dc.contributor.author) -->
     <xsl:template match="//dspace:field[@mdschema='dc' and @element='contributor' and @qualifier='author']">
         <creator>
             <creatorName>
@@ -381,6 +448,19 @@
             </creatorName>
         </creator>
     </xsl:template>
+
+    <!-- DataCite (2) :: Creator (dc.creator) -->
+    <!-- // DATASHARE - start (C5) DataShare holds author names in dc.creator; map them to
+         <creator> exactly like dc.contributor.author so migrated items keep their authors
+         in the registered DataCite metadata instead of "(:unkn) unknown" (issue #786). -->
+    <xsl:template match="//dspace:field[@mdschema='dc' and @element='creator']">
+        <creator>
+            <creatorName>
+                <xsl:value-of select="." />
+            </creatorName>
+        </creator>
+    </xsl:template>
+    <!-- // DATASHARE - end (C5) -->
 
     <!-- DataCite (3) :: Title -->
     <xsl:template match="dspace:field[@mdschema='dc' and @element='title']">
@@ -455,22 +535,18 @@
                     </contributorName>
                 </xsl:element>
             </xsl:when>
-            <xsl:when test="@qualifier='other'"> 
+            <!-- // DATASHARE - start (C7) an unqualified dc.contributor is the depositor and
+                 maps to ContactPerson (was "Other"). dc.contributor.other is dropped (as v5
+                 did) and is intentionally not matched here. -->
+            <xsl:when test="not(@qualifier)">
                 <xsl:element name="contributor">
-                    <xsl:attribute name="contributorType">Other</xsl:attribute>
+                    <xsl:attribute name="contributorType">ContactPerson</xsl:attribute>
                     <contributorName>
                         <xsl:value-of select="." />
                     </contributorName>
                 </xsl:element>
             </xsl:when>
-            <xsl:when test="not(@qualifier)"> 
-                <xsl:element name="contributor">
-                    <xsl:attribute name="contributorType">Other</xsl:attribute>
-                    <contributorName>
-                        <xsl:value-of select="." />
-                    </contributorName>
-                </xsl:element>
-            </xsl:when>
+            <!-- // DATASHARE - end (C7) -->
         </xsl:choose>
     </xsl:template>
 
@@ -547,33 +623,44 @@
     -->
     <xsl:template match="//dspace:field[@mdschema='dc' and @element='type'][1]">
         <xsl:element name="resourceType">
+            <!-- // DATASHARE - start (C6) map dc.type to resourceTypeGeneral following the
+                 DataShare -> DataCite mapping wiki, matched case-insensitively. After the
+                 migration dc.type is stored lower-case (e.g. "dataset"), which the previous
+                 case-sensitive comparison downgraded to "Other" (issue #786: "Dataset" became
+                 "Other"); the same happened to DataShare's "sound"/"moving image"/"interactive
+                 resource" items. The values follow the wiki table exactly (e.g. article/preprint/
+                 presentation/technical report/thesis -> Text). -->
+            <xsl:variable name="typeLower" select="lower-case(normalize-space(.))" />
             <xsl:attribute name="resourceTypeGeneral">
                 <xsl:choose>
-                    <xsl:when test="string(text())='Animation'">Audiovisual</xsl:when>
-                    <xsl:when test="string(text())='Article'">JournalArticle</xsl:when>
-                    <xsl:when test="string(text())='Book'">Book</xsl:when>
-                    <xsl:when test="string(text())='Book chapter'">BookChapter</xsl:when>
-                    <xsl:when test="string(text())='Dataset'">Dataset</xsl:when>
-                    <xsl:when test="string(text())='Learning Object'">InteractiveResource</xsl:when>
-                    <xsl:when test="string(text())='Image'">Image</xsl:when>
-                    <xsl:when test="string(text())='Image, 3-D'">Image</xsl:when>
-                    <xsl:when test="string(text())='Map'">Model</xsl:when>
-                    <xsl:when test="string(text())='Musical Score'">Other</xsl:when>
-                    <xsl:when test="string(text())='Plan or blueprint'">Model</xsl:when>
-                    <xsl:when test="string(text())='Preprint'">Preprint</xsl:when>
-                    <xsl:when test="string(text())='Presentation'">Other</xsl:when>
-                    <xsl:when test="string(text())='Recording, acoustical'">Sound</xsl:when>
-                    <xsl:when test="string(text())='Recording, musical'">Sound</xsl:when>
-                    <xsl:when test="string(text())='Recording, oral'">Sound</xsl:when>
-                    <xsl:when test="string(text())='Software'">Software</xsl:when>
-                    <xsl:when test="string(text())='Technical Report'">Report</xsl:when>
-                    <xsl:when test="string(text())='Thesis'">Dissertation</xsl:when>
-                    <xsl:when test="string(text())='Video'">Audiovisual</xsl:when>
-                    <xsl:when test="string(text())='Working Paper'">Text</xsl:when>
-                    <xsl:when test="string(text())='Other'">Other</xsl:when>
+                    <xsl:when test="$typeLower='animation'">Audiovisual</xsl:when>
+                    <xsl:when test="$typeLower='moving image'">Audiovisual</xsl:when>
+                    <xsl:when test="$typeLower='article'">Text</xsl:when>
+                    <xsl:when test="$typeLower='book'">Book</xsl:when>
+                    <xsl:when test="$typeLower='book chapter'">BookChapter</xsl:when>
+                    <xsl:when test="$typeLower='dataset'">Dataset</xsl:when>
+                    <xsl:when test="$typeLower='learning object'">InteractiveResource</xsl:when>
+                    <xsl:when test="$typeLower='interactive resource'">InteractiveResource</xsl:when>
+                    <xsl:when test="$typeLower='image'">Image</xsl:when>
+                    <xsl:when test="$typeLower='image, 3-d'">Image</xsl:when>
+                    <xsl:when test="$typeLower='map'">Model</xsl:when>
+                    <xsl:when test="$typeLower='musical score'">Other</xsl:when>
+                    <xsl:when test="$typeLower='plan or blueprint'">Model</xsl:when>
+                    <xsl:when test="$typeLower='preprint'">Text</xsl:when>
+                    <xsl:when test="$typeLower='presentation'">Text</xsl:when>
+                    <xsl:when test="$typeLower='recording, acoustical'">Sound</xsl:when>
+                    <xsl:when test="$typeLower='recording, musical'">Sound</xsl:when>
+                    <xsl:when test="$typeLower='recording, oral'">Sound</xsl:when>
+                    <xsl:when test="$typeLower='sound'">Sound</xsl:when>
+                    <xsl:when test="$typeLower='software'">Software</xsl:when>
+                    <xsl:when test="$typeLower='technical report'">Text</xsl:when>
+                    <xsl:when test="$typeLower='thesis'">Text</xsl:when>
+                    <xsl:when test="$typeLower='video'">Audiovisual</xsl:when>
+                    <xsl:when test="$typeLower='working paper'">Text</xsl:when>
                     <xsl:otherwise>Other</xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
+            <!-- // DATASHARE - end (C6) -->
             <xsl:value-of select="." />
         </xsl:element>
     </xsl:template>
@@ -589,7 +676,7 @@
         resolveUrlToHandle(context, altId) until one is recognized or all have
         been tested.
     -->
-    <xsl:template match="//dspace:field[@mdschema='dc' and @element='identifier' and @qualifier and not(contains(., $prefix))]">
+    <xsl:template match="//dspace:field[@mdschema='dc' and @element='identifier' and @qualifier and not(@qualifier=$mdQualifier and contains(., $prefix))]">
         <xsl:element name="alternateIdentifier">
             <xsl:if test="@qualifier">
                 <xsl:attribute name="alternateIdentifierType"><xsl:value-of select="@qualifier" /></xsl:attribute>
@@ -600,11 +687,47 @@
 
     <!--
         DataCite (12), DataCite (12.1)
-        Adds RelatedIdentifier and relatedIdentifierType information
-        DataCite requires a relatedIdentifierType, but we do not know which
-        type of identifier is part of the dc.relation.* fields within DSpace.
-        Skip the related identifier until we find a proper solution.
+        Adds RelatedIdentifier, relatedIdentifierType and relationType information.
     -->
+    <!-- // DATASHARE - start (C9) A dc.relation.* URL becomes a relatedIdentifier. A doi.org /
+         dx.doi.org URL (matched case-insensitively at the start of the value) is emitted as
+         relatedIdentifierType="DOI" with the bare DOI as the value (consistent with the primary
+         <identifier>, and the form DataCite expects); any other URL is emitted verbatim as
+         relatedIdentifierType="URL". The relationType is derived from the qualifier: isversionof
+         -> IsVersionOf, isreplacedby -> IsObsoletedBy, replaces -> IsNewVersionOf, isreferencedby
+         -> IsCitedBy. The relationTypes follow both the wiki's worked example and the actual
+         pre-migration (v6) DataCite records (which registered relationType=IsCitedBy and the
+         bare DOI for referenced-by DOIs). -->
+    <xsl:template match="//dspace:field[@mdschema='dc' and @element='relation']" mode="related">
+        <xsl:variable name="value" select="normalize-space(.)" />
+        <xsl:variable name="isDoi" select="matches($value, '^https?://(dx\.)?doi\.org/', 'i')" />
+        <xsl:element name="relatedIdentifier">
+            <xsl:attribute name="relatedIdentifierType">
+                <xsl:choose>
+                    <xsl:when test="$isDoi">DOI</xsl:when>
+                    <xsl:otherwise>URL</xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
+            <xsl:attribute name="relationType">
+                <xsl:choose>
+                    <xsl:when test="@qualifier='isversionof'">IsVersionOf</xsl:when>
+                    <xsl:when test="@qualifier='isreplacedby'">IsObsoletedBy</xsl:when>
+                    <xsl:when test="@qualifier='replaces'">IsNewVersionOf</xsl:when>
+                    <xsl:when test="@qualifier='isreferencedby'">IsCitedBy</xsl:when>
+                    <xsl:otherwise>References</xsl:otherwise>
+                </xsl:choose>
+            </xsl:attribute>
+            <xsl:choose>
+                <xsl:when test="$isDoi">
+                    <xsl:value-of select="replace($value, '^https?://(dx\.)?doi\.org/', '', 'i')" />
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="$value" />
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:element>
+    </xsl:template>
+    <!-- // DATASHARE - end (C9) -->
 
     <!--
         DataCite (13)
