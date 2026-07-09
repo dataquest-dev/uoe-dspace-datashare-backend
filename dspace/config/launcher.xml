@@ -82,17 +82,16 @@
             <class>dsrun</class>
         </step>
     </command>
-    <!-- DATASHARE - start -->
-    <!-- 
+    <!-- DATASHARE (UoE) issue #670: re-enabled so the embargo-lifter can remove dc.date.embargo
+         when an embargo lifts. Safe because EmbargoServiceImpl#liftEmbargo no-ops on items that
+         have no embargo terms (dc.date.embargo), so ordinary items' dc.date.available is never reset. -->
     <command>
         <name>embargo-lifter</name>
         <description>Embargo manager tool used to check, list and lift embargoes</description>
         <step>
             <class>org.dspace.embargo.EmbargoCLITool</class>
         </step>
-    </command> 
-    -->
-    <!-- DATASHARE - end -->
+    </command>
     <command>
         <name>generate-sitemaps</name>
         <description>Generate search engine and html sitemaps</description>

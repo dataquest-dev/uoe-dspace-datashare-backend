@@ -153,6 +153,20 @@ public class EmbargoServiceImpl implements EmbargoService {
     @Override
     public void liftEmbargo(Context context, Item item)
             throws SQLException, AuthorizeException, IOException {
+        // DATASHARE (UoE) issue #670: only items that are genuinely under embargo carry the embargo
+        // terms field (embargo.field.terms, e.g. dc.date.embargo). Because the lift field
+        // (embargo.field.lift = dc.date.available) is stamped on EVERY archived item, the
+        // embargo-lifter batch would otherwise call liftEmbargo on ordinary, never-embargoed items
+        // and reset their dc.date.available. If there are no embargo terms there is nothing to lift,
+        // so do nothing (this also makes the lifter idempotent: a re-run skips already-lifted items).
+        List<MetadataValue> terms = itemService.getMetadata(item, terms_schema, terms_element,
+                terms_qualifier, Item.ANY);
+        if (terms == null || terms.isEmpty()) {
+            log.debug("Skipping embargo lift for Item {}: no embargo terms metadata present, nothing to lift.",
+                    item.getID());
+            return;
+        }
+
         // Since 3.0 the lift process for all embargoes is performed through the dates
         // on the authorization process (see DS-2588)
         // lifter.liftEmbargo(context, item);
