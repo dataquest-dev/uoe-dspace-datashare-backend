@@ -924,13 +924,7 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
 
     @Test
     public void testMoveItemWithInheritPoliciesPreservesBitstreamEmbargo() throws Exception {
-        /*
-         * Issue #761 (UoE/WP2 - "Embargo is lost when moving into another collection"):
-         * moving an item to another collection with "inherit policies" enabled must NOT lift an
-         * existing embargo. Inheriting the destination collection's default bitstream READ policy
-         * would otherwise replace the bitstream's future-dated (embargo) READ policy with the
-         * collection's immediate READ, making an embargoed file publicly downloadable after the move.
-         */
+        // #761: a move with "inherit policies" must not lift an existing bitstream embargo.
         context.turnOffAuthorisationSystem();
         try {
             Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
@@ -943,11 +937,8 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
                 .createBitstream(context, embargoedItem, InputStream.nullInputStream())
                 .build();
 
-            // Embargo the file: replace its immediate anonymous READ with a future-dated anonymous READ,
-            // so it is not readable until the (far future) lift date. Created directly (not via a
-            // ResourcePolicyBuilder) because the move re-derives the bitstream's READ policies, so a
-            // builder-tracked policy would fail teardown trying to delete a row that is already gone;
-            // created directly it is simply cascade-deleted with the bitstream.
+            // Embargo the file with a future-dated anonymous READ (created directly, not via a builder,
+            // since the move re-derives these policies and a builder would then fail teardown).
             Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
             authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
             authorizeService.createResourcePolicy(context, bitstream, anonymous, null, Constants.READ,
@@ -988,12 +979,7 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
 
     @Test
     public void testMoveItemWithInheritPoliciesKeepsNonEmbargoedGroupImmediate() throws Exception {
-        /*
-         * Issue #761 follow-up: DSpace's embargo future-dates only the "default read" audience
-         * (typically Anonymous) and leaves other groups' READ immediate. A move with "inherit
-         * policies" must therefore defer only the embargoed (future-dated) principal, not every
-         * inherited READ policy - a group that had immediate access must keep it during the embargo.
-         */
+        // #761: only the embargoed principal (Anonymous) is deferred; a group with immediate READ keeps it.
         context.turnOffAuthorisationSystem();
         try {
             Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
@@ -1040,12 +1026,7 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
 
     @Test
     public void testMoveItemWithInheritPoliciesNotKeepingEmbargoLiftsIt() throws Exception {
-        /*
-         * The move(..., keepEmbargoPolicies=false) overload restores the plain DSpace behaviour:
-         * inheriting the destination collection's default policies lifts the embargo (the "Keep
-         * embargo policies" option left unticked in the UI). This guards that the new flag actually
-         * toggles the issue #761 behaviour on and off.
-         */
+        // keepEmbargoPolicies=false restores plain DSpace behaviour: inheriting lifts the embargo.
         context.turnOffAuthorisationSystem();
         try {
             Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
@@ -1078,11 +1059,7 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
 
     @Test
     public void testMoveItemWithInheritPoliciesPreservesItemLevelEmbargo() throws Exception {
-        /*
-         * Issue #761: the move logic captures/re-applies embargo boundaries for the item, its bundles
-         * and its bitstreams. This covers an ITEM-level embargo (a future-dated READ policy on the item
-         * itself), which must also survive a move that inherits the destination collection's policies.
-         */
+        // #761: an item-level embargo (future-dated READ on the item) must also survive the move.
         context.turnOffAuthorisationSystem();
         try {
             Group anonymous = groupService.findByName(context, Group.ANONYMOUS);

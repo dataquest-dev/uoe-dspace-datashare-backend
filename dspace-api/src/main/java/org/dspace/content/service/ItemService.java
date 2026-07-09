@@ -679,10 +679,8 @@ public interface ItemService
      * @param from                   Collection to move from
      * @param to                     Collection to move to
      * @param inheritDefaultPolicies whether to inherit policies from the new collection
-     * @param keepEmbargoPolicies    when inheriting, whether to preserve an existing embargo (so only
-     *                               the non-embargo access is inherited) instead of letting the
-     *                               inherited default READ lift it; ignored when
-     *                               {@code inheritDefaultPolicies} is false
+     * @param keepEmbargoPolicies    when inheriting, keep an existing embargo instead of letting the
+     *                               inherited default READ lift it; ignored if not inheriting
      * @throws SQLException       if database error
      * @throws AuthorizeException if authorization error
      * @throws IOException        if IO error

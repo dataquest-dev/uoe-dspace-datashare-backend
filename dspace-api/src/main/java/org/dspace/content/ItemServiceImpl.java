@@ -1155,9 +1155,7 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
     @Override
     public void move(Context context, Item item, Collection from, Collection to, boolean inheritDefaultPolicies)
         throws SQLException, AuthorizeException, IOException {
-        // By default a move that inherits the destination collection's policies keeps any existing
-        // embargo (DATASHARE issue #761); callers wanting the plain DSpace behaviour (embargo lifted by
-        // the inherited default READ) use the overload with keepEmbargoPolicies=false.
+        // Keep any embargo by default (#761); use the 6-arg overload to opt out.
         move(context, item, from, to, inheritDefaultPolicies, true);
     }
 
@@ -1190,21 +1188,12 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
                 log.info(LogHelper.getHeader(context, "move_item",
                                               "Updating item with inherited policies"));
                 if (keepEmbargoPolicies) {
-                    // DATASHARE issue #761 ("Embargo is lost when moving into another collection"):
-                    // inheriting the destination collection's default policies replaces each embargoed
-                    // bitstream's future-dated READ policy with the collection's immediate default READ,
-                    // silently lifting the embargo. Capture, per embargoed principal, the boundary until
-                    // which it must stay embargoed; after inheriting, defer only the inherited READ
-                    // policies of those same principals behind that boundary. So the move adopts the new
-                    // collection's access rules WITHOUT lifting the embargo: the embargoed audience (e.g.
-                    // Anonymous) stays locked out until the original boundary, while principals that
-                    // already had immediate access keep it.
+                    // #761: inherit, but re-defer the inherited READ behind any existing embargo so
+                    // the move doesn't lift it.
                     Map<DSpaceObject, Map<String, Date>> embargoBoundaries = collectEmbargoBoundaries(context, item);
                     inheritCollectionDefaultPolicies(context, item, to);
                     deferInheritedReadPoliciesBehindEmbargo(context, embargoBoundaries);
                 } else {
-                    // Plain DSpace behaviour: inherit everything, letting the collection's default READ
-                    // replace (and thereby lift) any existing embargo.
                     inheritCollectionDefaultPolicies(context, item, to);
                 }
             }
@@ -1227,20 +1216,9 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
     }
 
     /**
-     * Find, for the item and each of its bundles and bitstreams, the embargo boundary of every
-     * <em>embargoed principal</em> - i.e. for each group/eperson that holds a future-dated READ
-     * policy on the object, the latest such start date. Principals with only immediate READ access
-     * are ignored: DSpace's embargo future-dates just the "default read" audience (typically
-     * Anonymous) and leaves other groups' READ immediate (see
-     * {@link org.dspace.embargo.DefaultEmbargoSetter}), so only the embargoed principals must be
-     * re-deferred after a move. Used by {@link #move} to re-apply the embargo after inheriting the
-     * destination collection's default policies (which drop the embargo READ policies). See #761.
-     *
-     * @param context DSpace context
-     * @param item    the item being moved
-     * @return a map from each embargoed object to its embargoed-principal-&gt;boundary map, empty when
-     *         nothing is under embargo
-     * @throws SQLException if a database error occurs
+     * For the item, its bundles and bitstreams, map each embargoed principal (a group/eperson with a
+     * future-dated READ policy) to its latest future READ start date. Only embargoed principals are
+     * captured; groups with immediate READ are left alone. Used by {@link #move}. See #761.
      */
     private Map<DSpaceObject, Map<String, Date>> collectEmbargoBoundaries(Context context, Item item)
             throws SQLException {
@@ -1260,7 +1238,6 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
                 if (start != null && start.after(now) && principal != null) {
                     Date current = perPrincipal.get(principal);
                     if (current == null || start.after(current)) {
-                        // Defensive copy: java.util.Date is mutable, so don't alias the policy's own field.
                         perPrincipal.put(principal, copyDate(start));
                     }
                 }
@@ -1273,19 +1250,9 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
     }
 
     /**
-     * Defer, behind their embargo boundary, the READ policies inherited onto each embargoed object
-     * for a principal that was embargoed, so that inheriting the destination collection's default
-     * policies does not lift the embargo: an inherited READ policy is pushed to the boundary only when
-     * its principal is one that was embargoed and the policy would otherwise grant access before that
-     * boundary. Principals that were not embargoed (e.g. a staff group with immediate access) keep
-     * their inherited immediate access, and the embargoed audience stays locked out until the original
-     * boundary and then becomes readable to the destination collection's audience. See issue #761.
-     *
-     * @param context    DSpace context
-     * @param boundaries the embargoed objects and their per-principal boundaries from
-     *                   {@link #collectEmbargoBoundaries}
-     * @throws SQLException       if a database error occurs
-     * @throws AuthorizeException if the current user is not authorized to change the policies
+     * Push each inherited READ policy whose principal was embargoed (per {@link #collectEmbargoBoundaries})
+     * back to that principal's boundary, so inheriting the collection defaults doesn't lift the embargo.
+     * Non-embargoed principals keep their immediate access. See #761.
      */
     private void deferInheritedReadPoliciesBehindEmbargo(Context context,
             Map<DSpaceObject, Map<String, Date>> boundaries) throws SQLException, AuthorizeException {
@@ -1301,15 +1268,12 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
                         Constants.READ)) {
                     Date boundary = perPrincipal.get(principalKey(rp));
                     if (boundary != null && (rp.getStartDate() == null || rp.getStartDate().before(boundary))) {
-                        // Defensive copy so each policy gets its own Date rather than a shared instance.
                         rp.setStartDate(copyDate(boundary));
                         deferred.add(rp);
                     }
                 }
             }
-            // Persist in one call: ResourcePolicyService#update refreshes the related DSOs'
-            // last-modified timestamps and deduplicates them, so a single batch avoids doing that
-            // repeatedly for items with many bitstreams/policies.
+            // Batch the update so the related-DSO last-modified refresh runs once.
             if (!deferred.isEmpty()) {
                 resourcePolicyService.update(context, deferred);
             }
@@ -1318,14 +1282,7 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
         }
     }
 
-    /**
-     * A stable key identifying the principal (group or eperson) a resource policy is granted to, so
-     * embargoed principals can be matched to the policies inherited on a move (see
-     * {@link #collectEmbargoBoundaries}). Group and eperson ids are namespaced so they cannot collide.
-     *
-     * @param policy the resource policy
-     * @return the principal key, or {@code null} when the policy names neither a group nor an eperson
-     */
+    /** Namespaced key for a policy's principal (group/eperson), or null if it has neither. */
     private static String principalKey(ResourcePolicy policy) {
         if (policy.getGroup() != null) {
             return "g:" + policy.getGroup().getID();
@@ -1336,13 +1293,7 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
         return null;
     }
 
-    /**
-     * Defensive copy of a (mutable) {@link Date}, so a captured embargo boundary is never an alias of a
-     * {@link ResourcePolicy}'s own start-date field and is not shared between policies.
-     *
-     * @param date the date to copy, may be {@code null}
-     * @return an independent copy, or {@code null} when {@code date} is {@code null}
-     */
+    /** Defensive copy of a (mutable) Date, null-safe. */
     private static Date copyDate(Date date) {
         return date == null ? null : new Date(date.getTime());
     }
