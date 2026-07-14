@@ -48,6 +48,3 @@ rebel.xml
 
 ## Ignore jenv configuration
 .java-version
-
-# JVM crash logs
-hs_err_pid*.log
