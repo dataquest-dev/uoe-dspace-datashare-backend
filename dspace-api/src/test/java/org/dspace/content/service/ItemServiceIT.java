@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -919,6 +920,172 @@ public class ItemServiceIT extends AbstractIntegrationTestWithDatabase {
 
         context.restoreAuthSystemState();
 
+    }
+
+    @Test
+    public void testMoveItemWithInheritPoliciesPreservesBitstreamEmbargo() throws Exception {
+        // #761: a move with "inherit policies" must not lift an existing bitstream embargo.
+        context.turnOffAuthorisationSystem();
+        try {
+            Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+
+            Collection source = CollectionBuilder.createCollection(context, community).build();
+            Collection destination = CollectionBuilder.createCollection(context, community).build();
+
+            Item embargoedItem = ItemBuilder.createItem(context, source).build();
+            Bitstream bitstream = BitstreamBuilder
+                .createBitstream(context, embargoedItem, InputStream.nullInputStream())
+                .build();
+
+            // Embargo the file with a future-dated anonymous READ (created directly, not via a builder,
+            // since the move re-derives these policies and a builder would then fail teardown).
+            Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
+            authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
+            authorizeService.createResourcePolicy(context, bitstream, anonymous, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, liftDate, null);
+
+            // Precondition: the bitstream is under embargo - its only READ policy starts in the future.
+            List<ResourcePolicy> before = authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
+            assertEquals(1, before.size());
+            assertTrue("precondition: the bitstream's READ policy is future-dated (embargoed)",
+                before.get(0).getStartDate() != null && before.get(0).getStartDate().after(new Date()));
+            // The embargo lift date, as stored, so we can assert it is preserved (not merely "future").
+            Date embargoLiftDate = before.get(0).getStartDate();
+
+            // Move to the destination collection WITH inherit policies enabled.
+            itemService.move(context, embargoedItem, source, destination, true);
+
+            // The embargo must survive the move: the bitstream must NOT have gained an immediate
+            // (null or past start date) READ policy that lifts the embargo, and its future-dated READ
+            // policy must still be present.
+            List<ResourcePolicy> after = authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
+            assertFalse("moving with inherit policies must not lift the embargo by adding an immediate READ policy",
+                after.stream().anyMatch(rp -> rp.getStartDate() == null || !rp.getStartDate().after(new Date())));
+            assertTrue("the embargo (future-dated READ policy) must still be present after the move",
+                after.stream().anyMatch(rp -> rp.getStartDate() != null && rp.getStartDate().after(new Date())));
+            // ...and it keeps its ORIGINAL lift date - a bug that shifted the embargo to a different
+            // (still future) date must not slip through.
+            Date earliestStartAfterMove = after.stream()
+                .map(ResourcePolicy::getStartDate)
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+            assertEquals("the embargo must keep its original lift date after the move",
+                embargoLiftDate, earliestStartAfterMove);
+        } finally {
+            context.restoreAuthSystemState();
+        }
+    }
+
+    @Test
+    public void testMoveItemWithInheritPoliciesKeepsNonEmbargoedGroupImmediate() throws Exception {
+        // #761: only the embargoed principal (Anonymous) is deferred; a group with immediate READ keeps it.
+        context.turnOffAuthorisationSystem();
+        try {
+            Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+            Group staff = GroupBuilder.createGroup(context).withName("Staff").build();
+
+            Collection source = CollectionBuilder.createCollection(context, community).build();
+            // The destination grants BOTH anonymous (by default) and staff immediate bitstream READ.
+            Collection destination = CollectionBuilder.createCollection(context, community).build();
+            authorizeService.addPolicy(context, destination, Constants.DEFAULT_BITSTREAM_READ, staff);
+
+            Item item = ItemBuilder.createItem(context, source).build();
+            Bitstream bitstream = BitstreamBuilder
+                .createBitstream(context, item, InputStream.nullInputStream())
+                .build();
+
+            // Embargo: Anonymous is future-dated (embargoed); the staff group keeps immediate READ.
+            Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
+            authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
+            authorizeService.createResourcePolicy(context, bitstream, anonymous, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, liftDate, null);
+            authorizeService.createResourcePolicy(context, bitstream, staff, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, null, null);
+
+            itemService.move(context, item, source, destination, true);
+
+            List<ResourcePolicy> after =
+                authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
+            // The embargoed Anonymous READ must stay future-dated...
+            ResourcePolicy anonymousPolicy = after.stream()
+                .filter(rp -> anonymous.equals(rp.getGroup())).findFirst().orElse(null);
+            assertNotNull("Anonymous must still have a READ policy after the move", anonymousPolicy);
+            assertTrue("the embargoed Anonymous READ must stay future-dated after the move",
+                anonymousPolicy.getStartDate() != null && anonymousPolicy.getStartDate().after(new Date()));
+            // ...but the non-embargoed staff group must keep its immediate (null/past start) access.
+            ResourcePolicy staffPolicy = after.stream()
+                .filter(rp -> staff.equals(rp.getGroup())).findFirst().orElse(null);
+            assertNotNull("staff must still have a READ policy inherited from the destination", staffPolicy);
+            assertTrue("a group that was not embargoed must keep its immediate access after the move",
+                staffPolicy.getStartDate() == null || !staffPolicy.getStartDate().after(new Date()));
+        } finally {
+            context.restoreAuthSystemState();
+        }
+    }
+
+    @Test
+    public void testMoveItemWithInheritPoliciesNotKeepingEmbargoLiftsIt() throws Exception {
+        // keepEmbargoPolicies=false restores plain DSpace behaviour: inheriting lifts the embargo.
+        context.turnOffAuthorisationSystem();
+        try {
+            Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+
+            Collection source = CollectionBuilder.createCollection(context, community).build();
+            Collection destination = CollectionBuilder.createCollection(context, community).build();
+
+            Item item = ItemBuilder.createItem(context, source).build();
+            Bitstream bitstream = BitstreamBuilder
+                .createBitstream(context, item, InputStream.nullInputStream())
+                .build();
+
+            Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
+            authorizeService.removePoliciesActionFilter(context, bitstream, Constants.READ);
+            authorizeService.createResourcePolicy(context, bitstream, anonymous, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, liftDate, null);
+
+            // Move WITHOUT keeping the embargo -> the inherited default READ lifts it.
+            itemService.move(context, item, source, destination, true, false);
+
+            List<ResourcePolicy> after =
+                authorizeService.getPoliciesActionFilter(context, bitstream, Constants.READ);
+            assertTrue("without keepEmbargoPolicies the inherited default READ must lift the embargo "
+                    + "(an immediate READ policy is present)",
+                after.stream().anyMatch(rp -> rp.getStartDate() == null || !rp.getStartDate().after(new Date())));
+        } finally {
+            context.restoreAuthSystemState();
+        }
+    }
+
+    @Test
+    public void testMoveItemWithInheritPoliciesPreservesItemLevelEmbargo() throws Exception {
+        // #761: an item-level embargo (future-dated READ on the item) must also survive the move.
+        context.turnOffAuthorisationSystem();
+        try {
+            Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+
+            Collection source = CollectionBuilder.createCollection(context, community).build();
+            Collection destination = CollectionBuilder.createCollection(context, community).build();
+
+            Item embargoedItem = ItemBuilder.createItem(context, source).build();
+
+            // Embargo the item itself: replace its immediate anonymous READ with a future-dated one.
+            Date liftDate = new Date(System.currentTimeMillis() + 5L * 365 * 24 * 60 * 60 * 1000L);
+            authorizeService.removePoliciesActionFilter(context, embargoedItem, Constants.READ);
+            authorizeService.createResourcePolicy(context, embargoedItem, anonymous, null, Constants.READ,
+                ResourcePolicy.TYPE_CUSTOM, null, null, liftDate, null);
+
+            itemService.move(context, embargoedItem, source, destination, true);
+
+            List<ResourcePolicy> after =
+                authorizeService.getPoliciesActionFilter(context, embargoedItem, Constants.READ);
+            assertFalse("moving with inherit policies must not lift an item-level embargo",
+                after.stream().anyMatch(rp -> rp.getStartDate() == null || !rp.getStartDate().after(new Date())));
+            assertTrue("the item-level embargo (future-dated READ) must still be present after the move",
+                after.stream().anyMatch(rp -> rp.getStartDate() != null && rp.getStartDate().after(new Date())));
+        } finally {
+            context.restoreAuthSystemState();
+        }
     }
 
     private void assertMetadataValue(String authorQualifier, String contributorElement, String dcSchema, String value,

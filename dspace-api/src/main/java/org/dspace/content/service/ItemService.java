@@ -671,6 +671,25 @@ public interface ItemService
         throws SQLException, AuthorizeException, IOException;
 
     /**
+     * Moves the item from one collection to another one, optionally keeping any existing embargo when
+     * inheriting the destination collection's default policies.
+     *
+     * @param context                DSpace context object
+     * @param item                   item to move
+     * @param from                   Collection to move from
+     * @param to                     Collection to move to
+     * @param inheritDefaultPolicies whether to inherit policies from the new collection
+     * @param keepEmbargoPolicies    when inheriting, keep an existing embargo instead of letting the
+     *                               inherited default READ lift it; ignored if not inheriting
+     * @throws SQLException       if database error
+     * @throws AuthorizeException if authorization error
+     * @throws IOException        if IO error
+     */
+    void move(Context context, Item item, Collection from, Collection to, boolean inheritDefaultPolicies,
+              boolean keepEmbargoPolicies)
+        throws SQLException, AuthorizeException, IOException;
+
+    /**
      * Check the bundle ORIGINAL to see if there are any uploaded files
      *
      * @param item item to check

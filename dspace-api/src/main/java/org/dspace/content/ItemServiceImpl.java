@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -1154,6 +1155,14 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
     @Override
     public void move(Context context, Item item, Collection from, Collection to, boolean inheritDefaultPolicies)
         throws SQLException, AuthorizeException, IOException {
+        // Keep any embargo by default (#761); use the 6-arg overload to opt out.
+        move(context, item, from, to, inheritDefaultPolicies, true);
+    }
+
+    @Override
+    public void move(Context context, Item item, Collection from, Collection to, boolean inheritDefaultPolicies,
+                     boolean keepEmbargoPolicies)
+        throws SQLException, AuthorizeException, IOException {
         // Check authorisation on the item before that the move occur
         // otherwise we will need edit permission on the "target collection" to archive our goal
         // only do write authorization if user is not an editor
@@ -1178,7 +1187,15 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
             if (inheritDefaultPolicies) {
                 log.info(LogHelper.getHeader(context, "move_item",
                                               "Updating item with inherited policies"));
-                inheritCollectionDefaultPolicies(context, item, to);
+                if (keepEmbargoPolicies) {
+                    // #761: inherit, but re-defer the inherited READ behind any existing embargo so
+                    // the move doesn't lift it.
+                    Map<DSpaceObject, Map<String, Date>> embargoBoundaries = collectEmbargoBoundaries(context, item);
+                    inheritCollectionDefaultPolicies(context, item, to);
+                    deferInheritedReadPoliciesBehindEmbargo(context, embargoBoundaries);
+                } else {
+                    inheritCollectionDefaultPolicies(context, item, to);
+                }
             }
 
             // Update the item
@@ -1196,6 +1213,89 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
             context.addEvent(new Event(Event.MODIFY, Constants.ITEM, item.getID(),
                                        null, getIdentifiers(context, item)));
         }
+    }
+
+    /**
+     * For the item, its bundles and bitstreams, map each embargoed principal (a group/eperson with a
+     * future-dated READ policy) to its latest future READ start date. Only embargoed principals are
+     * captured; groups with immediate READ are left alone. Used by {@link #move}. See #761.
+     */
+    private Map<DSpaceObject, Map<String, Date>> collectEmbargoBoundaries(Context context, Item item)
+            throws SQLException {
+        Map<DSpaceObject, Map<String, Date>> boundaries = new LinkedHashMap<>();
+        Date now = new Date();
+        List<DSpaceObject> candidates = new ArrayList<>();
+        candidates.add(item);
+        for (Bundle bundle : item.getBundles()) {
+            candidates.add(bundle);
+            candidates.addAll(bundle.getBitstreams());
+        }
+        for (DSpaceObject dso : candidates) {
+            Map<String, Date> perPrincipal = new LinkedHashMap<>();
+            for (ResourcePolicy rp : authorizeService.getPoliciesActionFilter(context, dso, Constants.READ)) {
+                Date start = rp.getStartDate();
+                String principal = principalKey(rp);
+                if (start != null && start.after(now) && principal != null) {
+                    Date current = perPrincipal.get(principal);
+                    if (current == null || start.after(current)) {
+                        perPrincipal.put(principal, copyDate(start));
+                    }
+                }
+            }
+            if (!perPrincipal.isEmpty()) {
+                boundaries.put(dso, perPrincipal);
+            }
+        }
+        return boundaries;
+    }
+
+    /**
+     * Push each inherited READ policy whose principal was embargoed (per {@link #collectEmbargoBoundaries})
+     * back to that principal's boundary, so inheriting the collection defaults doesn't lift the embargo.
+     * Non-embargoed principals keep their immediate access. See #761.
+     */
+    private void deferInheritedReadPoliciesBehindEmbargo(Context context,
+            Map<DSpaceObject, Map<String, Date>> boundaries) throws SQLException, AuthorizeException {
+        if (boundaries.isEmpty()) {
+            return;
+        }
+        context.turnOffAuthorisationSystem();
+        try {
+            List<ResourcePolicy> deferred = new ArrayList<>();
+            for (Map.Entry<DSpaceObject, Map<String, Date>> entry : boundaries.entrySet()) {
+                Map<String, Date> perPrincipal = entry.getValue();
+                for (ResourcePolicy rp : authorizeService.getPoliciesActionFilter(context, entry.getKey(),
+                        Constants.READ)) {
+                    Date boundary = perPrincipal.get(principalKey(rp));
+                    if (boundary != null && (rp.getStartDate() == null || rp.getStartDate().before(boundary))) {
+                        rp.setStartDate(copyDate(boundary));
+                        deferred.add(rp);
+                    }
+                }
+            }
+            // Batch the update so the related-DSO last-modified refresh runs once.
+            if (!deferred.isEmpty()) {
+                resourcePolicyService.update(context, deferred);
+            }
+        } finally {
+            context.restoreAuthSystemState();
+        }
+    }
+
+    /** Namespaced key for a policy's principal (group/eperson), or null if it has neither. */
+    private static String principalKey(ResourcePolicy policy) {
+        if (policy.getGroup() != null) {
+            return "g:" + policy.getGroup().getID();
+        }
+        if (policy.getEPerson() != null) {
+            return "e:" + policy.getEPerson().getID();
+        }
+        return null;
+    }
+
+    /** Defensive copy of a (mutable) Date, null-safe. */
+    private static Date copyDate(Date date) {
+        return date == null ? null : new Date(date.getTime());
     }
 
     @Override
