@@ -12,6 +12,7 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletRequest;
 import org.dspace.app.rest.model.AccessConditionDTO;
 import org.dspace.authorize.ResourcePolicy;
+import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.authorize.service.ResourcePolicyService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
@@ -40,9 +41,13 @@ public class BitstreamResourcePolicyRemovePatchOperation
     @Autowired
     BitstreamService bitstreamService;
 
+    @Autowired
+    AuthorizeService authorizeService;
+
     @Override
     void remove(Context context, HttpServletRequest currentRequest, InProgressSubmission source, String path,
             Object value) throws Exception {
+        BitstreamResourcePolicyUtils.requireAdminForAccessConditions(context, authorizeService);
         // "path" : "/sections/upload/files/0/accessConditions/0"
         // "abspath" : "/files/0/accessConditions/0"
         String[] split = getAbsolutePath(path).split("/");

@@ -1987,6 +1987,7 @@ public class WorkflowItemRestRepositoryIT extends AbstractControllerIntegrationT
         String tokenEPerson = getAuthToken(eperson.getEmail(), password);
         String tokenSubmitter = getAuthToken(submitter.getEmail(), password);
         String tokenReviewer1 = getAuthToken(reviewer1.getEmail(), password);
+        String tokenAdmin = getAuthToken(admin.getEmail(), password);
 
         // submitter can download the bitstream
         getClient(tokenSubmitter).perform(get("/api/core/bitstreams/" + bitstream.getID() + "/content"))
@@ -2016,7 +2017,7 @@ public class WorkflowItemRestRepositoryIT extends AbstractControllerIntegrationT
         addAccessCondition.add(new AddOperation("/sections/upload/files/0/accessConditions", accessConditions));
 
         String patchBody = getPatchContent(addAccessCondition);
-        getClient(tokenSubmitter).perform(patch("/api/submission/workspaceitems/" + witem.getID())
+        getClient(tokenAdmin).perform(patch("/api/submission/workspaceitems/" + witem.getID())
                  .content(patchBody)
                  .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                  .andExpect(status().isOk())

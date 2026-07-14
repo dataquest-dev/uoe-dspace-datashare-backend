@@ -15,6 +15,7 @@ import org.apache.commons.collections.CollectionUtils;
 import org.dspace.app.rest.model.AccessConditionDTO;
 import org.dspace.app.rest.model.patch.LateObjectEvaluator;
 import org.dspace.authorize.ResourcePolicy;
+import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.authorize.service.ResourcePolicyService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.Bundle;
@@ -44,9 +45,13 @@ public class BitstreamResourcePolicyAddPatchOperation extends AddPatchOperation<
     @Autowired
     UploadConfigurationService uploadConfigurationService;
 
+    @Autowired
+    AuthorizeService authorizeService;
+
     @Override
     void add(Context context, HttpServletRequest currentRequest, InProgressSubmission source, String path, Object value)
             throws Exception {
+        BitstreamResourcePolicyUtils.requireAdminForAccessConditions(context, authorizeService);
         //"absolutePath": "files/0/accessConditions"
         //"path": "/sections/upload/files/0/accessConditions"
         String[] splitAbsPath = getAbsolutePath(path).split("/");
