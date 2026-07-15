@@ -11,6 +11,7 @@ import static org.apache.commons.codec.CharEncoding.UTF_8;
 import static org.apache.commons.io.IOUtils.toInputStream;
 import static org.dspace.app.rest.utils.UsageReportUtils.TOP_CITIES_REPORT_ID;
 import static org.dspace.app.rest.utils.UsageReportUtils.TOP_COUNTRIES_REPORT_ID;
+import static org.dspace.app.rest.utils.UsageReportUtils.TOP_ITEMS_REPORT_ID;
 import static org.dspace.app.rest.utils.UsageReportUtils.TOTAL_DOWNLOADS_REPORT_ID;
 import static org.dspace.app.rest.utils.UsageReportUtils.TOTAL_VISITS_PER_MONTH_REPORT_ID;
 import static org.dspace.app.rest.utils.UsageReportUtils.TOTAL_VISITS_REPORT_ID;
@@ -1283,6 +1284,126 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
     }
 
     @Test
+    public void usageReportTopItems_Collection_onlyContainsOwnItems() throws Exception {
+        // ** GIVEN **
+        // Two sibling collections, each with items; the TopItems report of one collection must only ever
+        // contain that collection's own items, ordered by view count.
+        configurationService.setProperty("usage-statistics.topItemsLimit", 0);
+
+        context.turnOffAuthorisationSystem();
+        Community community = CommunityBuilder.createCommunity(context).build();
+        Collection collectionA = CollectionBuilder.createCollection(context, community).build();
+        Collection collectionB = CollectionBuilder.createCollection(context, community).build();
+        Item itemA1 = ItemBuilder.createItem(context, collectionA).withTitle("Item A1").build();
+        Item itemA2 = ItemBuilder.createItem(context, collectionA).withTitle("Item A2").build();
+        Item itemB1 = ItemBuilder.createItem(context, collectionB).withTitle("Item B1").build();
+        context.restoreAuthSystemState();
+
+        // ** WHEN **
+        // itemA1 is visited twice, itemA2 once, and itemB1 (other collection) once.
+        postItemViewEvent(itemA1);
+        postItemViewEvent(itemA1);
+        postItemViewEvent(itemA2);
+        postItemViewEvent(itemB1);
+
+        // ** THEN **
+        // collectionA's TopItems report contains exactly its own two items with the right view counts; itemB1 absent.
+        getClient(adminToken)
+            .perform(get("/api/statistics/usagereports/" + collectionA.getID() + "_" + TOP_ITEMS_REPORT_ID))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", Matchers.is(
+                UsageReportMatcher.matchUsageReport(
+                    collectionA.getID() + "_" + TOP_ITEMS_REPORT_ID,
+                    TOP_ITEMS_REPORT_ID,
+                    List.of(
+                        getExpectedDsoViews(itemA1, 2),
+                        getExpectedDsoViews(itemA2, 1)
+                    )
+                )
+            )));
+
+        // The report is protected by the same authorization as the other reports: anonymous access is unauthorized.
+        getClient()
+            .perform(get("/api/statistics/usagereports/" + collectionA.getID() + "_" + TOP_ITEMS_REPORT_ID))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void usageReportTopItems_Community_includesSubCollectionItems() throws Exception {
+        // ** GIVEN **
+        // A community with a sub-collection; the community's TopItems report must include the sub-collection's items
+        // (owningComm is stored transitively for all ancestor communities).
+        configurationService.setProperty("usage-statistics.topItemsLimit", 0);
+
+        context.turnOffAuthorisationSystem();
+        Community community = CommunityBuilder.createCommunity(context).build();
+        Collection collection = CollectionBuilder.createCollection(context, community).build();
+        Item item = ItemBuilder.createItem(context, collection).withTitle("Sub-collection item").build();
+        context.restoreAuthSystemState();
+
+        // ** WHEN **
+        postItemViewEvent(item);
+
+        // ** THEN **
+        getClient(adminToken)
+            .perform(get("/api/statistics/usagereports/" + community.getID() + "_" + TOP_ITEMS_REPORT_ID))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", Matchers.is(
+                UsageReportMatcher.matchUsageReport(
+                    community.getID() + "_" + TOP_ITEMS_REPORT_ID,
+                    TOP_ITEMS_REPORT_ID,
+                    List.of(
+                        getExpectedDsoViews(item, 1)
+                    )
+                )
+            )));
+    }
+
+    @Test
+    public void usageReportTopItems_respectsTopItemsLimit() throws Exception {
+        // ** GIVEN **
+        // A positive top-items limit caps the number of points to the most-visited items.
+        configurationService.setProperty("usage-statistics.topItemsLimit", 1);
+
+        context.turnOffAuthorisationSystem();
+        Community community = CommunityBuilder.createCommunity(context).build();
+        Collection collection = CollectionBuilder.createCollection(context, community).build();
+        Item mostVisited = ItemBuilder.createItem(context, collection).withTitle("Most visited").build();
+        Item lessVisited = ItemBuilder.createItem(context, collection).withTitle("Less visited").build();
+        context.restoreAuthSystemState();
+
+        // ** WHEN **
+        postItemViewEvent(mostVisited);
+        postItemViewEvent(mostVisited);
+        postItemViewEvent(lessVisited);
+
+        // ** THEN **
+        // Only the single most-visited item is returned.
+        getClient(adminToken)
+            .perform(get("/api/statistics/usagereports/" + collection.getID() + "_" + TOP_ITEMS_REPORT_ID))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", Matchers.is(
+                UsageReportMatcher.matchUsageReport(
+                    collection.getID() + "_" + TOP_ITEMS_REPORT_ID,
+                    TOP_ITEMS_REPORT_ID,
+                    List.of(
+                        getExpectedDsoViews(mostVisited, 2)
+                    )
+                )
+            )));
+    }
+
+    @Test
+    public void usageReportTopItems_Item_isRejected() throws Exception {
+        // The TopItems report is only meaningful for containers (site/community/collection); requesting it for an
+        // item is not found, consistent with how the other non-applicable reports (e.g. TotalDownloads on a
+        // collection) behave.
+        getClient(adminToken)
+            .perform(get("/api/statistics/usagereports/" + itemVisited.getID() + "_" + TOP_ITEMS_REPORT_ID))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
     public void usageReportsSearch_Community_Visited() throws Exception {
         // ** WHEN **
         // We visit a community
@@ -1607,6 +1728,19 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
         point.setLabel(dso.getName());
 
         return point;
+    }
+
+    /**
+     * Register a single anonymous view event for the given item, committing it to the statistics core.
+     */
+    private void postItemViewEvent(Item item) throws Exception {
+        ViewEventRest viewEventRest = new ViewEventRest();
+        viewEventRest.setTargetType("item");
+        viewEventRest.setTargetId(item.getID());
+        getClient().perform(post("/api/statistics/viewevents")
+            .content(new ObjectMapper().writeValueAsBytes(viewEventRest))
+            .contentType(contentType))
+                   .andExpect(status().isCreated());
     }
 
     private UsageReportPointCountryRest getExpectedCountryViews(String id, String label, int views) {

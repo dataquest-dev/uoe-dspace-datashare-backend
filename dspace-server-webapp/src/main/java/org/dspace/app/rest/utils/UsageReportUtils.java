@@ -21,6 +21,8 @@ import org.dspace.app.rest.model.UsageReportPointDateRest;
 import org.dspace.app.rest.model.UsageReportPointDsoTotalVisitsRest;
 import org.dspace.app.rest.model.UsageReportRest;
 import org.dspace.content.Bitstream;
+import org.dspace.content.Collection;
+import org.dspace.content.Community;
 import org.dspace.content.DSpaceObject;
 import org.dspace.content.Item;
 import org.dspace.content.Site;
@@ -58,6 +60,7 @@ public class UsageReportUtils {
     public static final String TOTAL_DOWNLOADS_REPORT_ID = "TotalDownloads";
     public static final String TOP_COUNTRIES_REPORT_ID = "TopCountries";
     public static final String TOP_CITIES_REPORT_ID = "TopCities";
+    public static final String TOP_ITEMS_REPORT_ID = "TopItems";
 
     /**
      * Get list of usage reports that are applicable to the DSO (of given UUID)
@@ -70,7 +73,8 @@ public class UsageReportUtils {
         throws SQLException, ParseException, SolrServerException, IOException {
         List<UsageReportRest> usageReports = new ArrayList<>();
         if (dso instanceof Site) {
-            UsageReportRest globalUsageStats = this.resolveGlobalUsageReport(context);
+            UsageReportRest globalUsageStats = this.resolveTopItems(context, dso);
+            globalUsageStats.setReportType(TOTAL_VISITS_REPORT_ID);
             globalUsageStats.setId(dso.getID().toString() + "_" + TOTAL_VISITS_REPORT_ID);
             usageReports.add(globalUsageStats);
         } else {
@@ -119,10 +123,18 @@ public class UsageReportUtils {
                     usageReportRest = resolveTopCities(context, dso);
                     usageReportRest.setReportType(TOP_CITIES_REPORT_ID);
                     break;
+                case TOP_ITEMS_REPORT_ID:
+                    if (!(dso instanceof Community || dso instanceof Collection || dso instanceof Site)) {
+                        throw new IllegalArgumentException(
+                            "TopItems report is only available for communities, collections and the site");
+                    }
+                    usageReportRest = resolveTopItems(context, dso);
+                    usageReportRest.setReportType(TOP_ITEMS_REPORT_ID);
+                    break;
                 default:
                     throw new ResourceNotFoundException("The given report id can't be resolved: " + reportId + "; " +
                                                         "available reports: TotalVisits, TotalVisitsPerMonth, " +
-                                                        "TotalDownloads, TopCountries, TopCities");
+                                                        "TotalDownloads, TopCountries, TopCities, TopItems");
             }
             usageReportRest.setId(dso.getID() + "_" + reportId);
             return usageReportRest;
@@ -132,12 +144,16 @@ public class UsageReportUtils {
     }
 
     /**
-     * Create stat usage report of the items most popular over entire site
+     * Create a stat usage report of the most popular items, scoped to the given DSO. For a {@link Site} the report
+     * covers every item on the site; for a {@link Community} or {@link Collection} it covers the items owned by that
+     * container (a community transitively includes the items of its sub-collections). Points are ordered by view
+     * count, descending.
      *
      * @param context DSpace context
-     * @return Usage report with top most popular items
+     * @param scope   the DSO to scope the top-items report to (Site, Community or Collection)
+     * @return Usage report with the top most popular items within the scope
      */
-    private UsageReportRest resolveGlobalUsageReport(Context context)
+    private UsageReportRest resolveTopItems(Context context, DSpaceObject scope)
         throws SQLException, IOException, ParseException, SolrServerException {
         int topItemsLimit = configurationService.getIntProperty("usage-statistics.topItemsLimit", -1);
         // A value of 0 or lower means "no limit": return statistics for every item so the UI can paginate
@@ -149,8 +165,10 @@ public class UsageReportUtils {
             topItemsLimit = Integer.MAX_VALUE;
         }
 
+        // A Site scope must use the unscoped data source: StatisticsDataVisits only knows how to constrain by
+        // owningComm/owningColl/owningItem, so passing a Site would produce a malformed Solr query.
         StatisticsListing statListing = new StatisticsListing(
-            new StatisticsDataVisits());
+            scope instanceof Site ? new StatisticsDataVisits() : new StatisticsDataVisits(scope));
 
         // Adding a new generator for our top n items without a name length delimiter
         DatasetDSpaceObjectGenerator dsoAxis = new DatasetDSpaceObjectGenerator();
@@ -175,7 +193,6 @@ public class UsageReportUtils {
                 }
             }
         }
-        usageReportRest.setReportType(TOTAL_VISITS_REPORT_ID);
         return usageReportRest;
     }
 
