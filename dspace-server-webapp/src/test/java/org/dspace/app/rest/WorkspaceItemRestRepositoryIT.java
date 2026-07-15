@@ -4175,6 +4175,35 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
                     .contentType(MediaType.APPLICATION_JSON_PATCH_JSON)
             )
             .andExpect(status().isForbidden());
+
+        // seed one access condition as admin, so there is something to attempt to replace
+        String adminToken = getAuthToken(admin.getEmail(), password);
+        getClient(adminToken)
+            .perform(
+                patch("/api/submission/workspaceitems/" + witem.getID())
+                    .content(patchBody)
+                    .contentType(MediaType.APPLICATION_JSON_PATCH_JSON)
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sections.upload.files[0].accessConditions[0].name", is("openaccess")));
+
+        // the submitter must not be able to replace an existing access condition either
+        Map<String, String> replaceValue = new HashMap<>();
+        replaceValue.put("name", "administrator");
+        List<Operation> replaceAccessCondition = new ArrayList<>();
+        replaceAccessCondition.add(new ReplaceOperation("/sections/upload/files/0/accessConditions/0", replaceValue));
+        getClient(submitterToken)
+            .perform(
+                patch("/api/submission/workspaceitems/" + witem.getID())
+                    .content(getPatchContent(replaceAccessCondition))
+                    .contentType(MediaType.APPLICATION_JSON_PATCH_JSON)
+            )
+            .andExpect(status().isForbidden());
+
+        // verify that the seeded access condition was not replaced
+        getClient(submitterToken).perform(get("/api/submission/workspaceitems/" + witem.getID()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sections.upload.files[0].accessConditions[0].name", is("openaccess")));
     }
 
     @Test
