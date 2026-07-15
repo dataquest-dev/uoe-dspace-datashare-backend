@@ -7704,7 +7704,7 @@ ResourcePolicyBuilder.createResourcePolicy(context, null, adminGroup)
 
             String tokenEPerson = getAuthToken(eperson.getEmail(), password);
             String tokenSubmitter = getAuthToken(submitter.getEmail(), password);
-        String tokenAdmin = getAuthToken(admin.getEmail(), password);
+            String tokenAdmin = getAuthToken(admin.getEmail(), password);
 
             // submitter can download the bitstream
             getClient(tokenSubmitter).perform(get("/api/core/bitstreams/" + bitstream.getID() + "/content"))
