@@ -12,9 +12,11 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 
+import org.dspace.app.rest.exception.RESTAuthorizationException;
 import org.dspace.app.rest.exception.UnprocessableEntityException;
 import org.dspace.app.rest.model.AccessConditionDTO;
 import org.dspace.authorize.AuthorizeException;
+import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.content.DSpaceObject;
 import org.dspace.core.Context;
 import org.dspace.submit.model.AccessConditionOption;
@@ -31,6 +33,23 @@ public class BitstreamResourcePolicyUtils {
      * Default constructor
      */
     private BitstreamResourcePolicyUtils() { }
+
+    /**
+     * Enforce that only site administrators may modify bitstream access conditions during the
+     * submission process (UoE DataShare customization, see dspace-customers issue #801).
+     *
+     * @param context          The relevant DSpace Context.
+     * @param authorizeService The service used for the administrator check
+     * @throws SQLException               If a database error occurs
+     * @throws RESTAuthorizationException If the current user is not a site administrator
+     */
+    public static void requireAdminForAccessConditions(Context context, AuthorizeService authorizeService)
+            throws SQLException {
+        if (!authorizeService.isAdmin(context)) {
+            throw new RESTAuthorizationException(
+                "Only site administrators may modify bitstream access conditions during submission");
+        }
+    }
 
     /**
      * Based on the given access condition, find the resource policy to apply on the given DSpace object

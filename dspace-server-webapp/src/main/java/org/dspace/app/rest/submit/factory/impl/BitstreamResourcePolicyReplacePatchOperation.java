@@ -50,6 +50,7 @@ public class BitstreamResourcePolicyReplacePatchOperation extends ReplacePatchOp
     @Override
     void replace(Context context, HttpServletRequest currentRequest, InProgressSubmission source, String path,
             Object value) throws Exception {
+        BitstreamResourcePolicyUtils.requireAdminForAccessConditions(context, authorizeService);
         // "path": "/sections/upload/files/0/accessConditions/0"
         // "abspath": "/files/0/accessConditions/0"
         String[] split = getAbsolutePath(path).split("/");

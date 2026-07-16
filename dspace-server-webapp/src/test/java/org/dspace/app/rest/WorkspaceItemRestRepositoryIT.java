@@ -4075,7 +4075,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         addAccessCondition.add(new AddOperation("/sections/upload/files/0/accessConditions/-", value));
 
         String patchBody = getPatchContent(addAccessCondition);
-        String authToken = getAuthToken(eperson.getEmail(), password);
+        String authToken = getAuthToken(admin.getEmail(), password);
 
         getClient(authToken)
             .perform(
@@ -4114,6 +4114,96 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         getClient(authToken).perform(get("/api/submission/workspaceitems/" + witem.getID()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sections.upload.files[0].accessConditions", empty()));
+    }
+
+    @Test
+    /**
+     * Only site administrators may modify bitstream access conditions during submission
+     * (UoE DataShare customization, see dspace-customers issue #801).
+     */
+    public void patchUploadAccessConditionNonAdminForbiddenTest() throws Exception {
+        context.turnOffAuthorisationSystem();
+
+        parentCommunity = CommunityBuilder.createCommunity(context)
+                .withName("Parent Community")
+                .build();
+
+        Collection collection1 = CollectionBuilder.createCollection(context, parentCommunity)
+                .withName("Collection 1")
+                .build();
+
+        InputStream pdf = getClass().getResourceAsStream("simple-article.pdf");
+
+        WorkspaceItem witem = WorkspaceItemBuilder.createWorkspaceItem(context, collection1)
+                .withTitle("Test WorkspaceItem")
+                .withIssueDate("2019-10-01")
+                .withFulltext("simple-article.pdf", "/local/path/simple-article.pdf", pdf)
+                .build();
+
+        context.restoreAuthSystemState();
+
+        // create a list of values to use in add operation
+        List<Operation> addAccessCondition = new ArrayList<>();
+        Map<String, String> value = new HashMap<>();
+        value.put("name", "openaccess");
+        addAccessCondition.add(new AddOperation("/sections/upload/files/0/accessConditions/-", value));
+
+        String patchBody = getPatchContent(addAccessCondition);
+        String submitterToken = getAuthToken(eperson.getEmail(), password);
+
+        // the submitter must not be able to add access conditions
+        getClient(submitterToken)
+            .perform(
+                patch("/api/submission/workspaceitems/" + witem.getID())
+                    .content(patchBody)
+                    .contentType(MediaType.APPLICATION_JSON_PATCH_JSON)
+            )
+            .andExpect(status().isForbidden());
+
+        // verify that no access condition has been applied
+        getClient(submitterToken).perform(get("/api/submission/workspaceitems/" + witem.getID()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sections.upload.files[0].accessConditions", empty()));
+
+        // the submitter must not be able to remove access conditions either
+        List<Operation> removeAccessCondition = new ArrayList<>();
+        removeAccessCondition.add(new RemoveOperation("/sections/upload/files/0/accessConditions"));
+        getClient(submitterToken)
+            .perform(
+                patch("/api/submission/workspaceitems/" + witem.getID())
+                    .content(getPatchContent(removeAccessCondition))
+                    .contentType(MediaType.APPLICATION_JSON_PATCH_JSON)
+            )
+            .andExpect(status().isForbidden());
+
+        // seed one access condition as admin, so there is something to attempt to replace
+        String adminToken = getAuthToken(admin.getEmail(), password);
+        getClient(adminToken)
+            .perform(
+                patch("/api/submission/workspaceitems/" + witem.getID())
+                    .content(patchBody)
+                    .contentType(MediaType.APPLICATION_JSON_PATCH_JSON)
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sections.upload.files[0].accessConditions[0].name", is("openaccess")));
+
+        // the submitter must not be able to replace an existing access condition either
+        Map<String, String> replaceValue = new HashMap<>();
+        replaceValue.put("name", "administrator");
+        List<Operation> replaceAccessCondition = new ArrayList<>();
+        replaceAccessCondition.add(new ReplaceOperation("/sections/upload/files/0/accessConditions/0", replaceValue));
+        getClient(submitterToken)
+            .perform(
+                patch("/api/submission/workspaceitems/" + witem.getID())
+                    .content(getPatchContent(replaceAccessCondition))
+                    .contentType(MediaType.APPLICATION_JSON_PATCH_JSON)
+            )
+            .andExpect(status().isForbidden());
+
+        // verify that the seeded access condition was not replaced
+        getClient(submitterToken).perform(get("/api/submission/workspaceitems/" + witem.getID()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sections.upload.files[0].accessConditions[0].name", is("openaccess")));
     }
 
     @Test
@@ -5632,7 +5722,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         context.restoreAuthSystemState();
 
         // auth
-        String authToken = getAuthToken(eperson.getEmail(), password);
+        String authToken = getAuthToken(admin.getEmail(), password);
 
         // perpare patch body
         Map<String, String> value = new HashMap<>();
@@ -5674,7 +5764,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         context.restoreAuthSystemState();
 
         // auth
-        String authToken = getAuthToken(eperson.getEmail(), password);
+        String authToken = getAuthToken(admin.getEmail(), password);
 
         // date
         SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd");
@@ -5722,7 +5812,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         context.restoreAuthSystemState();
 
         // auth
-        String authToken = getAuthToken(eperson.getEmail(), password);
+        String authToken = getAuthToken(admin.getEmail(), password);
 
         // date
         SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd");
@@ -5768,7 +5858,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         context.restoreAuthSystemState();
 
         // auth
-        String authToken = getAuthToken(eperson.getEmail(), password);
+        String authToken = getAuthToken(admin.getEmail(), password);
 
         // date
         SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd");
@@ -5816,7 +5906,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         context.restoreAuthSystemState();
 
         // auth
-        String authToken = getAuthToken(eperson.getEmail(), password);
+        String authToken = getAuthToken(admin.getEmail(), password);
 
         // date
         SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd");
@@ -5862,7 +5952,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         context.restoreAuthSystemState();
 
         // auth
-        String authToken = getAuthToken(eperson.getEmail(), password);
+        String authToken = getAuthToken(admin.getEmail(), password);
 
         // date
         SimpleDateFormat dateFmt = new SimpleDateFormat("yyyy-MM-dd");
@@ -5905,7 +5995,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         context.restoreAuthSystemState();
 
         // auth
-        String authToken = getAuthToken(eperson.getEmail(), password);
+        String authToken = getAuthToken(admin.getEmail(), password);
 
         // prepare patch body
         Map<String, String> accessCondition = new HashMap<>();
@@ -6038,7 +6128,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         values.add(value2);
 
         addAccessCondition.add(new AddOperation("/sections/upload/files/0/accessConditions", values));
-        String authToken = getAuthToken(eperson.getEmail(), password);
+        String authToken = getAuthToken(admin.getEmail(), password);
 
         getClient(authToken).perform(patch("/api/submission/workspaceitems/" + witem.getID())
                             .content(getPatchContent(addAccessCondition))
@@ -6117,7 +6207,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         String patchBody = getPatchContent(ops);
 
         // submit patch and verify response
-        getClient(epersonToken)
+        getClient(adminToken)
             .perform(
                 patch("/api/submission/workspaceitems/" + wItem.getID())
                     .content(patchBody)
@@ -6196,7 +6286,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         String patchBody = getPatchContent(ops);
 
         // submit patch and verify response
-        getClient(epersonToken)
+        getClient(adminToken)
             .perform(
                 patch("/api/submission/workspaceitems/" + wItem.getID())
                     .content(patchBody)
@@ -6263,7 +6353,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         String patchBody = getPatchContent(ops);
 
         // submit patch and verify response
-        getClient(epersonToken)
+        getClient(adminToken)
             .perform(
                 patch("/api/submission/workspaceitems/" + wItem.getID())
                     .content(patchBody)
@@ -6291,7 +6381,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         String patchBody2 = getPatchContent(ops2);
 
         // submit patch and verify response
-        getClient(epersonToken)
+        getClient(adminToken)
             .perform(
                 patch("/api/submission/workspaceitems/" + wItem.getID())
                     .content(patchBody2)
@@ -6354,7 +6444,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         ops.add(new AddOperation("/sections/upload/files/0/accessConditions/-", accessCondition));
         String patchBody = getPatchContent(ops);
 
-        getClient(epersonToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
+        getClient(adminToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
                                .content(patchBody)
                                .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                                .andExpect(status().isOk());
@@ -6429,7 +6519,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         String patchBody = getPatchContent(ops);
 
         // submit patch and verify response
-        getClient(epersonToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
+        getClient(adminToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
                                .content(patchBody)
                                .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                                .andExpect(status().isOk());
@@ -6493,7 +6583,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         String patchBody = getPatchContent(ops);
 
         // submit patch and verify response
-        getClient(epersonToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
+        getClient(adminToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
                                .content(patchBody)
                                .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                                .andExpect(status().isOk());
@@ -6518,7 +6608,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         String patchBody2 = getPatchContent(ops2);
 
         // submit patch and verify response
-        getClient(epersonToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
+        getClient(adminToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
                                .content(patchBody2)
                                .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                                .andExpect(status().isOk());
@@ -6577,7 +6667,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         String patchBody = getPatchContent(ops);
 
         // submit patch and verify response
-        getClient(epersonToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
+        getClient(adminToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
                                .content(patchBody)
                                .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                                .andExpect(status().isOk());
@@ -6642,7 +6732,7 @@ public class WorkspaceItemRestRepositoryIT extends AbstractControllerIntegration
         String patchBody = getPatchContent(ops);
 
         // submit patch and verify response
-        getClient(epersonToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
+        getClient(adminToken).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
                                .content(patchBody)
                                .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                                .andExpect(status().isOk());
@@ -7643,6 +7733,7 @@ ResourcePolicyBuilder.createResourcePolicy(context, null, adminGroup)
 
             String tokenEPerson = getAuthToken(eperson.getEmail(), password);
             String tokenSubmitter = getAuthToken(submitter.getEmail(), password);
+            String tokenAdmin = getAuthToken(admin.getEmail(), password);
 
             // submitter can download the bitstream
             getClient(tokenSubmitter).perform(get("/api/core/bitstreams/" + bitstream.getID() + "/content"))
@@ -7667,7 +7758,7 @@ ResourcePolicyBuilder.createResourcePolicy(context, null, adminGroup)
             addAccessCondition.add(new AddOperation("/sections/upload/files/0/accessConditions", accessConditions));
 
             String patchBody = getPatchContent(addAccessCondition);
-            getClient(tokenSubmitter).perform(patch("/api/submission/workspaceitems/" + witem.getID())
+            getClient(tokenAdmin).perform(patch("/api/submission/workspaceitems/" + witem.getID())
                                      .content(patchBody)
                                      .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                                      .andExpect(status().isOk())
@@ -7858,7 +7949,7 @@ ResourcePolicyBuilder.createResourcePolicy(context, null, adminGroup)
         patchBody = getPatchContent(ops);
 
         // submit patch
-        getClient(tokenEPerson).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
+        getClient(tokenAdmin).perform(patch("/api/submission/workspaceitems/" + wItem.getID())
                                .content(patchBody)
                                .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                                .andExpect(status().isOk());

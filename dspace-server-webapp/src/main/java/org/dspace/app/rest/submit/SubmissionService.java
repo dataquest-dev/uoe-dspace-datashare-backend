@@ -539,7 +539,7 @@ public class SubmissionService {
             DataProcessingStep step = (DataProcessingStep) stepInstanceAndCfg[0];
             try {
                 step.doPatchProcessing(context, request, source, op, stepConfig);
-            } catch (UnprocessableEntityException e) {
+            } catch (UnprocessableEntityException | RESTAuthorizationException e) {
                 throw e;
             } catch (Exception e) {
                 log.error(e.getMessage(), e);

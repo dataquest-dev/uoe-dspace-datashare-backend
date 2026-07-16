@@ -1987,6 +1987,7 @@ public class WorkflowItemRestRepositoryIT extends AbstractControllerIntegrationT
         String tokenEPerson = getAuthToken(eperson.getEmail(), password);
         String tokenSubmitter = getAuthToken(submitter.getEmail(), password);
         String tokenReviewer1 = getAuthToken(reviewer1.getEmail(), password);
+        String tokenAdmin = getAuthToken(admin.getEmail(), password);
 
         // submitter can download the bitstream
         getClient(tokenSubmitter).perform(get("/api/core/bitstreams/" + bitstream.getID() + "/content"))
@@ -2016,7 +2017,7 @@ public class WorkflowItemRestRepositoryIT extends AbstractControllerIntegrationT
         addAccessCondition.add(new AddOperation("/sections/upload/files/0/accessConditions", accessConditions));
 
         String patchBody = getPatchContent(addAccessCondition);
-        getClient(tokenSubmitter).perform(patch("/api/submission/workspaceitems/" + witem.getID())
+        getClient(tokenAdmin).perform(patch("/api/submission/workspaceitems/" + witem.getID())
                  .content(patchBody)
                  .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
                  .andExpect(status().isOk())
@@ -2073,6 +2074,64 @@ public class WorkflowItemRestRepositoryIT extends AbstractControllerIntegrationT
             // remove the workflowitem if any
             WorkflowItemBuilder.deleteWorkflowItem(idRef.get());
         }
+    }
+
+    @Test
+    /**
+     * A non-admin workflow reviewer must not be able to modify bitstream access conditions on a
+     * workflowitem either, same restriction as for submitters on the workspaceitem route
+     * (UoE DataShare customization, see dspace-customers issue #801).
+     */
+    public void patchUploadAccessConditionOnWorkflowitemNonAdminForbiddenTest() throws Exception {
+        context.turnOffAuthorisationSystem();
+
+        EPerson reviewer1 = EPersonBuilder.createEPerson(context)
+                                          .withEmail("reviewer1@example.com")
+                                          .withPassword(password)
+                                          .build();
+
+        parentCommunity = CommunityBuilder.createCommunity(context)
+                                          .withName("Parent Community")
+                                          .build();
+
+        Collection col1 = CollectionBuilder.createCollection(context, parentCommunity)
+                                           .withName("Collection 1")
+                                           .withWorkflowGroup(1, reviewer1)
+                                           .build();
+
+        ClaimedTask claimedTask = ClaimedTaskBuilder.createClaimedTask(context, col1, reviewer1)
+            .withTitle("Test WorkflowItem")
+            .withIssueDate("2019-10-01")
+            .withFulltext("simple-article.pdf", "/local/path/simple-article.pdf",
+                getClass().getResourceAsStream("simple-article.pdf"))
+            .grantLicense()
+            .build();
+        claimedTask.setStepID("editstep");
+        claimedTask.setActionID("editaction");
+        XmlWorkflowItem witem = claimedTask.getWorkflowItem();
+
+        context.restoreAuthSystemState();
+
+        String reviewerToken = getAuthToken(reviewer1.getEmail(), password);
+
+        Map<String, String> value = new HashMap<>();
+        value.put("name", "openaccess");
+        List<Operation> addAccessCondition = new ArrayList<>();
+        addAccessCondition.add(new AddOperation("/sections/upload/files/0/accessConditions/-", value));
+
+        // the reviewer (not a site administrator) must not be able to add access conditions
+        getClient(reviewerToken)
+            .perform(
+                patch("/api/workflow/workflowitems/" + witem.getID())
+                    .content(getPatchContent(addAccessCondition))
+                    .contentType(MediaType.APPLICATION_JSON_PATCH_JSON)
+            )
+            .andExpect(status().isForbidden());
+
+        // verify that no access condition has been applied
+        getClient(reviewerToken).perform(get("/api/workflow/workflowitems/" + witem.getID()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sections.upload.files[0].accessConditions", Matchers.empty()));
     }
 
     @Test
