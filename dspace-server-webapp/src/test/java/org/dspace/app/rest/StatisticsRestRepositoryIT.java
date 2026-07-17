@@ -827,84 +827,95 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
         // ** GIVEN **
         // The File visits (TotalDownloads) report is configured without a positive limit, so every downloaded
         // bitstream should be returned and the UI can paginate through all files (see issue #807).
+        // NOTE: this IT suite does not reset configuration between tests, so capture and restore the original
+        // limit in a finally block to avoid leaking it into later tests.
+        String originalDownloadsLimit = configurationService.getProperty("usage-statistics.topDownloadsLimit");
         configurationService.setProperty("usage-statistics.topDownloadsLimit", 0);
+        try {
+            int numberOfBitstreams = 12;
+            context.turnOffAuthorisationSystem();
+            Item item = ItemBuilder.createItem(context, collectionNotVisited)
+                                   .withTitle("Item with many files").build();
+            List<Bitstream> bitstreams = new ArrayList<>();
+            for (int i = 0; i < numberOfBitstreams; i++) {
+                bitstreams.add(BitstreamBuilder.createBitstream(context, item, toInputStream("test", UTF_8))
+                                               .withName("Bitstream " + i).build());
+            }
+            context.restoreAuthSystemState();
 
-        int numberOfBitstreams = 12;
-        context.turnOffAuthorisationSystem();
-        Item item = ItemBuilder.createItem(context, collectionNotVisited)
-                               .withTitle("Item with many files").build();
-        List<Bitstream> bitstreams = new ArrayList<>();
-        for (int i = 0; i < numberOfBitstreams; i++) {
-            bitstreams.add(BitstreamBuilder.createBitstream(context, item, toInputStream("test", UTF_8))
-                                           .withName("Bitstream " + i).build());
+            // ** WHEN **
+            // We register a download (bitstream view) for every bitstream, so each shows up with 1 view.
+            ObjectMapper mapper = new ObjectMapper();
+            List<UsageReportPointRest> expectedPoints = new ArrayList<>();
+            for (Bitstream bitstream : bitstreams) {
+                ViewEventRest viewEventRest = new ViewEventRest();
+                viewEventRest.setTargetType("bitstream");
+                viewEventRest.setTargetId(bitstream.getID());
+                getClient(loggedInToken).perform(post("/api/statistics/viewevents")
+                    .content(mapper.writeValueAsBytes(viewEventRest))
+                    .contentType(contentType))
+                                        .andExpect(status().isCreated());
+                expectedPoints.add(getExpectedDsoViews(bitstream, 1));
+            }
+
+            // ** THEN **
+            // The TotalDownloads report contains a point for every downloaded bitstream (not just the legacy 10).
+            getClient(adminToken).perform(
+                get("/api/statistics/usagereports/" + item.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID))
+                                 .andExpect(status().isOk())
+                                 .andExpect(jsonPath("$", Matchers.is(
+                                     UsageReportMatcher.matchUsageReport(
+                                         item.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID,
+                                         TOTAL_DOWNLOADS_REPORT_ID,
+                                         expectedPoints
+                                     )
+                                 )));
+        } finally {
+            configurationService.setProperty("usage-statistics.topDownloadsLimit", originalDownloadsLimit);
         }
-        context.restoreAuthSystemState();
-
-        // ** WHEN **
-        // We register a download (bitstream view) for every bitstream, so each shows up with 1 view.
-        ObjectMapper mapper = new ObjectMapper();
-        List<UsageReportPointRest> expectedPoints = new ArrayList<>();
-        for (Bitstream bitstream : bitstreams) {
-            ViewEventRest viewEventRest = new ViewEventRest();
-            viewEventRest.setTargetType("bitstream");
-            viewEventRest.setTargetId(bitstream.getID());
-            getClient(loggedInToken).perform(post("/api/statistics/viewevents")
-                .content(mapper.writeValueAsBytes(viewEventRest))
-                .contentType(contentType))
-                                    .andExpect(status().isCreated());
-            expectedPoints.add(getExpectedDsoViews(bitstream, 1));
-        }
-
-        // ** THEN **
-        // The TotalDownloads report contains a point for every downloaded bitstream (not just the legacy first 10).
-        getClient(adminToken).perform(
-            get("/api/statistics/usagereports/" + item.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID))
-                             .andExpect(status().isOk())
-                             .andExpect(jsonPath("$", Matchers.is(
-                                 UsageReportMatcher.matchUsageReport(
-                                     item.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID,
-                                     TOTAL_DOWNLOADS_REPORT_ID,
-                                     expectedPoints
-                                 )
-                             )));
     }
 
     @Test
     public void TotalDownloadsReport_Item_AppliesConfiguredCap() throws Exception {
         // ** GIVEN **
         // A positive limit is configured, so the File visits report is capped at that many bitstream rows.
+        // Restore the original limit in a finally block (config is not reset between ITs).
+        String originalDownloadsLimit = configurationService.getProperty("usage-statistics.topDownloadsLimit");
         configurationService.setProperty("usage-statistics.topDownloadsLimit", 5);
+        try {
+            int numberOfBitstreams = 12;
+            context.turnOffAuthorisationSystem();
+            Item item = ItemBuilder.createItem(context, collectionNotVisited)
+                                   .withTitle("Item with capped files").build();
+            List<Bitstream> bitstreams = new ArrayList<>();
+            for (int i = 0; i < numberOfBitstreams; i++) {
+                bitstreams.add(BitstreamBuilder.createBitstream(context, item, toInputStream("test", UTF_8))
+                                               .withName("Bitstream " + i).build());
+            }
+            context.restoreAuthSystemState();
 
-        int numberOfBitstreams = 12;
-        context.turnOffAuthorisationSystem();
-        Item item = ItemBuilder.createItem(context, collectionNotVisited)
-                               .withTitle("Item with capped files").build();
-        List<Bitstream> bitstreams = new ArrayList<>();
-        for (int i = 0; i < numberOfBitstreams; i++) {
-            bitstreams.add(BitstreamBuilder.createBitstream(context, item, toInputStream("test", UTF_8))
-                                           .withName("Bitstream " + i).build());
+            // ** WHEN **
+            ObjectMapper mapper = new ObjectMapper();
+            for (Bitstream bitstream : bitstreams) {
+                ViewEventRest viewEventRest = new ViewEventRest();
+                viewEventRest.setTargetType("bitstream");
+                viewEventRest.setTargetId(bitstream.getID());
+                getClient(loggedInToken).perform(post("/api/statistics/viewevents")
+                    .content(mapper.writeValueAsBytes(viewEventRest))
+                    .contentType(contentType))
+                                        .andExpect(status().isCreated());
+            }
+
+            // ** THEN **
+            // Exactly the configured number of rows is returned. Which 5 (all tie at 1 view) is facet ordering and
+            // not part of the contract, so we only assert the size.
+            getClient(adminToken).perform(
+                get("/api/statistics/usagereports/" + item.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID))
+                                 .andExpect(status().isOk())
+                                 .andExpect(jsonPath("$.points", Matchers.hasSize(5)));
+        } finally {
+            configurationService.setProperty("usage-statistics.topDownloadsLimit", originalDownloadsLimit);
         }
-        context.restoreAuthSystemState();
-
-        // ** WHEN **
-        ObjectMapper mapper = new ObjectMapper();
-        for (Bitstream bitstream : bitstreams) {
-            ViewEventRest viewEventRest = new ViewEventRest();
-            viewEventRest.setTargetType("bitstream");
-            viewEventRest.setTargetId(bitstream.getID());
-            getClient(loggedInToken).perform(post("/api/statistics/viewevents")
-                .content(mapper.writeValueAsBytes(viewEventRest))
-                .contentType(contentType))
-                                    .andExpect(status().isCreated());
-        }
-
-        // ** THEN **
-        // Exactly the configured number of rows is returned. Which 5 (all tie at 1 view) is facet ordering and
-        // not part of the contract, so we only assert the size.
-        getClient(adminToken).perform(
-            get("/api/statistics/usagereports/" + item.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID))
-                             .andExpect(status().isOk())
-                             .andExpect(jsonPath("$.points", Matchers.hasSize(5)));
     }
 
     @Test
@@ -967,29 +978,34 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
      */
     @Test
     public void topCountriesReport_Collection_LimitNotPositive_StillReturnsResults() throws Exception {
+        // Restore the original limit in a finally block (config is not reset between ITs).
+        String originalCountriesLimit = configurationService.getProperty("usage-statistics.topCountriesLimit");
         configurationService.setProperty("usage-statistics.topCountriesLimit", 0);
+        try {
+            ViewEventRest viewEventRest = new ViewEventRest();
+            viewEventRest.setTargetType("collection");
+            viewEventRest.setTargetId(collectionVisited.getID());
+            ObjectMapper mapper = new ObjectMapper();
+            for (int i = 0; i < 2; i++) {
+                getClient(loggedInToken).perform(post("/api/statistics/viewevents")
+                    .content(mapper.writeValueAsBytes(viewEventRest))
+                    .contentType(contentType))
+                                        .andExpect(status().isCreated());
+            }
 
-        ViewEventRest viewEventRest = new ViewEventRest();
-        viewEventRest.setTargetType("collection");
-        viewEventRest.setTargetId(collectionVisited.getID());
-        ObjectMapper mapper = new ObjectMapper();
-        for (int i = 0; i < 2; i++) {
-            getClient(loggedInToken).perform(post("/api/statistics/viewevents")
-                .content(mapper.writeValueAsBytes(viewEventRest))
-                .contentType(contentType))
-                                    .andExpect(status().isCreated());
+            getClient(adminToken).perform(
+                get("/api/statistics/usagereports/" + collectionVisited.getID() + "_" + TOP_COUNTRIES_REPORT_ID))
+                                 .andExpect(status().isOk())
+                                 .andExpect(jsonPath("$", Matchers.is(
+                                     UsageReportMatcher.matchUsageReport(
+                                         collectionVisited.getID() + "_" + TOP_COUNTRIES_REPORT_ID,
+                                         TOP_COUNTRIES_REPORT_ID,
+                                         List.of(getExpectedCountryViews("US", "United States", 2))
+                                     )
+                                 )));
+        } finally {
+            configurationService.setProperty("usage-statistics.topCountriesLimit", originalCountriesLimit);
         }
-
-        getClient(adminToken).perform(
-            get("/api/statistics/usagereports/" + collectionVisited.getID() + "_" + TOP_COUNTRIES_REPORT_ID))
-                             .andExpect(status().isOk())
-                             .andExpect(jsonPath("$", Matchers.is(
-                                 UsageReportMatcher.matchUsageReport(
-                                     collectionVisited.getID() + "_" + TOP_COUNTRIES_REPORT_ID,
-                                     TOP_COUNTRIES_REPORT_ID,
-                                     List.of(getExpectedCountryViews("US", "United States", 2))
-                                 )
-                             )));
     }
 
     /**
@@ -998,29 +1014,34 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
      */
     @Test
     public void topCitiesReport_Collection_LimitNotPositive_StillReturnsResults() throws Exception {
+        // Restore the original limit in a finally block (config is not reset between ITs).
+        String originalCitiesLimit = configurationService.getProperty("usage-statistics.topCitiesLimit");
         configurationService.setProperty("usage-statistics.topCitiesLimit", 0);
+        try {
+            ViewEventRest viewEventRest = new ViewEventRest();
+            viewEventRest.setTargetType("collection");
+            viewEventRest.setTargetId(collectionVisited.getID());
+            ObjectMapper mapper = new ObjectMapper();
+            for (int i = 0; i < 2; i++) {
+                getClient(loggedInToken).perform(post("/api/statistics/viewevents")
+                    .content(mapper.writeValueAsBytes(viewEventRest))
+                    .contentType(contentType))
+                                        .andExpect(status().isCreated());
+            }
 
-        ViewEventRest viewEventRest = new ViewEventRest();
-        viewEventRest.setTargetType("collection");
-        viewEventRest.setTargetId(collectionVisited.getID());
-        ObjectMapper mapper = new ObjectMapper();
-        for (int i = 0; i < 2; i++) {
-            getClient(loggedInToken).perform(post("/api/statistics/viewevents")
-                .content(mapper.writeValueAsBytes(viewEventRest))
-                .contentType(contentType))
-                                    .andExpect(status().isCreated());
+            getClient(adminToken).perform(
+                get("/api/statistics/usagereports/" + collectionVisited.getID() + "_" + TOP_CITIES_REPORT_ID))
+                                 .andExpect(status().isOk())
+                                 .andExpect(jsonPath("$", Matchers.is(
+                                     UsageReportMatcher.matchUsageReport(
+                                         collectionVisited.getID() + "_" + TOP_CITIES_REPORT_ID,
+                                         TOP_CITIES_REPORT_ID,
+                                         List.of(getExpectedCityViews("New York", 2))
+                                     )
+                                 )));
+        } finally {
+            configurationService.setProperty("usage-statistics.topCitiesLimit", originalCitiesLimit);
         }
-
-        getClient(adminToken).perform(
-            get("/api/statistics/usagereports/" + collectionVisited.getID() + "_" + TOP_CITIES_REPORT_ID))
-                             .andExpect(status().isOk())
-                             .andExpect(jsonPath("$", Matchers.is(
-                                 UsageReportMatcher.matchUsageReport(
-                                     collectionVisited.getID() + "_" + TOP_CITIES_REPORT_ID,
-                                     TOP_CITIES_REPORT_ID,
-                                     List.of(getExpectedCityViews("New York", 2))
-                                 )
-                             )));
     }
 
     /**
@@ -1774,7 +1795,7 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
     // Create expected points from usage-statistics.startDateInterval months back to now, with the given number of
     // views in the current month. Derives the window from config so the expectations track whatever
     // startDateInterval is configured (e.g. -6 for six months, -60 for five years of browsable history).
-    private List<UsageReportPointRest> getListOfVisitsPerMonthsPoints(int viewsLastMonth) {
+    private List<UsageReportPointRest> getListOfVisitsPerMonthsPoints(int viewsCurrentMonth) {
         List<UsageReportPointRest> expectedPoints = new ArrayList<>();
         int nrOfMonthsBack = Math.abs(configurationService.getIntProperty("usage-statistics.startDateInterval", -6));
         Calendar cal = Calendar.getInstance();
@@ -1783,7 +1804,7 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
             if (i > 0) {
                 expectedPoint.addValue("views", 0);
             } else {
-                expectedPoint.addValue("views", viewsLastMonth);
+                expectedPoint.addValue("views", viewsCurrentMonth);
             }
             String month = cal.getDisplayName(Calendar.MONTH, Calendar.LONG, new Locale("en"));
             expectedPoint.setId(month + " " + cal.get(Calendar.YEAR));
