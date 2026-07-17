@@ -251,7 +251,9 @@ public class UsageReportUtils {
         Dataset dataset = statisticsTable.getDataset(context, 0);
 
         UsageReportRest usageReportRest = new UsageReportRest();
-        for (int i = 0; i < dataset.getColLabels().size(); i++) {
+        // Solr returns the months oldest-first; emit them newest-first so the most recent month is on the first
+        // page and users page backwards through history (see issue #807).
+        for (int i = dataset.getColLabels().size() - 1; i >= 0; i--) {
             UsageReportPointDateRest monthPoint = new UsageReportPointDateRest();
             monthPoint.setId(dataset.getColLabels().get(i));
             monthPoint.addValue("views", Integer.valueOf(dataset.getMatrix()[0][i]));

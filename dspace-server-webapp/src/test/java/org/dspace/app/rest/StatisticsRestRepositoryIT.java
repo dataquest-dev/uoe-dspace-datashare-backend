@@ -937,6 +937,9 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
                 get("/api/statistics/usagereports/" + itemVisited.getID() + "_" + TOTAL_VISITS_PER_MONTH_REPORT_ID))
                                  .andExpect(status().isOk())
                                  .andExpect(jsonPath("$.points", Matchers.hasSize(12)))
+                                 // Points are newest-first: the current month (the visited one) is the first row.
+                                 .andExpect(jsonPath("$.points[0].values.views", Matchers.is(1)))
+                                 .andExpect(jsonPath("$.points[11].values.views", Matchers.is(0)))
                                  .andExpect(jsonPath("$", Matchers.is(
                                      UsageReportMatcher.matchUsageReport(
                                          itemVisited.getID() + "_" + TOTAL_VISITS_PER_MONTH_REPORT_ID,
