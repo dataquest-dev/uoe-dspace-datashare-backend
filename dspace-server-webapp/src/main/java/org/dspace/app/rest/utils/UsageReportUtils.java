@@ -60,6 +60,23 @@ public class UsageReportUtils {
     public static final String TOP_CITIES_REPORT_ID = "TopCities";
 
     /**
+     * Read a configured usage-report row limit, treating a value of 0 or lower as "no limit".
+     * <p>
+     * A non-positive value is translated to {@link Integer#MAX_VALUE} rather than -1 so that every row is
+     * returned and the UI can paginate through all of them instead of only ever showing the first page.
+     * We deliberately avoid -1: {@code SolrLogger} only skips applying a Solr facet limit when the value is
+     * exactly -1, which falls back to Solr's default facet limit of 100 (not "unlimited"). A large facet
+     * limit is safe because Solr only returns the facet values that actually exist, not empty buckets.
+     *
+     * @param property configuration property holding the limit (e.g. {@code usage-statistics.topCitiesLimit})
+     * @return the configured positive limit, or {@link Integer#MAX_VALUE} when it is 0 or negative
+     */
+    private int getConfiguredLimit(String property) {
+        int limit = configurationService.getIntProperty(property, -1);
+        return limit <= 0 ? Integer.MAX_VALUE : limit;
+    }
+
+    /**
      * Get list of usage reports that are applicable to the DSO (of given UUID)
      *
      * @param context   DSpace context
@@ -139,15 +156,9 @@ public class UsageReportUtils {
      */
     private UsageReportRest resolveGlobalUsageReport(Context context)
         throws SQLException, IOException, ParseException, SolrServerException {
-        int topItemsLimit = configurationService.getIntProperty("usage-statistics.topItemsLimit", -1);
         // A value of 0 or lower means "no limit": return statistics for every item so the UI can paginate
-        // through all datasets instead of only ever showing the first page. We translate this to
-        // Integer.MAX_VALUE rather than -1: SolrLogger only skips applying a Solr facet limit when the value
-        // is exactly -1, which falls back to Solr's default limit of 100 (not "unlimited"). A large facet
-        // limit is safe here because Solr only returns the facet values that actually exist, not empty buckets.
-        if (topItemsLimit <= 0) {
-            topItemsLimit = Integer.MAX_VALUE;
-        }
+        // through all datasets instead of only ever showing the first page (see getConfiguredLimit).
+        int topItemsLimit = getConfiguredLimit("usage-statistics.topItemsLimit");
 
         StatisticsListing statListing = new StatisticsListing(
             new StatisticsDataVisits());
@@ -189,7 +200,9 @@ public class UsageReportUtils {
      */
     private UsageReportRest resolveTotalVisits(Context context, DSpaceObject dso)
         throws SQLException, IOException, ParseException, SolrServerException {
-        Dataset dataset = this.getDSOStatsDataset(context, dso, 1, dso.getType());
+        // The TotalVisits report facets on the DSO itself and reads a single aggregate point, so the child
+        // limit is inert here; keep the historical value of 10 rather than coupling it to a report limit.
+        Dataset dataset = this.getDSOStatsDataset(context, dso, 1, dso.getType(), 10);
 
         UsageReportRest usageReportRest = new UsageReportRest();
         UsageReportPointDsoTotalVisitsRest totalVisitPoint = new UsageReportPointDsoTotalVisitsRest();
@@ -228,7 +241,12 @@ public class UsageReportUtils {
         timeAxis.setDateInterval("month", startDateInterval, endDateInterval);
         statisticsTable.addDatasetGenerator(timeAxis);
         DatasetDSpaceObjectGenerator dsoAxis = new DatasetDSpaceObjectGenerator();
-        dsoAxis.addDsoChild(dso.getType(), 10, false, -1);
+        // Use max = -1 so StatisticsDataVisits takes its direct date-facet path: a single Solr date-range facet
+        // over the DSO's visits query, which zero-fills every month in the configured window. The previous
+        // max = 10 forced the facet-DSOs-then-dates path, which returns an empty report (no month points at
+        // all) whenever the statistics core holds no matching documents yet — contradicting this report's
+        // contract that months without views are returned with views=0.
+        dsoAxis.addDsoChild(dso.getType(), -1, false, -1);
         statisticsTable.addDatasetGenerator(dsoAxis);
         Dataset dataset = statisticsTable.getDataset(context, 0);
 
@@ -262,7 +280,10 @@ public class UsageReportUtils {
         }
 
         if (dso instanceof org.dspace.content.Item) {
-            Dataset dataset = this.getDSOStatsDataset(context, dso, 1, Constants.BITSTREAM);
+            // Limit the number of bitstream rows by config; 0 or negative returns all bitstreams so the UI
+            // can paginate through every file instead of only the first page (see getConfiguredLimit).
+            int topDownloadsLimit = getConfiguredLimit("usage-statistics.topDownloadsLimit");
+            Dataset dataset = this.getDSOStatsDataset(context, dso, 1, Constants.BITSTREAM, topDownloadsLimit);
 
             UsageReportRest usageReportRest = new UsageReportRest();
             for (int i = 0; i < dataset.getColLabels().size(); i++) {
@@ -283,8 +304,9 @@ public class UsageReportUtils {
     /**
      * Create a stat usage report for the TopCountries that have visited the given DSO. If there have been no visits, or
      * no visits with a valid Geolite determined country (based on IP), this report contains an empty list of points=[].
-     * The list of points is limited to the top 100 countries, and each point contains the country name, its iso code
-     * and the amount of views on the given DSO from that country.
+     * The list of points is limited by {@code usage-statistics.topCountriesLimit} (0 or negative = all countries, the
+     * UI paginates through them), and each point contains the country name, its iso code and the amount of views on
+     * the given DSO from that country.
      *
      * @param context DSpace context
      * @param dso     DSO we want usage report of the TopCountries on the given DSO
@@ -292,8 +314,7 @@ public class UsageReportUtils {
      */
     private UsageReportRest resolveTopCountries(Context context, DSpaceObject dso)
         throws SQLException, IOException, ParseException, SolrServerException {
-        int topCountriesLimit =
-            configurationService.getIntProperty("usage-statistics.topCountriesLimit", 100);
+        int topCountriesLimit = getConfiguredLimit("usage-statistics.topCountriesLimit");
 
         Dataset dataset = this.getTypeStatsDataset(context, dso, "countryCode", topCountriesLimit, 1);
 
@@ -310,8 +331,9 @@ public class UsageReportUtils {
     /**
      * Create a stat usage report for the TopCities that have visited the given DSO. If there have been no visits, or
      * no visits with a valid Geolite determined city (based on IP), this report contains an empty list of points=[].
-     * The list of points is limited to the top 100 cities, and each point contains the city name and the amount of
-     * views on the given DSO from that city.
+     * The list of points is limited by {@code usage-statistics.topCitiesLimit} (0 or negative = all cities, the UI
+     * paginates through them), and each point contains the city name and the amount of views on the given DSO from
+     * that city.
      *
      * @param context DSpace context
      * @param dso     DSO we want usage report of the TopCities on the given DSO
@@ -319,8 +341,7 @@ public class UsageReportUtils {
      */
     private UsageReportRest resolveTopCities(Context context, DSpaceObject dso)
         throws SQLException, IOException, ParseException, SolrServerException {
-        int topCitiesLimit =
-            configurationService.getIntProperty("usage-statistics.topCitiesLimit", 100);
+        int topCitiesLimit = getConfiguredLimit("usage-statistics.topCitiesLimit");
 
         Dataset dataset = this.getTypeStatsDataset(context, dso, "city", topCitiesLimit, 1);
 
@@ -342,13 +363,15 @@ public class UsageReportUtils {
      * @param dso           DSO we want the stats dataset of
      * @param facetMinCount Minimum amount of results on a facet data point for it to be added to dataset
      * @param dsoType       Type of DSO we want the stats dataset of
+     * @param max           Maximum amount of child rows to return on the DSO axis (e.g. bitstreams of an item);
+     *                      use {@link Integer#MAX_VALUE} for "no limit" (see getConfiguredLimit)
      * @return Stats dataset with the given filters.
      */
-    private Dataset getDSOStatsDataset(Context context, DSpaceObject dso, int facetMinCount, int dsoType)
+    private Dataset getDSOStatsDataset(Context context, DSpaceObject dso, int facetMinCount, int dsoType, int max)
         throws SQLException, IOException, ParseException, SolrServerException {
         StatisticsListing statsList = new StatisticsListing(new StatisticsDataVisits(dso));
         DatasetDSpaceObjectGenerator dsoAxis = new DatasetDSpaceObjectGenerator();
-        dsoAxis.addDsoChild(dsoType, 10, false, -1);
+        dsoAxis.addDsoChild(dsoType, max, false, -1);
         statsList.addDatasetGenerator(dsoAxis);
         return statsList.getDataset(context, facetMinCount);
     }

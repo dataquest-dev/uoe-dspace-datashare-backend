@@ -823,10 +823,201 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
     }
 
     @Test
+    public void TotalDownloadsReport_Item_ReturnsAllBitstreamsWhenLimitNotPositive() throws Exception {
+        // ** GIVEN **
+        // The File visits (TotalDownloads) report is configured without a positive limit, so every downloaded
+        // bitstream should be returned and the UI can paginate through all files (see issue #807).
+        configurationService.setProperty("usage-statistics.topDownloadsLimit", 0);
+
+        int numberOfBitstreams = 12;
+        context.turnOffAuthorisationSystem();
+        Item item = ItemBuilder.createItem(context, collectionNotVisited)
+                               .withTitle("Item with many files").build();
+        List<Bitstream> bitstreams = new ArrayList<>();
+        for (int i = 0; i < numberOfBitstreams; i++) {
+            bitstreams.add(BitstreamBuilder.createBitstream(context, item, toInputStream("test", UTF_8))
+                                           .withName("Bitstream " + i).build());
+        }
+        context.restoreAuthSystemState();
+
+        // ** WHEN **
+        // We register a download (bitstream view) for every bitstream, so each shows up with 1 view.
+        ObjectMapper mapper = new ObjectMapper();
+        List<UsageReportPointRest> expectedPoints = new ArrayList<>();
+        for (Bitstream bitstream : bitstreams) {
+            ViewEventRest viewEventRest = new ViewEventRest();
+            viewEventRest.setTargetType("bitstream");
+            viewEventRest.setTargetId(bitstream.getID());
+            getClient(loggedInToken).perform(post("/api/statistics/viewevents")
+                .content(mapper.writeValueAsBytes(viewEventRest))
+                .contentType(contentType))
+                                    .andExpect(status().isCreated());
+            expectedPoints.add(getExpectedDsoViews(bitstream, 1));
+        }
+
+        // ** THEN **
+        // The TotalDownloads report contains a point for every downloaded bitstream (not just the legacy first 10).
+        getClient(adminToken).perform(
+            get("/api/statistics/usagereports/" + item.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID))
+                             .andExpect(status().isOk())
+                             .andExpect(jsonPath("$", Matchers.is(
+                                 UsageReportMatcher.matchUsageReport(
+                                     item.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID,
+                                     TOTAL_DOWNLOADS_REPORT_ID,
+                                     expectedPoints
+                                 )
+                             )));
+    }
+
+    @Test
+    public void TotalDownloadsReport_Item_AppliesConfiguredCap() throws Exception {
+        // ** GIVEN **
+        // A positive limit is configured, so the File visits report is capped at that many bitstream rows.
+        configurationService.setProperty("usage-statistics.topDownloadsLimit", 5);
+
+        int numberOfBitstreams = 12;
+        context.turnOffAuthorisationSystem();
+        Item item = ItemBuilder.createItem(context, collectionNotVisited)
+                               .withTitle("Item with capped files").build();
+        List<Bitstream> bitstreams = new ArrayList<>();
+        for (int i = 0; i < numberOfBitstreams; i++) {
+            bitstreams.add(BitstreamBuilder.createBitstream(context, item, toInputStream("test", UTF_8))
+                                           .withName("Bitstream " + i).build());
+        }
+        context.restoreAuthSystemState();
+
+        // ** WHEN **
+        ObjectMapper mapper = new ObjectMapper();
+        for (Bitstream bitstream : bitstreams) {
+            ViewEventRest viewEventRest = new ViewEventRest();
+            viewEventRest.setTargetType("bitstream");
+            viewEventRest.setTargetId(bitstream.getID());
+            getClient(loggedInToken).perform(post("/api/statistics/viewevents")
+                .content(mapper.writeValueAsBytes(viewEventRest))
+                .contentType(contentType))
+                                    .andExpect(status().isCreated());
+        }
+
+        // ** THEN **
+        // Exactly the configured number of rows is returned. Which 5 (all tie at 1 view) is facet ordering and
+        // not part of the contract, so we only assert the size.
+        getClient(adminToken).perform(
+            get("/api/statistics/usagereports/" + item.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID))
+                             .andExpect(status().isOk())
+                             .andExpect(jsonPath("$.points", Matchers.hasSize(5)));
+    }
+
+    @Test
+    public void TotalVisitsPerMonthReport_Item_WindowIsConfigurable() throws Exception {
+        // ** GIVEN **
+        // The month window controls how far back the "Total visits per month" report reaches; widening it lets
+        // users browse (and the UI paginate through) older months and years (see issue #807).
+        // NOTE: DSpace ITs do not reset configuration between tests, and resolveTotalVisitsPerMonth reads this
+        // property as a String; we therefore set it as a String and restore the original value in a finally block
+        // so this test never leaks a modified window into the month-report assertions of other tests.
+        String originalStartDateInterval =
+            configurationService.getProperty("usage-statistics.startDateInterval");
+        configurationService.setProperty("usage-statistics.startDateInterval", "-11");
+        try {
+            // ** WHEN **
+            // We visit an item once.
+            ViewEventRest viewEventRest = new ViewEventRest();
+            viewEventRest.setTargetType("item");
+            viewEventRest.setTargetId(itemVisited.getID());
+            ObjectMapper mapper = new ObjectMapper();
+            getClient().perform(post("/api/statistics/viewevents")
+                .content(mapper.writeValueAsBytes(viewEventRest))
+                .contentType(contentType))
+                       .andExpect(status().isCreated());
+
+            // ** THEN **
+            // The report returns one point per month across the configured window (11 months back + current = 12),
+            // with the current month holding the single view.
+            getClient(adminToken).perform(
+                get("/api/statistics/usagereports/" + itemVisited.getID() + "_" + TOTAL_VISITS_PER_MONTH_REPORT_ID))
+                                 .andExpect(status().isOk())
+                                 .andExpect(jsonPath("$.points", Matchers.hasSize(12)))
+                                 .andExpect(jsonPath("$", Matchers.is(
+                                     UsageReportMatcher.matchUsageReport(
+                                         itemVisited.getID() + "_" + TOTAL_VISITS_PER_MONTH_REPORT_ID,
+                                         TOTAL_VISITS_PER_MONTH_REPORT_ID,
+                                         getListOfVisitsPerMonthsPoints(1)
+                                     )
+                                 )));
+        } finally {
+            configurationService.setProperty("usage-statistics.startDateInterval", originalStartDateInterval);
+        }
+    }
+
+    @Test
     public void TotalDownloadsReport_NotSupportedDSO_Collection() throws Exception {
         getClient(adminToken)
             .perform(get("/api/statistics/usagereports/" + collectionVisited.getID() + "_" + TOTAL_DOWNLOADS_REPORT_ID))
             .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Note: Geolite response mocked in {@link org.dspace.statistics.MockSolrLoggerServiceImpl}, which returns the
+     * same country/city for every request, so distinct rows cannot be seeded here. This guards that a non-positive
+     * ("unlimited") limit still produces a valid report — the ">100 rows" behaviour is exercised by the site-level
+     * {@link #usageReportsSearch_Site_ReturnsAllItemsWhenLimitNotPositive} test on the same Solr facet path.
+     */
+    @Test
+    public void topCountriesReport_Collection_LimitNotPositive_StillReturnsResults() throws Exception {
+        configurationService.setProperty("usage-statistics.topCountriesLimit", 0);
+
+        ViewEventRest viewEventRest = new ViewEventRest();
+        viewEventRest.setTargetType("collection");
+        viewEventRest.setTargetId(collectionVisited.getID());
+        ObjectMapper mapper = new ObjectMapper();
+        for (int i = 0; i < 2; i++) {
+            getClient(loggedInToken).perform(post("/api/statistics/viewevents")
+                .content(mapper.writeValueAsBytes(viewEventRest))
+                .contentType(contentType))
+                                    .andExpect(status().isCreated());
+        }
+
+        getClient(adminToken).perform(
+            get("/api/statistics/usagereports/" + collectionVisited.getID() + "_" + TOP_COUNTRIES_REPORT_ID))
+                             .andExpect(status().isOk())
+                             .andExpect(jsonPath("$", Matchers.is(
+                                 UsageReportMatcher.matchUsageReport(
+                                     collectionVisited.getID() + "_" + TOP_COUNTRIES_REPORT_ID,
+                                     TOP_COUNTRIES_REPORT_ID,
+                                     List.of(getExpectedCountryViews("US", "United States", 2))
+                                 )
+                             )));
+    }
+
+    /**
+     * Note: Geolite response mocked in {@link org.dspace.statistics.MockSolrLoggerServiceImpl}. See the country
+     * counterpart above for why only the "unlimited limit still works" behaviour is asserted here.
+     */
+    @Test
+    public void topCitiesReport_Collection_LimitNotPositive_StillReturnsResults() throws Exception {
+        configurationService.setProperty("usage-statistics.topCitiesLimit", 0);
+
+        ViewEventRest viewEventRest = new ViewEventRest();
+        viewEventRest.setTargetType("collection");
+        viewEventRest.setTargetId(collectionVisited.getID());
+        ObjectMapper mapper = new ObjectMapper();
+        for (int i = 0; i < 2; i++) {
+            getClient(loggedInToken).perform(post("/api/statistics/viewevents")
+                .content(mapper.writeValueAsBytes(viewEventRest))
+                .contentType(contentType))
+                                    .andExpect(status().isCreated());
+        }
+
+        getClient(adminToken).perform(
+            get("/api/statistics/usagereports/" + collectionVisited.getID() + "_" + TOP_CITIES_REPORT_ID))
+                             .andExpect(status().isOk())
+                             .andExpect(jsonPath("$", Matchers.is(
+                                 UsageReportMatcher.matchUsageReport(
+                                     collectionVisited.getID() + "_" + TOP_CITIES_REPORT_ID,
+                                     TOP_CITIES_REPORT_ID,
+                                     List.of(getExpectedCityViews("New York", 2))
+                                 )
+                             )));
     }
 
     /**
@@ -1577,10 +1768,12 @@ public class StatisticsRestRepositoryIT extends AbstractControllerIntegrationTes
             )));
     }
 
-    // Create expected points from -6 months to now, with given number of views in current month
+    // Create expected points from usage-statistics.startDateInterval months back to now, with the given number of
+    // views in the current month. Derives the window from config so the expectations track whatever
+    // startDateInterval is configured (e.g. -6 for six months, -60 for five years of browsable history).
     private List<UsageReportPointRest> getListOfVisitsPerMonthsPoints(int viewsLastMonth) {
         List<UsageReportPointRest> expectedPoints = new ArrayList<>();
-        int nrOfMonthsBack = 6;
+        int nrOfMonthsBack = Math.abs(configurationService.getIntProperty("usage-statistics.startDateInterval", -6));
         Calendar cal = Calendar.getInstance();
         for (int i = 0; i <= nrOfMonthsBack; i++) {
             UsageReportPointDateRest expectedPoint = new UsageReportPointDateRest();
