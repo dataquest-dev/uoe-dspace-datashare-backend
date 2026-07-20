@@ -859,5 +859,12 @@
             <artifactId>mockwebserver</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Used by the report-diff script to compute JSON diffs between two health reports -->
+        <dependency>
+            <groupId>com.flipkart.zjsonpatch</groupId>
+            <artifactId>zjsonpatch</artifactId>
+            <version>0.4.16</version>
+        </dependency>
     </dependencies>
 </project>
