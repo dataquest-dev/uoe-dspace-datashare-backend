@@ -27,6 +27,8 @@ import org.dspace.content.service.CollectionService;
 import org.dspace.content.service.CommunityService;
 import org.dspace.content.service.ItemService;
 import org.dspace.core.Context;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * This check identifies DSpace objects that have a start date or end date defined in their resource policies.
@@ -100,7 +102,41 @@ public class EmbargoInfoCheck extends Check {
         sb.append(String.format("Communities: %d\n", embComs.size()));
         sb.append(String.format("Collections: %d\n", embCols.size()));
 
+        // Emit the same information as JSON so it is persisted in the stored health report and
+        // picked up by report-diff (which operates on the JSON representation). Without this the
+        // "Embargo check" section would be an empty object in the JSON report.
+        JSONObject root = new JSONObject();
+        root.put("items", embItems.size());
+        root.put("bitstreams", embBitstreams.size());
+        root.put("bundles", embBundles.size());
+        root.put("communities", embComs.size());
+        root.put("collections", embCols.size());
+        root.put("itemsList", toJsonArray(embItems, false));
+        root.put("bitstreamsList", toJsonArray(embBitstreams, true));
+        root.put("bundlesList", toJsonArray(embBundles, true));
+        root.put("communitiesList", toJsonArray(embComs, false));
+        root.put("collectionsList", toJsonArray(embCols, false));
+        setReportJson(root);
+
         return sb.toString();
+    }
+
+    /**
+     * Convert a list of {@link EmbargoInfo} into a JSON array for the machine-readable report.
+     */
+    private static JSONArray toJsonArray(List<EmbargoInfo> list, boolean includeParent) {
+        JSONArray arr = new JSONArray();
+        for (EmbargoInfo ei : list) {
+            JSONObject o = new JSONObject();
+            o.put("uuid", String.valueOf(ei.id));
+            o.put("startDate", ei.startDate == null ? JSONObject.NULL : ei.startDate.toString());
+            o.put("endDate", ei.endDate == null ? JSONObject.NULL : ei.endDate.toString());
+            if (includeParent) {
+                o.put("itemUuid", ei.parentItemId == null ? JSONObject.NULL : ei.parentItemId.toString());
+            }
+            arr.put(o);
+        }
+        return arr;
     }
 
     /**

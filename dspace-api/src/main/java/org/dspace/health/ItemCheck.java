@@ -146,18 +146,17 @@ public class ItemCheck extends Check {
 
         // Simple ordered map approach - maintains insertion order
         java.util.LinkedHashMap<String, CountInfo> entities = new java.util.LinkedHashMap<>();
-        entities.put("Bitstream", new CountInfo("bitstreamsCount", wrapSql(bitstreamService::countTotal)));
-        entities.put("Bundle", new CountInfo("bundlesCount", wrapSql(bundleService::countTotal)));
-        entities.put("Collection", new CountInfo("collectionsCount", wrapSql(collectionService::countTotal)));
-        entities.put("Community", new CountInfo("communitiesCount", wrapSql(communityService::countTotal)));
-        entities.put("MetadataValue", new CountInfo("metadataValuesCount", wrapSql(metadataValueService::countTotal)));
-        entities.put("EPerson", new CountInfo("ePersonsCount", wrapSql(ePersonService::countTotal)));
-        entities.put("Item", new CountInfo("itemsCount", wrapSql(itemService::countTotal)));
-        entities.put("Handle", new CountInfo("handlesCount", wrapSql(handleService::countTotal)));
-        entities.put("Group", new CountInfo("groupsCount", wrapSql(groupService::countTotal)));
-        entities.put("BasicWorkflowItem", new CountInfo("basicWorkflowItemsCount",
-                wrapSql(workflowItemService::countAll)));
-        entities.put("WorkspaceItem", new CountInfo("workspaceItemsCount", wrapSql(workspaceItemService::countTotal)));
+        entities.put("Bitstream", new CountInfo("bitstreamsCount", bitstreamService::countTotal));
+        entities.put("Bundle", new CountInfo("bundlesCount", bundleService::countTotal));
+        entities.put("Collection", new CountInfo("collectionsCount", collectionService::countTotal));
+        entities.put("Community", new CountInfo("communitiesCount", communityService::countTotal));
+        entities.put("MetadataValue", new CountInfo("metadataValuesCount", metadataValueService::countTotal));
+        entities.put("EPerson", new CountInfo("ePersonsCount", ePersonService::countTotal));
+        entities.put("Item", new CountInfo("itemsCount", itemService::countTotal));
+        entities.put("Handle", new CountInfo("handlesCount", handleService::countTotal));
+        entities.put("Group", new CountInfo("groupsCount", groupService::countTotal));
+        entities.put("BasicWorkflowItem", new CountInfo("basicWorkflowItemsCount", workflowItemService::countAll));
+        entities.put("WorkspaceItem", new CountInfo("workspaceItemsCount", workspaceItemService::countTotal));
 
         // Single iteration - do countTotal, append, put only once
         for (java.util.Map.Entry<String, CountInfo> entry : entities.entrySet()) {
@@ -172,20 +171,13 @@ public class ItemCheck extends Check {
     }
 
     /**
-     * Helper method to wrap SQLException-throwing functions into regular Functions
-     */
-    private static java.util.function.Function<Context, Integer> wrapSql(SqlFunction<Context, Integer> sqlFunction) {
-        return ctx -> {
-            try {
-                return sqlFunction.apply(ctx);
-            } catch (SQLException e) {
-                throw new RuntimeException("Error executing SQL function in wrapSql", e);
-            }
-        };
-    }
-
-    /**
-     * Functional interface for functions that throw SQLException
+     * Functional interface for count functions that throw SQLException.
+     * <p>
+     * Kept as a checked-exception-throwing interface (rather than wrapping into a plain
+     * {@link java.util.function.Function}) so that a failing count query surfaces as a
+     * {@link SQLException} and is handled by the caller's {@code catch (SQLException)} block,
+     * consistent with the rest of this check. Wrapping into a RuntimeException would bypass
+     * that handling and abort the whole health report.
      */
     @FunctionalInterface
     private interface SqlFunction<T, R> {
@@ -197,9 +189,9 @@ public class ItemCheck extends Check {
      */
     private static class CountInfo {
         final String jsonKey;
-        final java.util.function.Function<Context, Integer> countFunction;
+        final SqlFunction<Context, Integer> countFunction;
 
-        CountInfo(String jsonKey, java.util.function.Function<Context, Integer> countFunction) {
+        CountInfo(String jsonKey, SqlFunction<Context, Integer> countFunction) {
             this.jsonKey = jsonKey;
             this.countFunction = countFunction;
         }
