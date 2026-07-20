@@ -27,6 +27,7 @@ import org.dspace.content.service.MetadataSchemaService;
 import org.dspace.content.service.MetadataValueService;
 import org.dspace.content.service.RelationshipService;
 import org.dspace.content.service.RelationshipTypeService;
+import org.dspace.content.service.ReportResultService;
 import org.dspace.content.service.SiteService;
 import org.dspace.content.service.WorkspaceItemService;
 import org.dspace.eperson.service.SubscribeService;
@@ -81,6 +82,8 @@ public class ContentServiceFactoryImpl extends ContentServiceFactory {
     private EntityTypeService entityTypeService;
     @Autowired(required = true)
     private EntityService entityService;
+    @Autowired(required = true)
+    private ReportResultService reportResultService;
 
     @Override
     public List<DSpaceObjectService<? extends DSpaceObject>> getDSpaceObjectServices() {
@@ -180,5 +183,10 @@ public class ContentServiceFactoryImpl extends ContentServiceFactory {
     @Override
     public RelationshipMetadataService getRelationshipMetadataService() {
         return relationshipMetadataService;
+    }
+
+    @Override
+    public ReportResultService getReportResultService() {
+        return reportResultService;
     }
 }

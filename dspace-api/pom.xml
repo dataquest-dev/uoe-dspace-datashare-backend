@@ -851,7 +851,16 @@
                 </exclusion>
             </exclusions>
         </dependency>
-    
+
+        <!-- Used by the report-diff script to compute JSON diffs between two health reports.
+             Version kept in sync with the dspace-server-webapp declaration to satisfy the
+             maven-enforcer dependency-convergence rule. -->
+        <dependency>
+            <groupId>com.flipkart.zjsonpatch</groupId>
+            <artifactId>zjsonpatch</artifactId>
+            <version>0.4.14</version>
+        </dependency>
+
     </dependencies>
 
     <dependencyManagement>
