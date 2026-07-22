@@ -337,6 +337,34 @@
                 </field>
             </row> -->
 
+            <!--*****
+            Upload file from server path (Admin only) *****-->
+            <!-- The <acl> hides this field from everyone who is not a site administrator. It is a
+                 display filter only; the ingest itself is refused server-side for non-admins.
+                 <required> MUST stay empty: validation is ACL-unaware, so a required and hidden
+                 field would make the submission permanently undepositable for ordinary users. -->
+            <row>
+                <field>
+                    <dc-schema>local</dc-schema>
+                    <dc-element>bitstream</dc-element>
+                    <dc-qualifier>redirectToURL</dc-qualifier>
+                    <repeatable>false</repeatable>
+                    <label>Upload file from server path (Admin only)</label>
+                    <input-type>onebox</input-type>
+                    <hint>Enter the absolute path of a file that already exists on the DataShare
+                        server, for example /bigfiles/dataset.zip. The directory must be one that
+                        the administrator has added to bitstream.upload-from-path.allowed-paths;
+                        paths anywhere else are refused. URLs are not accepted, only server
+                        filesystem paths. The file is ingested when you press Save, and is streamed
+                        straight into the assetstore rather than being sent through the browser, so
+                        it is not subject to the 20GB limit that applies to ordinary uploads. Large
+                        files take several minutes, and this field is cleared once the file has been
+                        ingested.</hint>
+                    <required></required>
+                    <acl>policy=deny,action=read,grantee-type=user,grantee-id=*</acl>
+                </field>
+            </row>
+
         </form>
 
         <!-- Form which defines the metadata page/section for depositing Person Entities -->

@@ -237,6 +237,21 @@ it, please enter the types and the actual numbers or codes.</hint>
          <required></required>
        </field>
      </row>
+     <row>
+       <field>
+         <dc-schema>local</dc-schema>
+         <dc-element>bitstream</dc-element>
+         <dc-qualifier>redirectToURL</dc-qualifier>
+         <repeatable>false</repeatable>
+         <label>Upload file from server path (Admin only)</label>
+         <input-type>onebox</input-type>
+         <hint>Enter the absolute path of a file that already exists on this server, inside a
+           directory the administrator has allow-listed. URLs are not accepted. The file is
+           ingested when you press Save.</hint>
+         <required></required>
+         <acl>policy=deny,action=read,grantee-type=user,grantee-id=*</acl>
+       </field>
+     </row>
    </form>
    <form name="journalVolumeStep">
      <row>

@@ -23,6 +23,16 @@
     <namespace>http://dspace.org/namespace/local/</namespace>
   </dc-schema>
 
+  <dc-type>
+    <schema>local</schema>
+    <element>bitstream</element>
+    <qualifier>redirectToURL</qualifier>
+    <scope_note>Absolute path, on the DSpace server filesystem, of a file to be ingested as a
+      bitstream of this item. Site administrators only. The value is cleared automatically once
+      the file has been ingested, so that a later save cannot repeat the ingest. Despite the
+      historical name, a URL is not a legal value.</scope_note>
+  </dc-type>
+
 <!--
   <dc-type>
     <schema>local</schema>
