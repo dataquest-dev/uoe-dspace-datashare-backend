@@ -154,13 +154,8 @@ public class EmbargoInfoCheck extends Check {
     }
 
     /**
-     * Convert a {@link Date} (as stored on resource policies in this DSpace version) to a {@link LocalDate}
-     * for consistent, human-readable rendering in the report.
-     * <p>
-     * NOTE: {@code ResourcePolicy} start/end dates are DATE columns, which Hibernate returns as
-     * {@link java.sql.Date} instances. {@link java.sql.Date#toInstant()} throws
-     * {@link UnsupportedOperationException} by design (no time component), so we must convert via
-     * epoch milliseconds — which is supported by every {@link Date} subclass — rather than {@code toInstant()}.
+     * Convert a policy {@link Date} to a {@link LocalDate} via epoch millis (Hibernate returns
+     * {@link java.sql.Date}, whose {@code toInstant()} throws {@link UnsupportedOperationException}).
      */
     private static LocalDate toLocalDate(Date date) {
         return date == null ? null
