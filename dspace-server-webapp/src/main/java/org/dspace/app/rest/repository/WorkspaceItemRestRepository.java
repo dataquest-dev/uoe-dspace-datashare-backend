@@ -10,6 +10,7 @@ package org.dspace.app.rest.repository;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +31,7 @@ import org.dspace.app.rest.model.patch.Operation;
 import org.dspace.app.rest.model.patch.Patch;
 import org.dspace.app.rest.repository.handler.service.UriListHandlerService;
 import org.dspace.app.rest.submit.SubmissionService;
+import org.dspace.app.rest.submit.UploadFromPathService;
 import org.dspace.app.rest.submit.UploadableStep;
 import org.dspace.app.rest.utils.Utils;
 import org.dspace.app.util.SubmissionConfig;
@@ -101,6 +103,9 @@ public class WorkspaceItemRestRepository extends DSpaceRestRepository<WorkspaceI
 
     @Autowired
     SubmissionService submissionService;
+
+    @Autowired
+    UploadFromPathService uploadFromPathService;
 
     @Autowired
     EPersonServiceImpl epersonService;
@@ -205,6 +210,7 @@ public class WorkspaceItemRestRepository extends DSpaceRestRepository<WorkspaceI
         List<Operation> operations = patch.getOperations();
         WorkspaceItemRest wsi = findOne(context, id);
         WorkspaceItem source = wis.find(context, id);
+        uploadFromPathService.assertMayWritePendingPath(context, operations);
         for (Operation op : operations) {
             //the value in the position 0 is a null value
             String[] path = op.getPath().substring(1).split("/", 3);
@@ -217,6 +223,15 @@ public class WorkspaceItemRestRepository extends DSpaceRestRepository<WorkspaceI
             }
         }
         wis.update(context, source);
+        Path ingested;
+        try {
+            ingested = uploadFromPathService.ingestPendingFile(context, request, wsi, source);
+        } catch (IOException e) {
+            throw new DSpaceBadRequestException("Cannot ingest file from server path: " + e.getMessage(), e);
+        }
+        // Deferred to here, and no further: the source file must not be unlinked until its bitstream is
+        // durable, and this is the last point in the PATCH at which that can be arranged.
+        uploadFromPathService.deleteIngestedSource(context, ingested);
     }
 
     @PreAuthorize("hasPermission(#id, 'WORKSPACEITEM', 'DELETE')")

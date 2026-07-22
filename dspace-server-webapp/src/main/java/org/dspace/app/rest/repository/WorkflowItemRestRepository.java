@@ -10,6 +10,7 @@ package org.dspace.app.rest.repository;
 import static org.dspace.xmlworkflow.state.actions.processingaction.ProcessingAction.SUBMIT_EDIT_METADATA;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +28,7 @@ import org.dspace.app.rest.model.WorkflowItemRest;
 import org.dspace.app.rest.model.patch.Operation;
 import org.dspace.app.rest.model.patch.Patch;
 import org.dspace.app.rest.submit.SubmissionService;
+import org.dspace.app.rest.submit.UploadFromPathService;
 import org.dspace.app.util.SubmissionConfigReaderException;
 import org.dspace.authorize.AuthorizeException;
 import org.dspace.authorize.service.AuthorizeService;
@@ -92,6 +94,9 @@ public class WorkflowItemRestRepository extends DSpaceRestRepository<WorkflowIte
 
     @Autowired
     SubmissionService submissionService;
+
+    @Autowired
+    UploadFromPathService uploadFromPathService;
 
     @Autowired
     EPersonServiceImpl epersonService;
@@ -219,6 +224,7 @@ public class WorkflowItemRestRepository extends DSpaceRestRepository<WorkflowIte
         XmlWorkflowItem source = wis.find(context, id);
 
         this.checkIfEditMetadataAllowedInCurrentStep(context, source);
+        uploadFromPathService.assertMayWritePendingPath(context, operations);
 
         for (Operation op : operations) {
             //the value in the position 0 is a null value
@@ -232,6 +238,19 @@ public class WorkflowItemRestRepository extends DSpaceRestRepository<WorkflowIte
             }
         }
         wis.update(context, source);
+        // This method has no @PreAuthorize: any reviewer holding the ClaimedTask reaches it, and reviewers
+        // hold full workflow policies on the item. The site-admin check inside ingestPendingFile is
+        // therefore the only thing standing between a reviewer and an arbitrary server-side file read.
+        // Do not make it conditional and do not remove it.
+        Path ingested;
+        try {
+            ingested = uploadFromPathService.ingestPendingFile(context, request, wsi, source);
+        } catch (IOException e) {
+            throw new DSpaceBadRequestException("Cannot ingest file from server path: " + e.getMessage(), e);
+        }
+        // Deferred to here, and no further: the source file must not be unlinked until its bitstream is
+        // durable, and this is the last point in the PATCH at which that can be arranged.
+        uploadFromPathService.deleteIngestedSource(context, ingested);
     }
 
     @Override

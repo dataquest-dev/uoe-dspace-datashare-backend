@@ -314,3 +314,12 @@ webui.itemlist.sort-option.4 = dateembargo:dc.date.embargo:date
 # Feed display fields
 webui.feed.item.title = dc.title
 webui.feed.item.date = dc.date.accessioned
+
+# Ingest a bitstream from a path on this server (see dspace.cfg for the full explanation).
+# Off by default. The allow-list is the boundary that keeps an administrator out of local.cfg and
+# the assetstore, so name only directories that exist for this purpose and that no one but an
+# administrator can write to. With no allow-list the feature refuses everything.
+bitstream.upload-from-path.enabled = false
+# bitstream.upload-from-path.allowed-paths = /dspace/ingest
+bitstream.upload-from-path.delete-after-upload = false
+bitstream.upload-from-path.max-bytes = -1
