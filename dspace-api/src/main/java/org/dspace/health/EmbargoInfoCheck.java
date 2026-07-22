@@ -8,6 +8,7 @@
 package org.dspace.health;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -153,11 +154,12 @@ public class EmbargoInfoCheck extends Check {
     }
 
     /**
-     * Convert a {@link Date} (as stored on resource policies in this DSpace version) to a {@link LocalDate}
-     * for consistent, human-readable rendering in the report.
+     * Convert a policy {@link Date} to a {@link LocalDate} via epoch millis (Hibernate returns
+     * {@link java.sql.Date}, whose {@code toInstant()} throws {@link UnsupportedOperationException}).
      */
     private static LocalDate toLocalDate(Date date) {
-        return date == null ? null : date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return date == null ? null
+                : Instant.ofEpochMilli(date.getTime()).atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
     private void appendReport(StringBuilder sb, String label, List<EmbargoInfo> list, boolean includeParent) {
