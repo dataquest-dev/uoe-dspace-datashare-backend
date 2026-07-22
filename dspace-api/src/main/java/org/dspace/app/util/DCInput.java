@@ -19,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.dspace.content.MetadataSchemaEnum;
+import org.dspace.core.Context;
 import org.dspace.core.Utils;
 
 /**
@@ -122,6 +123,11 @@ public class DCInput {
     private String readOnly = null;
 
     /**
+     * Access Control List - is the user allowed to perform a particular ACL action on this input field?
+     */
+    private ACL acl = null;
+
+    /**
      * the name of the controlled vocabulary to use
      */
     private String vocabulary = null;
@@ -212,6 +218,7 @@ public class DCInput {
         required = warning != null && warning.length() > 0;
         visibility = fieldMap.get("visibility");
         readOnly = fieldMap.get("readonly");
+        acl = ACL.fromString(fieldMap.get("acl"));
         vocabulary = fieldMap.get("vocabulary");
         this.initRegex(fieldMap.get("regex"));
         String closedVocabularyStr = fieldMap.get("closedVocabulary");
@@ -289,6 +296,18 @@ public class DCInput {
         } else {
             return readOnly != null && readOnly.equalsIgnoreCase("readonly");
         }
+    }
+
+    /**
+     * Is the user allowed to perform a particular ACL action on this input field in the given Context?
+     * A field with no &lt;acl&gt; element allows every action.
+     *
+     * @param c      current Context, used to resolve the current user and their groups
+     * @param action {@link ACL#ACTION_READ} or {@link ACL#ACTION_WRITE}
+     * @return whether the action is allowed
+     */
+    public boolean isAllowedAction(Context c, int action) {
+        return acl.isAllowedAction(c, action);
     }
 
 
