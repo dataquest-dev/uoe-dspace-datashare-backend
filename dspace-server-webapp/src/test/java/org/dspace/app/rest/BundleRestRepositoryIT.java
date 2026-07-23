@@ -442,12 +442,13 @@ public class BundleRestRepositoryIT extends AbstractControllerIntegrationTest {
                                .build();
 
         String bitstreamContent = "Dummy content";
-        try (InputStream is = IOUtils.toInputStream(bitstreamContent, CharEncoding.UTF_8)) {
-            bitstream1 = BitstreamBuilder.createBitstream(context, item, is, bundle1.getName())
+        try (InputStream is1 = IOUtils.toInputStream(bitstreamContent, CharEncoding.UTF_8);
+             InputStream is2 = IOUtils.toInputStream(bitstreamContent, CharEncoding.UTF_8)) {
+            bitstream1 = BitstreamBuilder.createBitstream(context, item, is1, bundle1.getName())
                                          .withName("Bitstream")
                                          .withMimeType("text/plain")
                                          .build();
-            bitstream2 = BitstreamBuilder.createBitstream(context, item, is, bundle1.getName())
+            bitstream2 = BitstreamBuilder.createBitstream(context, item, is2, bundle1.getName())
                                          .withName("Bitstream2")
                                          .withMimeType("text/plain")
                                          .build();
