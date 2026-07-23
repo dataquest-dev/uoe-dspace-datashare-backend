@@ -193,6 +193,41 @@ public class UploadFromPathIT extends AbstractControllerIntegrationTest {
     }
 
     /**
+     * The ingest clears the field, but a browser whose form still shows the typed path sends a
+     * {@code replace} on that field on its next save. DescribeStep's replace handler asserts the value
+     * already exists, so without normalisation the whole PATCH fails with HTTP 500 and the newly typed
+     * path is lost. The replace must be treated as an add instead, and the second file ingested.
+     */
+    @Test
+    public void replaceOnClearedFieldIngestsInsteadOfFailing() throws Exception {
+        context.turnOffAuthorisationSystem();
+        WorkspaceItem witem = workspaceItem();
+        setPendingPath(witem.getItem(), sourceFile.toString());
+        Path secondFile = Files.write(allowedRoot.resolve("second-file.bin"), FILE_CONTENT);
+        context.restoreAuthSystemState();
+
+        String adminToken = getAuthToken(admin.getEmail(), password);
+        // First save ingests the first file and clears the field.
+        getClient(adminToken).perform(patch("/api/submission/workspaceitems/" + witem.getID())
+                        .content(replaceTitlePatch("First ingest"))
+                        .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sections.upload.files", hasSize(1)));
+
+        // Second save: the client still holds the old value, so it sends a replace on the empty field.
+        getClient(adminToken).perform(patch("/api/submission/workspaceitems/" + witem.getID())
+                        .content(pendingPathReplacePatch(secondFile.toString()))
+                        .contentType(MediaType.APPLICATION_JSON_PATCH_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sections.upload.files", hasSize(2)))
+                .andExpect(jsonPath(PENDING_PATH_JSON).doesNotExist());
+
+        Item item = context.reloadEntity(witem).getItem();
+        assertTrue("the second path must be ingested and then cleared like the first",
+                itemService.getMetadataByMetadataString(item, MD_FIELD).isEmpty());
+    }
+
+    /**
      * The reported gap: the ingest must also work on an item that has already left the submission and
      * is being edited in the review workflow.
      */
@@ -824,6 +859,18 @@ public class UploadFromPathIT extends AbstractControllerIntegrationTest {
         values.add(value);
         List<Operation> operations = new ArrayList<>();
         operations.add(new AddOperation(PENDING_PATH_OP, values));
+        return getPatchContent(operations);
+    }
+
+    /**
+     * A PATCH body that replaces the pending-path field's value at index 0, which is what a browser
+     * whose form still holds the previous value sends after the field was cleared by an earlier ingest.
+     */
+    private String pendingPathReplacePatch(String pendingValue) {
+        Map<String, String> value = new HashMap<>();
+        value.put("value", pendingValue);
+        List<Operation> operations = new ArrayList<>();
+        operations.add(new ReplaceOperation(PENDING_PATH_OP + "/0", value));
         return getPatchContent(operations);
     }
 

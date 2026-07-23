@@ -13,8 +13,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -24,6 +28,8 @@ import org.dspace.app.rest.exception.RESTAuthorizationException;
 import org.dspace.app.rest.exception.UnprocessableEntityException;
 import org.dspace.app.rest.model.AInprogressSubmissionRest;
 import org.dspace.app.rest.model.ErrorRest;
+import org.dspace.app.rest.model.patch.AddOperation;
+import org.dspace.app.rest.model.patch.JsonValueEvaluator;
 import org.dspace.app.rest.model.patch.Operation;
 import org.dspace.app.rest.utils.BigMultipartFile;
 import org.dspace.authorize.AuthorizeException;
@@ -84,6 +90,9 @@ public class UploadFromPathService {
     @Autowired
     private ConfigurationService configurationService;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     /**
      * Refuse an attempt to write {@value #MD_FIELD} by anyone who is not a site administrator.
      * <p>
@@ -109,6 +118,57 @@ public class UploadFromPathService {
                         "Only site administrators may set " + MD_FIELD + ".");
             }
         }
+    }
+
+    /**
+     * Returns the given operations with any {@code replace} that targets {@value #MD_FIELD} rewritten as
+     * a plain {@code add} whenever the item currently holds no value for that field.
+     * <p>
+     * The field is cleared server-side after every successful ingest, so a client that still believes it
+     * holds a value sends a {@code replace} on its next save. {@code DescribeStep}'s replace handler
+     * asserts the value already exists, so without this the whole PATCH fails with HTTP 500 and the newly
+     * typed path is lost. Rewriting it to an {@code add} avoids the crash and honours the intent - ingest
+     * the new path. When the field genuinely holds a value the {@code replace} is left untouched, so an
+     * ordinary edit of an existing value is unaffected.
+     *
+     * @param source     the workspace or workflow item being edited
+     * @param operations the operations of the PATCH about to be applied
+     * @return the operations to apply, with a rewritten entry where necessary
+     */
+    public List<Operation> normalizePendingPathOperations(InProgressSubmission source, List<Operation> operations) {
+        if (!itemService.getMetadataByMetadataString(source.getItem(), MD_FIELD).isEmpty()) {
+            // The field still holds a value, so a replace against it is legitimate.
+            return operations;
+        }
+        List<Operation> normalized = new ArrayList<>(operations.size());
+        for (Operation operation : operations) {
+            Operation rewritten = rewritePendingPathReplaceAsAdd(operation);
+            normalized.add(rewritten != null ? rewritten : operation);
+        }
+        return normalized;
+    }
+
+    /**
+     * Rewrites a {@code replace} on {@value #MD_FIELD}{@code /<index>} into an {@code add} on
+     * {@value #MD_FIELD} whose value is the same object wrapped in a single-element array, which is the
+     * shape {@code DescribeStep} expects for an {@code add} that initialises a field. Returns null for any
+     * operation that is not such a replace, including a sub-property path like {@code /<index>/language},
+     * which cannot be reached while the field is absent.
+     */
+    private Operation rewritePendingPathReplaceAsAdd(Operation operation) {
+        if (!"replace".equals(operation.getOp()) || !(operation.getValue() instanceof JsonValueEvaluator)) {
+            return null;
+        }
+        String path = StringUtils.defaultString(operation.getPath());
+        String marker = "/" + MD_FIELD + "/";
+        int fieldAt = path.indexOf(marker);
+        if (fieldAt < 0 || !StringUtils.isNumeric(path.substring(fieldAt + marker.length()))) {
+            return null;
+        }
+        JsonNode single = ((JsonValueEvaluator) operation.getValue()).getValueNode();
+        ArrayNode asArray = objectMapper.createArrayNode().add(single);
+        String addPath = path.substring(0, fieldAt) + "/" + MD_FIELD;
+        return new AddOperation(addPath, new JsonValueEvaluator(objectMapper, asArray));
     }
 
     /**

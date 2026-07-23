@@ -225,6 +225,8 @@ public class WorkflowItemRestRepository extends DSpaceRestRepository<WorkflowIte
 
         this.checkIfEditMetadataAllowedInCurrentStep(context, source);
         uploadFromPathService.assertMayWritePendingPath(context, operations);
+        // A replace on the (server-cleared) upload-from-path field would otherwise 500; normalise it.
+        operations = uploadFromPathService.normalizePendingPathOperations(source, operations);
 
         for (Operation op : operations) {
             //the value in the position 0 is a null value

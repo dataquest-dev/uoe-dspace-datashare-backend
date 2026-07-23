@@ -211,6 +211,8 @@ public class WorkspaceItemRestRepository extends DSpaceRestRepository<WorkspaceI
         WorkspaceItemRest wsi = findOne(context, id);
         WorkspaceItem source = wis.find(context, id);
         uploadFromPathService.assertMayWritePendingPath(context, operations);
+        // A replace on the (server-cleared) upload-from-path field would otherwise 500; normalise it.
+        operations = uploadFromPathService.normalizePendingPathOperations(source, operations);
         for (Operation op : operations) {
             //the value in the position 0 is a null value
             String[] path = op.getPath().substring(1).split("/", 3);
