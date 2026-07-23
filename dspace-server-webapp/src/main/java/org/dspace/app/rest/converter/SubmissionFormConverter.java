@@ -68,6 +68,8 @@ public class SubmissionFormConverter implements DSpaceConverter<DCInputSet, Subm
     private List<SubmissionFormRowRest> getPage(DCInput[][] page, String formName) {
         List<SubmissionFormRowRest> rows = new LinkedList<SubmissionFormRowRest>();
 
+        // Resolved once: the request context does not change while a single form is rendered.
+        Context context = ContextUtil.obtainCurrentRequestContext();
         for (DCInput[] row : page) {
             List<SubmissionFormFieldRest> fields = new LinkedList<SubmissionFormFieldRest>();
             SubmissionFormRowRest rowRest = new SubmissionFormRowRest();
@@ -75,7 +77,7 @@ public class SubmissionFormConverter implements DSpaceConverter<DCInputSet, Subm
             rows.add(rowRest);
             for (DCInput dcinput : row) {
                 // skip if the field's ACL denies this user
-                if (!isInputAuthorized(ContextUtil.obtainCurrentRequestContext(), dcinput)) {
+                if (!isInputAuthorized(context, dcinput)) {
                     continue;
                 }
                 fields.add(getField(dcinput, formName));
