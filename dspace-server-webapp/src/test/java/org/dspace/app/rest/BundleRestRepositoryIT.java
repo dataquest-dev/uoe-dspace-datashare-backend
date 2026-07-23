@@ -434,6 +434,38 @@ public class BundleRestRepositoryIT extends AbstractControllerIntegrationTest {
     }
 
     @Test
+    public void getBitstreamsForBundlePageBeyondEndReturnsEmptyPage() throws Exception {
+        context.turnOffAuthorisationSystem();
+
+        bundle1 = BundleBuilder.createBundle(context, item)
+                               .withName("testname")
+                               .build();
+
+        String bitstreamContent = "Dummy content";
+        try (InputStream is = IOUtils.toInputStream(bitstreamContent, CharEncoding.UTF_8)) {
+            bitstream1 = BitstreamBuilder.createBitstream(context, item, is, bundle1.getName())
+                                         .withName("Bitstream")
+                                         .withMimeType("text/plain")
+                                         .build();
+            bitstream2 = BitstreamBuilder.createBitstream(context, item, is, bundle1.getName())
+                                         .withName("Bitstream2")
+                                         .withMimeType("text/plain")
+                                         .build();
+        }
+
+        context.restoreAuthSystemState();
+
+        // A page past the last one must return an empty page with the real total, not a 500.
+        getClient().perform(get("/api/core/bundles/" + bundle1.getID() + "/bitstreams")
+                   .param("page", "999")
+                   .param("size", "5"))
+                   .andExpect(status().isOk())
+                   .andExpect(jsonPath("$.page.totalElements", is(2)))
+                   .andExpect(jsonPath("$.page.number", is(999)))
+                   .andExpect(jsonPath("$._embedded.bitstreams").doesNotExist());
+    }
+
+    @Test
     public void getBitstreamsForBundleForbiddenTest() throws Exception {
         context.turnOffAuthorisationSystem();
 
