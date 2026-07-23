@@ -351,15 +351,13 @@
                     <repeatable>false</repeatable>
                     <label>Upload file from server path (Admin only)</label>
                     <input-type>onebox</input-type>
-                    <hint>Enter the absolute path of a file that already exists on the DataShare
-                        server, for example /bigfiles/dataset.zip. The directory must be one that
-                        the administrator has added to bitstream.upload-from-path.allowed-paths;
-                        paths anywhere else are refused. URLs are not accepted, only server
-                        filesystem paths. The file is ingested when you press Save, and is streamed
-                        straight into the assetstore rather than being sent through the browser, so
-                        it is not subject to the 20GB limit that applies to ordinary uploads. Large
-                        files take several minutes, and this field is cleared once the file has been
-                        ingested.</hint>
+                    <hint>
+                        Please enter the full path of the file, either from the local server or an HTTP location.
+                        The maximum upload size for a file is 4GB. To upload a file larger than this limit, provide the
+                        URL of the file. Ensure the admin is aware of the URL of the bitstream file.
+                        Once the file path or URL is entered, click the 'Save' button to begin the upload.
+                        Note: The file path must be an absolute path.
+                    </hint>
                     <required></required>
                     <acl>policy=deny,action=read,grantee-type=user,grantee-id=*</acl>
                 </field>

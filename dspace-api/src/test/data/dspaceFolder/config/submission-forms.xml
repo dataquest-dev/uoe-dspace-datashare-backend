@@ -245,9 +245,13 @@ it, please enter the types and the actual numbers or codes.</hint>
          <repeatable>false</repeatable>
          <label>Upload file from server path (Admin only)</label>
          <input-type>onebox</input-type>
-         <hint>Enter the absolute path of a file that already exists on this server, inside a
-           directory the administrator has allow-listed. URLs are not accepted. The file is
-           ingested when you press Save.</hint>
+         <hint>
+             Please enter the full path of the file, either from the local server or an HTTP location.
+             The maximum upload size for a file is 4GB. To upload a file larger than this limit, provide the
+             URL of the file. Ensure the admin is aware of the URL of the bitstream file.
+             Once the file path or URL is entered, click the 'Save' button to begin the upload.
+             Note: The file path must be an absolute path.
+         </hint>
          <required></required>
          <acl>policy=deny,action=read,grantee-type=user,grantee-id=*</acl>
        </field>
