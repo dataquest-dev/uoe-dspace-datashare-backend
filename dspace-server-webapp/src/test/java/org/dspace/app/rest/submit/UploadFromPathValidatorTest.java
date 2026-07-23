@@ -26,20 +26,20 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * Unit tests for {@link UploadFromPathPathValidator}.
+ * Unit tests for {@link UploadFromPathValidator}.
  * <p>
  * These are deliberately plain JUnit tests with no DSpace kernel and no Spring context: the
  * validator is the security boundary of the upload-from-path feature and must be cheap enough
  * to test exhaustively.
  */
-public class UploadFromPathPathValidatorTest {
+public class UploadFromPathValidatorTest {
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     private File allowedRoot;
 
-    private UploadFromPathPathValidator validator;
+    private UploadFromPathValidator validator;
 
     /**
      * Build the fixture used by most tests: a single allowed root holding one ordinary file.
@@ -49,13 +49,13 @@ public class UploadFromPathPathValidatorTest {
     @Before
     public void setUp() throws IOException {
         allowedRoot = temporaryFolder.newFolder("allowed");
-        validator = new UploadFromPathPathValidator(new String[] { allowedRoot.getAbsolutePath() });
+        validator = new UploadFromPathValidator(new String[] { allowedRoot.getAbsolutePath() });
     }
 
     @Test
     public void rejectsWhenAllowListEmpty() throws IOException {
         File file = newFileUnder(allowedRoot, "big.bin");
-        UploadFromPathPathValidator noRoots = new UploadFromPathPathValidator(new String[0]);
+        UploadFromPathValidator noRoots = new UploadFromPathValidator(new String[0]);
 
         String message = rejectionMessage(noRoots, file.getAbsolutePath());
         assertTrue("expected the fail-closed message, got: " + message,
@@ -65,7 +65,7 @@ public class UploadFromPathPathValidatorTest {
     @Test
     public void rejectsWhenAllowListIsNull() throws IOException {
         File file = newFileUnder(allowedRoot, "big.bin");
-        UploadFromPathPathValidator noRoots = new UploadFromPathPathValidator(null);
+        UploadFromPathValidator noRoots = new UploadFromPathValidator(null);
 
         String message = rejectionMessage(noRoots, file.getAbsolutePath());
         assertTrue("expected the fail-closed message, got: " + message,
@@ -74,8 +74,8 @@ public class UploadFromPathPathValidatorTest {
 
     @Test
     public void rejectsWhenEveryConfiguredRootIsUnresolvable() {
-        UploadFromPathPathValidator broken =
-            new UploadFromPathPathValidator(new String[] { new File(allowedRoot, "gone").getAbsolutePath() });
+        UploadFromPathValidator broken =
+            new UploadFromPathValidator(new String[] { new File(allowedRoot, "gone").getAbsolutePath() });
 
         String message = rejectionMessage(broken, new File(allowedRoot, "big.bin").getAbsolutePath());
         assertTrue("expected the fail-closed message, got: " + message,
@@ -174,7 +174,7 @@ public class UploadFromPathPathValidatorTest {
     @Test
     public void messageDoesNotLeakAllowList() throws IOException {
         File secondRoot = temporaryFolder.newFolder("second");
-        UploadFromPathPathValidator twoRoots = new UploadFromPathPathValidator(
+        UploadFromPathValidator twoRoots = new UploadFromPathValidator(
             new String[] { allowedRoot.getAbsolutePath(), secondRoot.getAbsolutePath() });
         File outside = temporaryFolder.newFile("outside.bin");
 
@@ -204,7 +204,7 @@ public class UploadFromPathPathValidatorTest {
     @Test
     public void acceptsWhenMultipleRootsConfiguredAndSecondMatches() throws Exception {
         File secondRoot = temporaryFolder.newFolder("second");
-        UploadFromPathPathValidator twoRoots = new UploadFromPathPathValidator(
+        UploadFromPathValidator twoRoots = new UploadFromPathValidator(
             new String[] { allowedRoot.getAbsolutePath(), secondRoot.getAbsolutePath() });
         File file = newFileUnder(secondRoot, "big.bin");
 
@@ -213,7 +213,7 @@ public class UploadFromPathPathValidatorTest {
 
     @Test
     public void unresolvableConfiguredRootIsDroppedNotFatal() throws Exception {
-        UploadFromPathPathValidator mixed = new UploadFromPathPathValidator(new String[] {
+        UploadFromPathValidator mixed = new UploadFromPathValidator(new String[] {
             new File(allowedRoot, "does-not-exist").getAbsolutePath(),
             "   ",
             allowedRoot.getAbsolutePath(),
@@ -263,7 +263,7 @@ public class UploadFromPathPathValidatorTest {
         return file;
     }
 
-    private String rejectionMessage(UploadFromPathPathValidator target, String rawValue) {
+    private String rejectionMessage(UploadFromPathValidator target, String rawValue) {
         try {
             Path accepted = target.validate(rawValue);
             fail("expected '" + rawValue + "' to be refused, but it resolved to " + accepted);

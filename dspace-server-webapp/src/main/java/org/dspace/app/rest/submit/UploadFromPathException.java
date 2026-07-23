@@ -8,12 +8,9 @@
 package org.dspace.app.rest.submit;
 
 /**
- * Raised when a value offered for server-side ingest cannot be accepted.
- * <p>
- * The message is written to be shown to the administrator who submitted the value, so it must never
- * disclose the configured allow-list nor confirm the existence of anything outside it. Callers in the
- * REST layer translate this into a {@code DSpaceBadRequestException}; keeping a dedicated type here
- * lets {@link UploadFromPathPathValidator} stay free of Spring and DSpace dependencies.
+ * Raised when a value offered for server-side ingest cannot be accepted. Its message is shown to the
+ * administrator, so it must never disclose the allow-list nor confirm anything outside it. A dedicated
+ * type keeps {@link UploadFromPathValidator} free of Spring and DSpace dependencies.
  */
 public class UploadFromPathException extends RuntimeException {
 

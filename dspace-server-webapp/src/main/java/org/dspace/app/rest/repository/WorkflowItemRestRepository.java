@@ -225,7 +225,7 @@ public class WorkflowItemRestRepository extends DSpaceRestRepository<WorkflowIte
 
         this.checkIfEditMetadataAllowedInCurrentStep(context, source);
         uploadFromPathService.assertMayWritePendingPath(context, operations);
-        // A replace on the (server-cleared) upload-from-path field would otherwise 500; normalise it.
+        // Normalise a replace on the server-cleared upload-from-path field that would otherwise 500.
         operations = uploadFromPathService.normalizePendingPathOperations(source, operations);
 
         for (Operation op : operations) {
@@ -240,18 +240,15 @@ public class WorkflowItemRestRepository extends DSpaceRestRepository<WorkflowIte
             }
         }
         wis.update(context, source);
-        // This method has no @PreAuthorize: any reviewer holding the ClaimedTask reaches it, and reviewers
-        // hold full workflow policies on the item. The site-admin check inside ingestPendingFile is
-        // therefore the only thing standing between a reviewer and an arbitrary server-side file read.
-        // Do not make it conditional and do not remove it.
+        // No @PreAuthorize here: any reviewer holding the ClaimedTask reaches this with full workflow
+        // policies, so the site-admin check inside ingestPendingFile is the only gate. Do not remove it.
         Path ingested;
         try {
             ingested = uploadFromPathService.ingestPendingFile(context, request, wsi, source);
         } catch (IOException e) {
             throw new DSpaceBadRequestException("Cannot ingest file from server path: " + e.getMessage(), e);
         }
-        // Deferred to here, and no further: the source file must not be unlinked until its bitstream is
-        // durable, and this is the last point in the PATCH at which that can be arranged.
+        // Deferred to here: the source file must not be unlinked until its bitstream is durable.
         uploadFromPathService.deleteIngestedSource(context, ingested);
     }
 

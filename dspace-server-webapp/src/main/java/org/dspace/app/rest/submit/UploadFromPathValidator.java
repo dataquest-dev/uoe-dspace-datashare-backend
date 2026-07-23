@@ -29,21 +29,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Validates the raw value of {@code local.bitstream.redirectToURL} and resolves it to a canonical
- * {@link Path} that is provably inside one of the configured allow-list roots.
- * <p>
- * The feature is a server-side file read performed with the servlet container's privileges, so this
- * class fails closed: with no usable root configured every value is refused. Candidate paths are
- * canonicalised with {@link Path#toRealPath} <em>before</em> the containment test, which is what
- * defeats both {@code ..} traversal and a symbolic link planted inside an allowed root before the
- * administrator saves. A link planted <em>after</em> that test is a separate problem, and is why
- * callers should use {@link #validateAndOpen} rather than re-opening the returned path by name.
- * <p>
- * Deliberately free of Spring and DSpace dependencies so it can be unit tested in isolation.
+ * Validates {@code local.bitstream.redirectToURL} and resolves it to a canonical {@link Path} inside a
+ * configured allow-list root. Fails closed (no root configured refuses everything) and canonicalises
+ * before the containment test to defeat {@code ..} traversal and symlinks. Free of Spring/DSpace deps.
  */
-public class UploadFromPathPathValidator {
+public class UploadFromPathValidator {
 
-    private static final Logger log = LogManager.getLogger(UploadFromPathPathValidator.class);
+    private static final Logger log = LogManager.getLogger(UploadFromPathValidator.class);
 
     private static final Pattern URL_SCHEME = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.\\-]*://.*");
 
@@ -67,13 +59,11 @@ public class UploadFromPathPathValidator {
     private final List<Path> allowedRoots;
 
     /**
-     * Canonicalise the configured roots once. An entry that is blank, relative, unresolvable or not a
-     * directory is logged and dropped rather than treated as fatal, so one bad line in the configuration
-     * cannot take the server down; if that leaves no usable root at all the feature simply stays inert.
+     * Canonicalise the configured roots once; a bad entry is logged and dropped rather than fatal.
      *
      * @param configuredRoots the raw values of {@code bitstream.upload-from-path.allowed-paths}, may be null
      */
-    public UploadFromPathPathValidator(String[] configuredRoots) {
+    public UploadFromPathValidator(String[] configuredRoots) {
         List<Path> roots = new ArrayList<>();
         if (configuredRoots != null) {
             for (String configuredRoot : configuredRoots) {
@@ -92,7 +82,7 @@ public class UploadFromPathPathValidator {
      * @param rawValue the metadata value as typed by the administrator
      * @return the canonical path of an existing, readable, regular file inside an allowed root
      * @throws UploadFromPathException with a user-safe message if the value cannot be accepted
-     * @throws IllegalStateException   if the value is blank; the caller is expected to have guarded for that
+     * @throws IllegalStateException   if the value is blank; the caller should have guarded for that
      */
     public Path validate(String rawValue) {
         String raw = rawValue == null ? "" : rawValue.trim();
@@ -126,8 +116,7 @@ public class UploadFromPathPathValidator {
             throw new UploadFromPathException(MSG_UNAVAILABLE);
         }
 
-        // Only reached for paths already known to be inside an allowed root, so a more precise
-        // message here tells the caller nothing they were not entitled to know.
+        // Inside an allowed root by now, so a more precise message here leaks nothing.
         if (!Files.isRegularFile(real) || !Files.isReadable(real)) {
             throw new UploadFromPathException(MSG_NOT_A_FILE);
         }
@@ -135,23 +124,14 @@ public class UploadFromPathPathValidator {
     }
 
     /**
-     * Run {@link #validate} and then open the result exactly once, so that what is ingested is provably
-     * the file that was validated.
-     * <p>
-     * {@link #validate} decides containment from a <em>name</em>, and a name can be re-pointed by anyone
-     * who can write to the directory holding it. Re-opening that name afterwards would therefore be a
-     * check/use split: an allow-listed drop box could be made to yield a symbolic link to
-     * {@code local.cfg} in the window between the two. The open below uses
-     * {@link LinkOption#NOFOLLOW_LINKS}, so a link swapped in after the containment test fails to open
-     * rather than silently redirecting the read; the file's identity is compared across the open and the
-     * name is re-canonicalised afterwards, which closes the same window for a parent directory. Length
-     * comes from the open handle rather than from a second lookup by name, and that handle is what the
-     * caller streams.
+     * Run {@link #validate} then open the result exactly once, so the ingested file is provably the one
+     * validated. Avoids a TOCTOU check/use split: the open uses {@link LinkOption#NOFOLLOW_LINKS} and
+     * rechecks identity and canonical path, defeating a symlink swapped in after the containment test.
      *
      * @param rawValue the metadata value as typed by the administrator
      * @return the validated file, held open; the caller must close it
      * @throws UploadFromPathException with a user-safe message if the value cannot be accepted
-     * @throws IllegalStateException   if the value is blank; the caller is expected to have guarded for that
+     * @throws IllegalStateException   if the value is blank; the caller should have guarded for that
      */
     public OpenSourceFile validateAndOpen(String rawValue) {
         Path real = validate(rawValue);
@@ -168,16 +148,14 @@ public class UploadFromPathPathValidator {
             return new OpenSourceFile(real, channel.size(), channel);
         } catch (IOException e) {
             closeQuietly(channel);
-            // Reported as "unavailable" like every other refusal: the administrator is entitled to know
-            // that nothing was ingested, not to learn how the filesystem under a root is arranged.
+            // Reported as "unavailable" like every other refusal, to avoid leaking filesystem layout.
             log.warn("Refusing to ingest '{}': it is not the file that was validated ({})", real, e.getMessage());
             throw new UploadFromPathException(MSG_UNAVAILABLE);
         }
     }
 
     /**
-     * The filesystem's identity for a name, read without following links. Null on filesystems that do
-     * not supply one, in which case the caller relies on the other two checks alone.
+     * The filesystem identity for a name, read without following links; null if unsupported.
      */
     private static Object identityOf(Path path) throws IOException {
         return Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).fileKey();
@@ -218,8 +196,7 @@ public class UploadFromPathPathValidator {
     }
 
     /**
-     * A validated source file, held open. Its length and its content both come from the one open handle,
-     * so nothing that reaches the assetstore is ever looked up by name a second time.
+     * A validated source file held open; its length and content both come from the one open handle.
      */
     public static class OpenSourceFile implements Closeable {
 

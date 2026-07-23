@@ -27,21 +27,11 @@ import org.dspace.eperson.service.GroupService;
 
 /**
  * The Access Control List of a submission form field, parsed from its {@code <acl>} element and
- * evaluated when the form is rendered.
- * <p>
- * The semantics are inherited from the LINDAT/CLARIAH-CZ fork and each of them is a
- * configuration foot-gun worth knowing about:
- * <ul>
- * <li>an empty ACL allows everything, for backwards compatibility with fields that have no
- * {@code <acl>} element;</li>
- * <li>a site administrator ({@code Group.ADMIN} membership) is always allowed — collection
- * administrators, community administrators and workflow reviewers are not;</li>
- * <li>matching is first-match-wins with an implicit default of deny, so an entry that allows
- * one action implicitly denies the other;</li>
- * <li>an entry that cannot be parsed is dropped, which leaves the field unguarded.</li>
- * </ul>
- * This hides a field from the REST form payload. It is not write-path enforcement: anything
- * that must not be done by a non-administrator has to be refused server side as well.
+ * evaluated when the form is rendered. Semantics inherited from the LINDAT/CLARIAH-CZ fork: an empty ACL
+ * allows everything; a site administrator ({@code Group.ADMIN}) is always allowed (collection/community
+ * admins and reviewers are not); matching is first-match-wins defaulting to deny; an unparsable entry is
+ * dropped, leaving the field unguarded. This only hides a field from the REST payload, it is not
+ * write-path enforcement, so anything a non-administrator must not do has to be refused server side too.
  *
  * @author Michal Josífko
  * Class is copied from the LINDAT/CLARIAH-CZ (https://github.com/ufal/clarin-dspace) and modified by
@@ -91,8 +81,7 @@ public class ACL {
     }
 
     /**
-     * Method to verify whether the the given user ID and set of group IDs is
-     * allowed to perform the given action
+     * Whether the given user ID and group IDs are allowed to perform the given action.
      *
      * @param userID current user
      * @param groupIDs where is assigned the current user
@@ -109,19 +98,16 @@ public class ACL {
     }
 
     /**
-     * Convenience method to verify whether the current user is allowed to
-     * perform given action based on current context
+     * Whether the current user is allowed to perform the given action in the current context.
      *
-     * @param c Current context, the user information are loaded from the context. Outside an
-     *          HTTP request there is none, in which case a non-empty ACL fails closed.
+     * @param c current context; null (outside an HTTP request) makes a non-empty ACL fail closed
      * @param action read/write
      * @return if user will see the input field
      */
     public boolean isAllowedAction(Context c, int action) {
         boolean res = false;
         if (acl.isEmpty()) {
-            // To maintain backwards compatibility allow everything if the ACL
-            // is empty
+            // Empty ACL allows everything, for backwards compatibility
             return true;
         }
         if (c == null) {

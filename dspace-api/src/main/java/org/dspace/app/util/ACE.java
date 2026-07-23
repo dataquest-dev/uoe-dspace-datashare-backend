@@ -15,9 +15,7 @@ import org.apache.logging.log4j.Logger;
 /**
  * A single Access Control Entry of a submission form field {@code <acl>}, in the form
  * {@code policy=(allow|deny),action=(read|write),grantee-type=(user|group),grantee-id=(<UUID>|*)}.
- * <p>
- * A definition that cannot be parsed is logged and discarded, so a typo in a form definition
- * leaves the field unguarded rather than breaking the submission forms at startup.
+ * An unparsable definition is logged and discarded, leaving the field unguarded.
  *
  * @author Michal Josífko
  * Class is copied from the LINDAT/CLARIAH-CZ (https://github.com/ufal/clarin-dspace) and modified by

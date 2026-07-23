@@ -211,7 +211,7 @@ public class WorkspaceItemRestRepository extends DSpaceRestRepository<WorkspaceI
         WorkspaceItemRest wsi = findOne(context, id);
         WorkspaceItem source = wis.find(context, id);
         uploadFromPathService.assertMayWritePendingPath(context, operations);
-        // A replace on the (server-cleared) upload-from-path field would otherwise 500; normalise it.
+        // Normalise a replace on the server-cleared upload-from-path field that would otherwise 500.
         operations = uploadFromPathService.normalizePendingPathOperations(source, operations);
         for (Operation op : operations) {
             //the value in the position 0 is a null value
@@ -231,8 +231,7 @@ public class WorkspaceItemRestRepository extends DSpaceRestRepository<WorkspaceI
         } catch (IOException e) {
             throw new DSpaceBadRequestException("Cannot ingest file from server path: " + e.getMessage(), e);
         }
-        // Deferred to here, and no further: the source file must not be unlinked until its bitstream is
-        // durable, and this is the last point in the PATCH at which that can be arranged.
+        // Deferred to here: the source file must not be unlinked until its bitstream is durable.
         uploadFromPathService.deleteIngestedSource(context, ingested);
     }
 

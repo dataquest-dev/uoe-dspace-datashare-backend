@@ -18,15 +18,10 @@ import org.springframework.lang.Nullable;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * A {@link MultipartFile} backed by a file that already exists on the server filesystem.
- * <p>
- * Unlike Spring's own implementations this never buffers the content in memory, which is what makes it
- * usable for multi-gigabyte ingests. The size is supplied by the caller, which is expected to have taken
- * it from the same open handle the stream comes from, so consumers that validate or record a length keep
- * working without anyone having to look the file up by name a second time.
- * <p>
- * The stream belongs to the caller: nothing here closes it, and it can only be read once, so a single
- * instance must not be handed to two consumers.
+ * A {@link MultipartFile} backed by a file already on the server filesystem. Never buffers the content in
+ * memory, so it is usable for multi-gigabyte ingests; the size is supplied by the caller from the same
+ * open handle. The stream belongs to the caller (nothing here closes it) and is readable only once, so a
+ * single instance must not be handed to two consumers.
  */
 public class BigMultipartFile implements MultipartFile {
 
@@ -89,8 +84,7 @@ public class BigMultipartFile implements MultipartFile {
     }
 
     /**
-     * Refused on purpose: materialising a multi-gigabyte file as a {@code byte[]} is never the right
-     * answer, and would fail with an unhelpful error above {@link Integer#MAX_VALUE} bytes anyway.
+     * Refused on purpose: a multi-gigabyte file cannot be materialised as a {@code byte[]}.
      *
      * @return never returns
      * @throws IOException always
@@ -101,8 +95,7 @@ public class BigMultipartFile implements MultipartFile {
     }
 
     /**
-     * Copy the content to {@code destination} without holding it in memory, so that a consumer which
-     * stages uploads to a temporary file still works.
+     * Copy the content to {@code destination} without holding it in memory.
      *
      * @param destination the file to write to
      * @throws IOException if the copy fails
@@ -113,8 +106,7 @@ public class BigMultipartFile implements MultipartFile {
     }
 
     /**
-     * As {@link #transferTo(File)}. Overridden because the inherited default implementation closes the
-     * source stream, which would contradict this class's contract that the stream belongs to the caller.
+     * As {@link #transferTo(File)}. Overridden so the source stream is not closed, per this class's contract.
      *
      * @param destination the file to write to
      * @throws IOException if the copy fails

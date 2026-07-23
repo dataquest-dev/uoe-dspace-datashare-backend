@@ -352,10 +352,8 @@
                     <label>Upload file from server path (Admin only)</label>
                     <input-type>onebox</input-type>
                     <hint>
-                        Please enter the full path of the file, either from the local server or an HTTP location.
-                        The maximum upload size for a file is 4GB. To upload a file larger than this limit, provide the
-                        URL of the file. Ensure the admin is aware of the URL of the bitstream file.
-                        Once the file path or URL is entered, click the 'Save' button to begin the upload.
+                        Please enter the full path of the file from the local server.
+                        Once the file path is entered, click the 'Save' button to begin the upload.
                         Note: The file path must be an absolute path.
                     </hint>
                     <required></required>
