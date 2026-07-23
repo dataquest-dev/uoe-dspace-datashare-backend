@@ -434,6 +434,41 @@ public class BundleRestRepositoryIT extends AbstractControllerIntegrationTest {
     }
 
     @Test
+    public void getBitstreamsForBundlePageBeyondEndReturnsEmptyPage() throws Exception {
+        context.turnOffAuthorisationSystem();
+
+        bundle1 = BundleBuilder.createBundle(context, item)
+                               .withName("testname")
+                               .build();
+
+        String bitstreamContent = "Dummy content";
+        try (InputStream is1 = IOUtils.toInputStream(bitstreamContent, CharEncoding.UTF_8);
+             InputStream is2 = IOUtils.toInputStream(bitstreamContent, CharEncoding.UTF_8)) {
+            bitstream1 = BitstreamBuilder.createBitstream(context, item, is1, bundle1.getName())
+                                         .withName("Bitstream")
+                                         .withMimeType("text/plain")
+                                         .build();
+            bitstream2 = BitstreamBuilder.createBitstream(context, item, is2, bundle1.getName())
+                                         .withName("Bitstream2")
+                                         .withMimeType("text/plain")
+                                         .build();
+        }
+
+        context.restoreAuthSystemState();
+
+        // A page past the last one must return an empty page with the real total, not a 500.
+        getClient().perform(get("/api/core/bundles/" + bundle1.getID() + "/bitstreams")
+                   .param("page", "999")
+                   .param("size", "5"))
+                   .andExpect(status().isOk())
+                   .andExpect(jsonPath("$.page.totalElements", is(2)))
+                   .andExpect(jsonPath("$.page.number", is(999)))
+                   // The subresource EmbeddedPage serializes an empty page as an empty array
+                   // (not omitted, unlike the top-level PagedResourcesAssembler path).
+                   .andExpect(jsonPath("$._embedded.bitstreams", Matchers.empty()));
+    }
+
+    @Test
     public void getBitstreamsForBundleForbiddenTest() throws Exception {
         context.turnOffAuthorisationSystem();
 
