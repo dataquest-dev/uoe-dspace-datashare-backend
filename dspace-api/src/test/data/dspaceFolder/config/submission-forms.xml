@@ -237,6 +237,23 @@ it, please enter the types and the actual numbers or codes.</hint>
          <required></required>
        </field>
      </row>
+     <row>
+       <field>
+         <dc-schema>local</dc-schema>
+         <dc-element>bitstream</dc-element>
+         <dc-qualifier>redirectToURL</dc-qualifier>
+         <repeatable>false</repeatable>
+         <label>Upload file from server path (Admin only)</label>
+         <input-type>onebox</input-type>
+         <hint>
+             Please enter the full path of the file from the local server.
+             Once the file path is entered, click the 'Save' button to begin the upload.
+             Note: The file path must be an absolute path.
+         </hint>
+         <required></required>
+         <acl>policy=deny,action=read,grantee-type=user,grantee-id=*</acl>
+       </field>
+     </row>
    </form>
    <form name="journalVolumeStep">
      <row>

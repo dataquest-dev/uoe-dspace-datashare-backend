@@ -25,8 +25,11 @@ import org.dspace.app.rest.model.submit.SelectableRelationship;
 import org.dspace.app.rest.projection.Projection;
 import org.dspace.app.rest.repository.SubmissionFormRestRepository;
 import org.dspace.app.rest.utils.AuthorityUtils;
+import org.dspace.app.rest.utils.ContextUtil;
+import org.dspace.app.util.ACL;
 import org.dspace.app.util.DCInput;
 import org.dspace.app.util.DCInputSet;
+import org.dspace.core.Context;
 import org.dspace.submit.model.LanguageFormField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -65,12 +68,18 @@ public class SubmissionFormConverter implements DSpaceConverter<DCInputSet, Subm
     private List<SubmissionFormRowRest> getPage(DCInput[][] page, String formName) {
         List<SubmissionFormRowRest> rows = new LinkedList<SubmissionFormRowRest>();
 
+        // Resolved once: the request context does not change while a single form is rendered.
+        Context context = ContextUtil.obtainCurrentRequestContext();
         for (DCInput[] row : page) {
             List<SubmissionFormFieldRest> fields = new LinkedList<SubmissionFormFieldRest>();
             SubmissionFormRowRest rowRest = new SubmissionFormRowRest();
             rowRest.setFields(fields);
             rows.add(rowRest);
             for (DCInput dcinput : row) {
+                // skip if the field's ACL denies this user
+                if (!isInputAuthorized(context, dcinput)) {
+                    continue;
+                }
                 fields.add(getField(dcinput, formName));
             }
         }
@@ -227,6 +236,19 @@ public class SubmissionFormConverter implements DSpaceConverter<DCInputSet, Subm
             return true;
         }
         return authorityUtils.isChoice(schema, element, qualifier);
+    }
+
+    /**
+     * Should we render this metadata field, based on its &lt;acl&gt; and the current user?
+     * A field is hidden only when both read and write are denied.
+     *
+     * @param c       the current request Context, null outside an HTTP request, in which case an
+     *                ACL-guarded field is hidden
+     * @param dcInput the input definition to test
+     * @return true if the field should be serialised into the REST payload
+     */
+    protected boolean isInputAuthorized(Context c, DCInput dcInput) {
+        return dcInput.isAllowedAction(c, ACL.ACTION_READ) || dcInput.isAllowedAction(c, ACL.ACTION_WRITE);
     }
 
     @Override
