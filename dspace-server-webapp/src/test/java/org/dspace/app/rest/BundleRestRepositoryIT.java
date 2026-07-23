@@ -462,7 +462,9 @@ public class BundleRestRepositoryIT extends AbstractControllerIntegrationTest {
                    .andExpect(status().isOk())
                    .andExpect(jsonPath("$.page.totalElements", is(2)))
                    .andExpect(jsonPath("$.page.number", is(999)))
-                   .andExpect(jsonPath("$._embedded.bitstreams").doesNotExist());
+                   // The subresource EmbeddedPage serializes an empty page as an empty array
+                   // (not omitted, unlike the top-level PagedResourcesAssembler path).
+                   .andExpect(jsonPath("$._embedded.bitstreams", Matchers.empty()));
     }
 
     @Test
