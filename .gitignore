@@ -48,7 +48,3 @@ rebel.xml
 
 ## Ignore jenv configuration
 .java-version
-
-## Ignore JVM crash dumps (HotSpot error + replay logs)
-hs_err_pid*.log
-replay_pid*.log
