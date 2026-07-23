@@ -860,8 +860,19 @@ public class RestResourceController implements InitializingBean {
             Method linkMethod = utils.requireMethod(linkRepository.getClass(), linkRest.method());
             try {
                 if (Page.class.isAssignableFrom(linkMethod.getReturnType())) {
-                    Page<? extends RestModel> pageResult = (Page<? extends RestModel>) linkMethod
-                            .invoke(linkRepository, request, uuid, page, utils.obtainProjection());
+                    Page<? extends RestModel> pageResult;
+                    try {
+                        pageResult = (Page<? extends RestModel>) linkMethod
+                                .invoke(linkRepository, request, uuid, page, utils.obtainProjection());
+                    } catch (InvocationTargetException e) {
+                        if (e.getTargetException() instanceof PaginationException) {
+                            // Page past the end: empty page with the true total, as findAll() does.
+                            pageResult = new PageImpl<>(new ArrayList<>(), page,
+                                    ((PaginationException) e.getTargetException()).getTotal());
+                        } else {
+                            throw e;
+                        }
+                    }
 
                     if (pageResult == null) {
                         // Link repositories may throw an exception or return an empty page,
