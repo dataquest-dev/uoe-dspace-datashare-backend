@@ -1,0 +1,9 @@
+## E-mail sent by the report-diff command to whomever is mentioned as -e parameter.
+##
+## Parameters: {0} is the output of the report-diff command
+## See org.dspace.core.Email for information on the format of this file.
+##
+#set($subject = "Datashare: Repository health report diff")
+The report diff finished with the following output:
+
+${params[0]}
