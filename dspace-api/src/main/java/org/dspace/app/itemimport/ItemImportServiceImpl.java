@@ -118,6 +118,7 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import uk.ac.ed.datashare.DatashareImportCcLicense;
 
 
 /**
@@ -244,6 +245,11 @@ public class ItemImportServiceImpl implements ItemImportService, InitializingBea
     @Override
     public void addItems(Context c, List<Collection> mycollections,
                          String sourceDir, String mapFile, boolean template) throws Exception {
+        // Datashare: a misconfigured CC licence file would silently affect every item, so fail here,
+        // before any item is created and before the mapfile is opened (see UoE issue 888). Runs that never
+        // reach the hook are exempt, so a dry run still rehearses the import it was asked about.
+        DatashareImportCcLicense.validateConfiguration(isExcludeContent || isTest);
+
         // create the mapfile
         File outFile = null;
         PrintWriter mapOut = null;
@@ -638,6 +644,9 @@ public class ItemImportServiceImpl implements ItemImportService, InitializingBea
     @Override
     public void replaceItems(Context c, List<Collection> mycollections,
                              String sourceDir, String mapFile, boolean template) throws Exception {
+        // Datashare: same pre-flight as addItems(), for the same reason (see UoE issue 888).
+        DatashareImportCcLicense.validateConfiguration(isExcludeContent || isTest);
+
         // verify the source directory
         File d = new java.io.File(sourceDir);
 
@@ -824,6 +833,13 @@ public class ItemImportServiceImpl implements ItemImportService, InitializingBea
         //Clear intermediary objects from the cache
         c.uncacheEntity(wi);
         c.uncacheEntity(wfi);
+
+        // Datashare: give the item the same CC licence the web submission would (see UoE issue 888).
+        // Placed after both branches above because production imports with --workflow, so the install
+        // branch is never reached. Skipped for -x, which imports no bitstreams at all.
+        if (!isTest && !isExcludeContent) {
+            DatashareImportCcLicense.attachIfDeclared(c, myitem, handler);
+        }
 
         return myitem;
     }
