@@ -232,6 +232,9 @@ public class ItemImportServiceImpl implements ItemImportService, InitializingBea
     @Override
     public void addItemsAtomic(Context c, List<Collection> mycollections, String sourceDir, String mapFile,
                                boolean template) throws Exception {
+        // Validate outside the rollback scope: failing inside it would run deleteItems() against a
+        // mapfile this invocation never wrote.
+        DatashareImportCcLicense.validateConfiguration(isExcludeContent || isTest);
         try {
             addItems(c, mycollections, sourceDir, mapFile, template);
         } catch (Exception addException) {
@@ -245,9 +248,7 @@ public class ItemImportServiceImpl implements ItemImportService, InitializingBea
     @Override
     public void addItems(Context c, List<Collection> mycollections,
                          String sourceDir, String mapFile, boolean template) throws Exception {
-        // Datashare: a misconfigured CC licence file would silently affect every item, so fail here,
-        // before any item is created and before the mapfile is opened (see UoE issue 888). Runs that never
-        // reach the hook are exempt, so a dry run still rehearses the import it was asked about.
+        // Fail before the mapfile is opened, so a refused run leaves nothing for --resume to skip.
         DatashareImportCcLicense.validateConfiguration(isExcludeContent || isTest);
 
         // create the mapfile
@@ -644,7 +645,7 @@ public class ItemImportServiceImpl implements ItemImportService, InitializingBea
     @Override
     public void replaceItems(Context c, List<Collection> mycollections,
                              String sourceDir, String mapFile, boolean template) throws Exception {
-        // Datashare: same pre-flight as addItems(), for the same reason (see UoE issue 888).
+        // Same pre-flight as addItems().
         DatashareImportCcLicense.validateConfiguration(isExcludeContent || isTest);
 
         // verify the source directory
@@ -834,9 +835,7 @@ public class ItemImportServiceImpl implements ItemImportService, InitializingBea
         c.uncacheEntity(wi);
         c.uncacheEntity(wfi);
 
-        // Datashare: give the item the same CC licence the web submission would (see UoE issue 888).
-        // Placed after both branches above because production imports with --workflow, so the install
-        // branch is never reached. Skipped for -x, which imports no bitstreams at all.
+        // After both branches above, so it also covers --workflow imports. Skipped for -x.
         if (!isTest && !isExcludeContent) {
             DatashareImportCcLicense.attachIfDeclared(c, myitem, handler);
         }
