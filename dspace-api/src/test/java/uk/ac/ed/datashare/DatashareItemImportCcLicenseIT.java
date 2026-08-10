@@ -71,9 +71,12 @@ public class DatashareItemImportCcLicenseIT extends AbstractIntegrationTestWithD
     /** The canonical dc.rights value that triggers the licence, as matched by the web submission step. */
     private static final String CC_BY_RIGHTS = "Creative Commons Attribution 4.0 International Public License";
 
-    /** A second, British-spelling trigger value, used only to prove the trigger list is configurable. */
+    /** The other shipped trigger: the spelling real SAF packages carry. */
     private static final String CC_BY_RIGHTS_BRITISH =
-            "Creative Commons Attribution 4.0 International Public Licence";
+            "Creative Commons Attribution 4.0 International licence";
+
+    /** An arbitrary wording, used only to prove the trigger list is configurable. */
+    private static final String CC_BY_RIGHTS_CUSTOM = "Our Own Licence Wording";
 
     private static final String CC_LICENSE_ENABLED = "itemimport.cc-license.enabled";
     private static final String CC_LICENSE_RIGHTS_VALUE = "itemimport.cc-license.rights-value";
@@ -341,11 +344,24 @@ public class DatashareItemImportCcLicenseIT extends AbstractIntegrationTestWithD
         assertCcLicenseBitstreamShape(licence);
     }
 
+    /** The British spelling must work out of the box, with nothing configured. */
+    @Test
+    public void importItemBySafWithTheOtherShippedRightsValueCreatesCcLicenseBundle() throws Exception {
+        Path safDir = createSafDir(CC_BY_RIGHTS_BRITISH);
+
+        performImport(safDir);
+
+        Item item = findArchivedItem();
+        Bitstream licence = assertSingleCcLicenseBitstream(item);
+        assertCcLicenseBitstreamShape(licence);
+        assertRightsMetadataUntouched(item, CC_BY_RIGHTS_BRITISH);
+    }
+
     @Test
     public void importItemBySafWithConfiguredAlternativeRightsValueCreatesCcLicenseBundle() throws Exception {
         configurationService.setProperty(CC_LICENSE_RIGHTS_VALUE,
-                new String[] { CC_BY_RIGHTS, CC_BY_RIGHTS_BRITISH });
-        Path safDir = createSafDir(CC_BY_RIGHTS_BRITISH);
+                new String[] { CC_BY_RIGHTS, CC_BY_RIGHTS_CUSTOM });
+        Path safDir = createSafDir(CC_BY_RIGHTS_CUSTOM);
 
         performImport(safDir);
 
