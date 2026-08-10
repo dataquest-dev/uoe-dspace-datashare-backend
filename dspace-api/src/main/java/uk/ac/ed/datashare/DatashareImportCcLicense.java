@@ -47,8 +47,15 @@ public final class DatashareImportCcLicense {
 
     public static final String CFG_FILE = "itemimport.cc-license.file";
 
-    /** Matches what the web submission step matches on. */
-    static final String DEFAULT_RIGHTS_VALUE = "Creative Commons Attribution 4.0 International Public License";
+    /**
+     * The first is what the web submission step matches on; the second is the spelling real SAF packages
+     * carry. Both are live by default, because an item is either CC-BY or it is not and the wording it
+     * was typed in should not decide that.
+     */
+    static final String[] DEFAULT_RIGHTS_VALUES = {
+        "Creative Commons Attribution 4.0 International Public License",
+        "Creative Commons Attribution 4.0 International licence",
+    };
 
     private static final String RIGHTS_FIELD = "dc.rights";
 
@@ -156,8 +163,7 @@ public final class DatashareImportCcLicense {
      * not the default, which {@link #validateConfiguration(boolean)} refuses.
      */
     private static List<String> configuredTriggers(ConfigurationService configurationService) {
-        return Arrays.stream(configurationService.getArrayProperty(CFG_RIGHTS_VALUE,
-                        new String[] { DEFAULT_RIGHTS_VALUE }))
+        return Arrays.stream(configurationService.getArrayProperty(CFG_RIGHTS_VALUE, DEFAULT_RIGHTS_VALUES))
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.toList());
     }
