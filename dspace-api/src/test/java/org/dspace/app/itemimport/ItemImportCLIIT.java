@@ -8,14 +8,18 @@
 package org.dspace.app.itemimport;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.file.PathUtils;
 import org.dspace.AbstractIntegrationTestWithDatabase;
@@ -260,6 +264,25 @@ public class ItemImportCLIIT extends AbstractIntegrationTestWithDatabase {
 
         checkMetadata();
         checkRelationship();
+    }
+
+    @Test
+    public void importItemByZipSafWithBadEntryKeepsSourceDir() throws Exception {
+        Path sourceDir = Files.createDirectory(tempDir.resolve("source"));
+        Path otherFile = Files.createFile(sourceDir.resolve("other.txt"));
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(sourceDir.resolve(ZIP_NAME)))) {
+            zip.putNextEntry(new ZipEntry("../outside.txt"));
+            zip.write("x".getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
+        }
+
+        String[] args = new String[] { "import", "-a", "-e", admin.getEmail(), "-c", collection.getID().toString(),
+                "-s", sourceDir.toString(), "-z", ZIP_NAME, "-m", tempDir.toString() + "/mapfile.out" };
+        Exception thrown = assertThrows(Exception.class, () -> perfomImportScript(args));
+        assertTrue(thrown.getMessage().contains("Bad zip entry"));
+
+        assertTrue(Files.exists(otherFile));
+        assertTrue(Files.exists(sourceDir.resolve(ZIP_NAME)));
     }
 
     @Test
