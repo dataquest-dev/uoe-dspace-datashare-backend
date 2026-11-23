@@ -17,6 +17,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -413,7 +414,8 @@ public class ItemExportServiceImpl implements ItemExportService {
                 String bundleName = bundle.getName();
 
                 for (Bitstream bitstream : bitstreams) {
-                    String myName = bitstream.getName();
+                    // Normalize first, so a name like "x/../contents" gets a new path on each retry.
+                    String myName = Path.of(bitstream.getName()).normalize().toString();
                     String oldName = myName;
 
                     String description = bitstream.getDescription();

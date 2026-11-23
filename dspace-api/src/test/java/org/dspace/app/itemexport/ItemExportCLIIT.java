@@ -357,6 +357,28 @@ public class ItemExportCLIIT extends AbstractIntegrationTestWithDatabase {
     }
 
     @Test
+    public void exportItemWithBitstreamNameResolvingToManifest() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Item item = ItemBuilder.createItem(context, collection)
+                .withTitle(title)
+                .withMetadata("dc", "date", "issued", dateIssued)
+                .build();
+        try (InputStream is = IOUtils.toInputStream("some arbitrary content", CharEncoding.UTF_8)) {
+            BitstreamBuilder.createBitstream(context, item, is)
+                    .withName("x/../contents")
+                    .withMimeType("text/plain")
+                    .build();
+        }
+        context.restoreAuthSystemState();
+
+        String[] args = new String[] { "export", "-t", "ITEM",
+                "-i", item.getHandle(), "-d", tempDir.toString(), "-n", "1" };
+        perfomExportScript(args);
+
+        assertTrue(Files.exists(tempDir.resolve("1").resolve("1_contents")));
+    }
+
+    @Test
     public void exportRejectedWhenDestDirOutsideAllowedBase() throws Exception {
         configurationService.setProperty(
                 "org.dspace.app.itemexport.allowed.dir", workDir.toString());
