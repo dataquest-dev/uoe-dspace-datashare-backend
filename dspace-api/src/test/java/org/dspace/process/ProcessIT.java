@@ -7,10 +7,12 @@
  */
 package org.dspace.process;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.UUID;
 import org.dspace.AbstractIntegrationTestWithDatabase;
 import org.dspace.builder.GroupBuilder;
 import org.dspace.builder.ProcessBuilder;
+import org.dspace.content.ProcessStatus;
 import org.dspace.eperson.Group;
 import org.dspace.eperson.factory.EPersonServiceFactory;
 import org.dspace.eperson.service.GroupService;
@@ -87,6 +90,24 @@ public class ProcessIT extends AbstractIntegrationTestWithDatabase {
         boolean isPresent = groups.stream().anyMatch(g -> g.getID().equals(groupUuid));
         assertFalse(isPresent);
 
+    }
+
+    @Test
+    public void failRunningProcessesWithoutCurrentUserTest() throws Exception {
+        context.turnOffAuthorisationSystem();
+        Process running = ProcessBuilder.createProcess(context, admin, "mock-script", new LinkedList<>())
+                                        .withProcessStatus(ProcessStatus.RUNNING)
+                                        .withCreationTime(new Date(System.currentTimeMillis() - 60_000))
+                                        .build();
+        context.restoreAuthSystemState();
+        // Startup recovery runs in a fresh context with no current user.
+        context.setCurrentUser(null);
+
+        processService.failRunningProcesses(context);
+
+        running = context.reloadEntity(running);
+        assertEquals(ProcessStatus.FAILED, running.getProcessStatus());
+        assertFalse(running.getBitstreams().isEmpty());
     }
 
     @Test
