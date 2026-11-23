@@ -104,11 +104,14 @@ public class ItemImportCLI extends ItemImport {
     protected void readZip(Context context, ItemImportService itemImportService) throws Exception {
         // If this is a zip archive, unzip it first
         if (zip) {
+            // Cleanup deletes sourcedir, so it must not point to the -s directory if extraction fails.
+            String inputDir = sourcedir;
+            sourcedir = null;
             if (!remoteUrl) {
                 // zipfilename is user controlled (via -z or -u param). So, we must validate the expected
                 // file path using SecureFileAccess to protect against path traversal attacks.
-                String fileAbsolutePath = SecureFileAccess.calculateAbsolutePathUsingBaseDir(zipfilename, sourcedir);
-                Path validatedZipPath = SecureFileAccess.validatePathForRead(fileAbsolutePath, List.of(sourcedir),
+                String fileAbsolutePath = SecureFileAccess.calculateAbsolutePathUsingBaseDir(zipfilename, inputDir);
+                Path validatedZipPath = SecureFileAccess.validatePathForRead(fileAbsolutePath, List.of(inputDir),
                                                                              "ItemImportCLI zip validation");
                 File myZipFile = validatedZipPath.toFile();
 
