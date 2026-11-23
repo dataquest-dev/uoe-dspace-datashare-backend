@@ -372,6 +372,8 @@ public class ProcessServiceImpl implements ProcessService {
                 context, List.of(ProcessStatus.RUNNING, ProcessStatus.SCHEDULED), new Date());
         for (Process process : processesToBeFailed) {
             context.turnOffAuthorisationSystem();
+            // appendFile() gives the log bitstream's policies to the current user.
+            context.setCurrentUser(process.getEPerson());
             try {
                 // Fail the process.
                 log.info("Process with ID {} did not complete before tomcat shutdown, failing it now.",
