@@ -414,8 +414,11 @@ public class ItemExportServiceImpl implements ItemExportService {
                 String bundleName = bundle.getName();
 
                 for (Bitstream bitstream : bitstreams) {
-                    // Normalize first, so a name like "x/../contents" gets a new path on each retry.
-                    String myName = Path.of(bitstream.getName()).normalize().toString();
+                    String myName = bitstream.getName();
+                    if (!excludeBitstreams) {
+                        // Normalize first, so a name like "x/../contents" gets a new path on each retry.
+                        myName = Path.of(myName).normalize().toString();
+                    }
                     String oldName = myName;
 
                     String description = bitstream.getDescription();
