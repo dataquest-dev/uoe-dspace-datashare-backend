@@ -415,10 +415,6 @@ public class ItemExportServiceImpl implements ItemExportService {
 
                 for (Bitstream bitstream : bitstreams) {
                     String myName = bitstream.getName();
-                    if (!excludeBitstreams) {
-                        // Normalize first, so a name like "x/../contents" gets a new path on each retry.
-                        myName = Path.of(myName).normalize().toString();
-                    }
                     String oldName = myName;
 
                     String description = bitstream.getDescription();
@@ -457,7 +453,8 @@ public class ItemExportServiceImpl implements ItemExportService {
                             }
                             isDone = true;
                         } else {
-                            myName = myPrefix + "_" + oldName;
+                            // Normalized, so every retry resolves to a new path.
+                            myName = myPrefix + "_" + Path.of(oldName).normalize();
                             // keep appending numbers to the filename until unique
                             myPrefix++;
                         }

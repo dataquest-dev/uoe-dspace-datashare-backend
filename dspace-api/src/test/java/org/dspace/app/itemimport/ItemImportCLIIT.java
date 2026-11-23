@@ -278,7 +278,8 @@ public class ItemImportCLIIT extends AbstractIntegrationTestWithDatabase {
 
         String[] args = new String[] { "import", "-a", "-e", admin.getEmail(), "-c", collection.getID().toString(),
                 "-s", sourceDir.toString(), "-z", ZIP_NAME, "-m", tempDir.toString() + "/mapfile.out" };
-        assertThrows(Exception.class, () -> perfomImportScript(args));
+        Exception thrown = assertThrows(Exception.class, () -> perfomImportScript(args));
+        assertTrue(thrown.getMessage().contains("Bad zip entry"));
 
         assertTrue(Files.exists(otherFile));
         assertTrue(Files.exists(sourceDir.resolve(ZIP_NAME)));
